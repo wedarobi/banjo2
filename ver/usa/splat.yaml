@@ -1,0 +1,99 @@
+name: banjo2_usa
+sha1: af1a89e12b638b8d82cc4c085c8e01d4cba03fb3
+options:
+  basename: banjo2
+  compiler: IDO
+  platform: n64
+
+  #--- Paths ---
+  target_path:               ver/usa/baserom.z64
+  asm_path:                  ver/usa/asm
+  build_path:                ver/usa/build
+  asset_path:                ver/usa/assets
+  symbol_addrs_path:         ver/usa/syms/vars.txt
+  undefined_syms_path:       ver/usa/syms/undef_vars.txt
+  undefined_funcs_auto_path: ver/usa/syms/undef_auto_funcs.txt
+  undefined_syms_auto_path:  ver/usa/syms/undef_auto_vars.txt
+
+  src_path:  src
+  base_path: .
+  # extensions_path: tools/splat_ext
+
+  find_file_boundaries: true
+  create_detected_syms: true
+  # auto_all_sections: true
+
+segments:
+  - name: header
+    type: header
+    start: 0x0
+
+  - name: boot
+    type: bin
+    start: 0x40
+
+  - name: main
+    type: code
+    start: 0x1000
+    vram: 0x80000400
+    subsegments:
+      - [0x1000, asm]
+      - [0x1140, asm]
+      - [0x1270, asm]
+      - [0x12A0, asm]
+      - [0x22F0, asm]
+      - [0x2640, asm]
+      - [0x2710, asm]
+      - [0x2720, asm]
+      - [0x27B0, asm]
+      - [0x27D0, asm]
+      - [0x2830, asm]
+      - [0x2880, asm]
+      - [0x32E0, asm]
+      - [0x3360, asm]
+      - [0x33B0, asm]
+      - [0x3410, asm]
+      - [0x3730, asm]
+      - [0x37D0, asm]
+      - [0x37E0, asm]
+      - [0x39D0, asm]
+      - [0x3A40, asm]
+      - [0x3B00, asm]
+      - [0x3CB0, asm]
+      - [0x3CE0, asm]
+      - [0x3DC0, asm]
+      - [0x41D0, asm]
+      - [0x47F0, asm]
+      - [0x4940, asm]
+      - [0x4A80, asm]
+      - [0x4AE0, asm]
+      - [0x4C40, asm]
+      - [0x4DA0, asm]
+      - [0x4DF0, asm]
+
+  - type: bin
+    start: 0x4E40
+
+  - name: core1
+    type: bin # zip
+    start: 0x1E29B60
+
+  - name: core2
+    type: bin # zip
+    start: 0x1E3F718
+
+  - name: core3
+    type: bin # zip
+    start: 0x1E42550
+
+  - name: core4
+    type: bin # zip
+    start: 0x1E86C76 #! ??
+
+
+
+
+  - [0x1E899A6] #! ??
+
+
+  - [0x2000000]

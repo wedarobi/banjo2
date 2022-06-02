@@ -123,6 +123,15 @@ async function dll_build(dll)
     return file_out;
 }
 
+function ALIGN(value, pad)
+{
+    let modResult = value % pad;
+
+    if (modResult)
+        value += pad - modResult;
+
+    return value;
+}
 
 
 var gSyscallIdxMap;
@@ -562,7 +571,7 @@ async function dll_process(dll, objFilePath)
         ".rel.text", ".rel.rodata", ".rel.data",
     ]);
 
-    console.log(sections)
+    // console.log(sections)
 
 
     /**
@@ -580,12 +589,10 @@ async function dll_process(dll, objFilePath)
      *
      *
      */
+    let pubFns = [];
     {
         //- Finding pub fns
         {
-            let pubFns = [];
-
-
             if (sections._text && sections._symtab)
             {
                 const symtabEntrySize = 0x10;
@@ -630,7 +637,6 @@ async function dll_process(dll, objFilePath)
 
     /** @type {number[]} */
     let symbolRefs = [];
-
     {
         //- Finding symbol refs
 
@@ -707,13 +713,106 @@ async function dll_process(dll, objFilePath)
         console.log(symbolRefs.map(r => r.hex()))
     }
 
+    //- Write some preheader data
+    //# Write section sizes
+    preheader.writeUint16BE(sections._text   ? ~~(sections._text?.size   / 0x10) : 0, 0x0);
+    preheader.writeUint16BE(sections._rodata ? ~~(sections._rodata?.size / 0x10) : 0, 0x2);
+    preheader.writeUint16BE(sections._data   ? ~~(sections._data?.size   / 0x10) : 0, 0x4);
+    preheader.writeUint16BE(sections._bss    ? ~~(sections._bss?.size    / 0x10) : 0, 0x6);
+    //# Write numFunctions
+    preheader.writeUint16BE(pubFns.length, 0x8);
+    //# Write numSymbolRefs
+    preheader.writeUint16BE(symbolRefs.length, 0xA);
+    //# Write sizeData1? not sure what this is
+    preheader.writeUint16BE(0, 0xC); //! always 0?
 
+    //- Allocate and write the final buffers: [function pointer, dll name, symbolref]
+    //# They should be appended to the header in the same order
+    let buf_functions = Buffer.alloc(pubFns.length * 4).fill(0);
+    {
+        for (let [i, p] of pubFns.entries())
+            buf_functions.writeUint32BE(p, i * 4);
+    }
+    let buf_dllname = Buffer.alloc(ALIGN(dll.length + 1, 0x04)).fill(0);
+    {
+        for (let i = 0; i < dll.length; i++)
+            buf_dllname.writeUInt8(dll.charCodeAt(i), i);
+    }
+    let buf_symbolRefs = Buffer.alloc(symbolRefs.length * 2).fill(0);
+    {
+        //! Do not align this. Only align (to 0x10) after combining it with the header etc.
 
+        for (let [i, sr] of symbolRefs.entries())
+            buf_symbolRefs.writeUint16BE(sr, i * 2);
+    }
 
+    let finalBinary; //# size is known at this point, but who cares, dont alloc yet
+    {
+        //- Run elf through the linker, objcopy it, then read the result
 
+        let out = `build/${gRomVer}/dlls/${dll}.out`;
 
+        await spawn(`mips-linux-gnu-ld -T misc/linkerscript/dll.ld -T ver/${gRomVer}/syms/undefined.txt build/${gRomVer}/dlls/${dll}.o -o build/${gRomVer}/dlls/${dll}.lpo`);
+        await spawn(`mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary build/${gRomVer}/dlls/${dll}.lpo ${out}`);
 
+        if (!fs.existsSync(out))
+            FATAL(`Build failed: objcopy result missing for: ${dll}`);
 
+        let binary = fs.readFileSync(out);
+        {
+            //- Fix linking "errors"
+            /**
+             * We were forced to link at 0x80000000 due to relocation errors, so
+             * now we go through and relocate 0x80000000 based pointers (including hi's)
+             * to 0x00000000.
+             * 
+             * We can just do this with the symbol refs we have already calculated
+             */
+    
+    
+        }
+
+        //- Combine all sections
+
+        {
+            //- Alloc final buffer
+
+            let size_00_header     = header.byteLength;
+            let size_01_pubfns     = buf_functions.byteLength;
+            let size_02_dllname    = buf_dllname.byteLength;
+            let size_03_symbolrefs = buf_symbolRefs.byteLength;
+
+            //# Does not include [preheader], remember! That shit is not compressed together with this.
+            let size_04_fullheader = size_00_header + size_01_pubfns + size_02_dllname + size_03_symbolrefs;
+            size_04_fullheader = ALIGN(size_04_fullheader, 0x10);
+
+            // let size_05_binary = preheader.readUint16BE(0x0)
+            //                    + preheader.readUint16BE(0x2)
+            //                    + preheader.readUint16BE(0x4)
+            //                    + preheader.readUint16BE(0x6);
+            let size_05_binary = binary.byteLength;
+
+            let fullSize = size_04_fullheader + size_05_binary;
+
+            finalBinary = Buffer.alloc(fullSize).fill(0);
+
+            //- Write final buffer
+
+            let runningSize = 0;
+
+            header        .copy(finalBinary, runningSize, 0); runningSize += size_00_header;
+            buf_functions .copy(finalBinary, runningSize, 0); runningSize += size_01_pubfns;
+            buf_dllname   .copy(finalBinary, runningSize, 0); runningSize += size_02_dllname;
+            buf_symbolRefs.copy(finalBinary, runningSize, 0); runningSize += size_03_symbolrefs;
+
+            runningSize = size_04_fullheader;
+
+            binary.copy(finalBinary, runningSize, 0);
+        }
+
+        //- Write final buffer out
+        fs.writeFileSync(binFilePath, finalBinary);
+    }
 
 
 

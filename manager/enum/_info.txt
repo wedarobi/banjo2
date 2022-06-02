@@ -1,0 +1,10 @@
+
+
+[syscallidx.txt]
+    Parse this file in lines.
+    - Zero-indexed. The first line in the file corresponds to syscallIdx 0.
+    - If a line is empty, it means the DLL is completely unknown, including its name. It was completely removed during development.
+    - If there is a "0" after the name, it means it is exclusive to USA, and there is no trace of the ID in other versions
+    - If there is a "1" after the name, it means it is exclusive to USA, but the ID is still incremented around it in other versions
+
+

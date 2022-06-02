@@ -103,5 +103,90 @@ ASM_PROCESSOR     := $(PYTHON) $(ASM_PROCESSOR_DIR)/asm_processor.py #!
 SPLAT_INPUTS      := $(PYTHON) tools/splat_inputs.py
 
 
+#==============================================================================#
+# Files and folders                                                            #
+#==============================================================================#
+
+VER_ROOT          := ver/$(VERSION)
+
+# Source files
+SRC_ROOT          := $(VER_ROOT)/src
+ASM_ROOT          := $(VER_ROOT)/asm
+BIN_ROOT          := $(VER_ROOT)/bin
+BUILD_ROOT        := $(VER_ROOT)/build
+
+# Build files
+BASEROM           := $(VER_ROOT)/baserom.z64
+
+
+
+
+#==============================================================================#
+# Functions                                                                    #
+#==============================================================================#
+
+# Colourful text printing
+NO_COL  := \033[0m
+RED     := \033[0;31m
+GREEN   := \033[0;32m
+BLUE    := \033[0;34m
+YELLOW  := \033[0;33m
+BLINK   := \033[33;5m
+
+# Print message with zero arguments (i.e. message)
+define print0
+  @$(PRINT) "$(GREEN)$(1)$(NO_COL)\n"
+endef
+
+# Print message with one argument (i.e. message arg)
+define print1
+  @$(PRINT) "$(GREEN)$(1) $(BLUE)$(2)$(NO_COL)\n"
+endef
+
+# Print message with two arguments (i.e. message arg1 -> arg2)
+define print2
+  @$(PRINT) "$(GREEN)$(1) $(YELLOW)$(2)$(GREEN) -> $(BLUE)$(3)$(NO_COL)\n"
+endef
+
+
+#==============================================================================#
+# Flags                                                                        #
+#==============================================================================#
+
+# Build tool flags
+CFLAGS         := -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm  -signed $(OPT_FLAGS) $(MIPSBIT) -D_FINALROM -DF3DEX2_GBI
+CFLAGS         += -woff 649,838,807
+CPPFLAGS       := -D_FINALROM -DN_MICRO
+INCLUDE_CFLAGS := -I . -I include -I include/2.0L -I include/2.0L/PR
+OPT_FLAGS      := -O2 
+MIPSBIT        := -mips2
+ASFLAGS        := -EB -mtune=vr4300 -march=vr4300 -mabi=32 -I include
+GCC_ASFLAGS    := -c -x assembler-with-cpp -mabi=32 -ffreestanding -mtune=vr4300 -march=vr4300 -mfix4300 -G 0 -O -mno-shared -fno-PIC -mno-abicalls
+LDFLAGS_COMMON := -T $(VER_ROOT)/symbol_addrs.core1.$(VERSION).txt \
+				  -T $(VER_ROOT)/symbol_addrs.core2.$(VERSION).txt \
+				  -T $(VER_ROOT)/symbol_addrs.global.$(VERSION).txt \
+				  -T $(VER_ROOT)/undefined_syms.$(VERSION).txt \
+				  -T $(VER_ROOT)/undefined_syms.libultra.txt \
+				  --no-check-sections --accept-unknown-input-arch
+LDFLAGS        := -T $(LD_SCRIPT) -Map $(ELF:.elf=.map) --no-check-sections --accept-unknown-input-arch -T undefined_syms.libultra.txt
+BINOFLAGS      := -I binary -O elf32-big
+
+
+
+
+
+
+#==============================================================================#
+# Rules                                                                        #
+#==============================================================================#
+
+clean:
+	$(call print0,Cleaning build artifacts)
+	@$(RM) -rf $(BUILD_ROOT)
+	@$(RM) -rf $(BIN_ROOT)
+	@$(RM) -rf $(ASM_ROOT)/*.s
+	@$(RM) -f $(VER_ROOT)/syms/undef_auto*
+	@$(RM) -f *.ld
+
 
 

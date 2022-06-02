@@ -715,10 +715,10 @@ async function dll_process(dll, objFilePath)
 
     //- Write some preheader data
     //# Write section sizes
-    preheader.writeUint16BE(sections._text   ? ~~(sections._text?.size   / 0x10) : 0, 0x0);
-    preheader.writeUint16BE(sections._rodata ? ~~(sections._rodata?.size / 0x10) : 0, 0x2);
-    preheader.writeUint16BE(sections._data   ? ~~(sections._data?.size   / 0x10) : 0, 0x4);
-    preheader.writeUint16BE(sections._bss    ? ~~(sections._bss?.size    / 0x10) : 0, 0x6);
+    preheader.writeUint16BE(sections._text   ? ~~(sections._text.size   / 0x10) : 0, 0x0);
+    preheader.writeUint16BE(sections._rodata ? ~~(sections._rodata.size / 0x10) : 0, 0x2);
+    preheader.writeUint16BE(sections._data   ? ~~(sections._data.size   / 0x10) : 0, 0x4);
+    preheader.writeUint16BE(sections._bss    ? ~~(sections._bss.size    / 0x10) : 0, 0x6);
     //# Write numFunctions
     preheader.writeUint16BE(pubFns.length, 0x8);
     //# Write numSymbolRefs
@@ -765,11 +765,37 @@ async function dll_process(dll, objFilePath)
              * We were forced to link at 0x80000000 due to relocation errors, so
              * now we go through and relocate 0x80000000 based pointers (including hi's)
              * to 0x00000000.
-             * 
+             *
              * We can just do this with the symbol refs we have already calculated
              */
-    
-    
+
+            for (let [i, sr] of symbolRefs.entries())
+            {
+                sr ^= encryptionKey;
+
+                let offset = sr & 0xFFFC;
+                let type   = sr & 3;
+
+                switch (type)
+                {
+                    case SR_TYPE.PTR:
+                    {
+                        binary.writeUint32BE((binary.readUint32BE(offset) & 0x7FFFFFFF) >>> 0, offset);
+
+                        break;
+                    }
+                    case SR_TYPE.HI:
+                    {
+                        offset += 2;
+
+                        binary.writeUint16BE(binary.readUint16BE(offset) & 0x7FFF, offset);
+
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
         }
 
         //- Combine all sections
@@ -786,10 +812,10 @@ async function dll_process(dll, objFilePath)
             let size_04_fullheader = size_00_header + size_01_pubfns + size_02_dllname + size_03_symbolrefs;
             size_04_fullheader = ALIGN(size_04_fullheader, 0x10);
 
-            // let size_05_binary = preheader.readUint16BE(0x0)
-            //                    + preheader.readUint16BE(0x2)
-            //                    + preheader.readUint16BE(0x4)
-            //                    + preheader.readUint16BE(0x6);
+            // let size_05_binary = (preheader.readUint16BE(0x0) << 4)
+            //                    + (preheader.readUint16BE(0x2) << 4)
+            //                    + (preheader.readUint16BE(0x4) << 4)
+            //                    + (preheader.readUint16BE(0x6) << 4);
             let size_05_binary = binary.byteLength;
 
             let fullSize = size_04_fullheader + size_05_binary;

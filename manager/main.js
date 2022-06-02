@@ -731,7 +731,7 @@ async function dll_process(dll, objFilePath)
     let buf_functions = Buffer.alloc(pubFns.length * 4).fill(0);
     {
         for (let [i, p] of pubFns.entries())
-            buf_functions.writeUint32BE(p, i * 4);
+            buf_functions.writeUint32BE(p.loc, i * 4);
     }
     let buf_dllname = Buffer.alloc(ALIGN(dll.length + 1, 0x04)).fill(0);
     {
@@ -915,7 +915,7 @@ async function main()
     // log(`> Compiling...`);
     {
         // cosection, chmrtannoy
-        let dllName = "chmrtannoy";
+        let dllName = "cosection";
 
         let file_o = await dll_build(dllName);
 

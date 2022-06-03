@@ -5,13 +5,6 @@
 #include "include/struct/player.h"
 
 
-extern void func_8009BC08       (PlayerObj *, Vec3f *);
-extern void fn_player_vel_cpy   (PlayerObj *, Vec3f *);
-extern f32  fn_gamespeed_get    (void);
-extern void fn_vec_scale        (Vec3f *, f32);
-extern void fn_vec_add_direct   (Vec3f *, Vec3f *);
-extern void func_8009B98C       (PlayerObj *, Vec3f *);
-
 
 u32 DLL_bamoveledge_00(void)
 {

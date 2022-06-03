@@ -16,7 +16,10 @@ fn_vec_add_direct = 0x800EAA1C;
 fn_gamespeed_get = 0x800D6368;
 
 
-
+func_800B2840 = 0x800B0E4C;
+func_800B2344 = 0x800B0A64;
+func_800B27A0 = 0x800B0DD0;
+fn_memcpy_fast = 0x8001B588;
 
 
 

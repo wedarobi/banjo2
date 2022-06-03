@@ -24,12 +24,18 @@ const log = (msg, prefix="INFO") =>
     console.log(msg);
 }
 
+function DEBUG_LOG(msg)
+{
+    if (false)
+        console.log(msg);
+}
+
 function spawn(command)
 {
     return new Promise((res, rej) =>
     {
         // log(`  ${command}`, "EXEC");
-        log(command);
+        DEBUG_LOG(command);
 
         let cmdlist = command.split(/\s+/);
         let proc;
@@ -637,7 +643,7 @@ function elf_get_sections(elf, sectionNameArr)
             if (sn === o.name)
             {
                 found = true;
-                //# Remove leading "." and replace any other "." with _ (e.g. rel.data -> rel_data)
+                //# Replace "." with _ (e.g. .rel.data -> _rel_data)
                 out[sn.replace(/\./g, "_")] = o;
 
                 break;
@@ -645,7 +651,7 @@ function elf_get_sections(elf, sectionNameArr)
         }
 
         if (!found)
-            //# Remove leading "." and replace any other "." with _ (e.g. rel.data -> rel_data)
+            //# Replace "." with _ (e.g. .rel.data -> _rel_data)
             out[sn.replace(/\./g, "_")] = null;
     }
 
@@ -686,7 +692,7 @@ function elf_get_syms(elf, symNameArr)
 
         let name = elf_get_string_strtab(elf, st_name);
 
-        //# Remove leading "." and replace any other "." with _ (e.g. rel.data -> rel_data)
+        //# Replace "." with _ (e.g. .rel.data -> _rel_data)
         out[name.replace(/\./g, "_")] =
             symNameArr.includes(name)
             ?
@@ -818,7 +824,7 @@ async function dll_process(dll, objFilePath)
                 }
 
                 //!
-                console.log(pubFns)
+                DEBUG_LOG(pubFns)
 
                 //- Pub functions all found!
 
@@ -874,8 +880,7 @@ async function dll_process(dll, objFilePath)
                     let r_offset = elf.readUint32BE(sections[rel_swr].loc + (i * elementSize) + 0x00);
                     let r_info   = elf.readUint32BE(sections[rel_swr].loc + (i * elementSize) + 0x04);
 
-                    //# Location from start of binary
-                    // let abs_offset = sections[rel_swr].loc + r_offset;
+                    //# Location from start of final processed binary
                     let abs_offset = runningSectionSize + r_offset;
 
                     if (!validSectionIds.includes(r_info >> 8))
@@ -902,7 +907,7 @@ async function dll_process(dll, objFilePath)
         //- Encrypt the symbolRefs
         symbolRefs = symbolRefs.map(r => r ^ encryptionKey);
 
-        console.log(symbolRefs.map(r => r.hex()))
+        DEBUG_LOG(symbolRefs.map(r => r.hex()))
     }
 
     //- Write some preheader data
@@ -1227,6 +1232,8 @@ async function main()
     if (!dllNames.length)
         dllNames = fs.readdirSync(gRootDir + "src/dlls")
             .map(name => name.replace(/\.c$/g, ""));
+
+    log(`Building ${dllNames.length} DLL(s)...`);
 
     for (let dllName of dllNames)
     {

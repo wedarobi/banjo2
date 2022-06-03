@@ -149,6 +149,12 @@ function printInBox (msgArr, colour="white")
     process.stdout.write(os);
 }
 
+function ensureDir(path)
+{
+    if (!fs.existsSync(path))
+        fs.mkdirSync(path);
+}
+
 
 /**
  * An absolute path to the repo root, given that this
@@ -271,12 +277,14 @@ function init_gSyscallIdx_map()
  * Get a similarity score for a new DLL file, by comparing it to the one
  * inside the current baserom.
  *
- * @param {number} syscallIdx
+ * @param {string} dllName
  * @param {Buffer} newDllFile the encrypted header, along with the decompressed file contents
  * @param {boolean} compressed if true, compare compressed version instead
  */
-async function get_similarity_dll(syscallIdx, newDllFile, compressed=false)
+async function get_similarity_dll(dllName, newDllFile, compressed=false)
 {
+    let syscallIdx = gSyscallIdxMap[dllName];
+
     let dllTableStart =
     {
         usa: 0x1E899B0,
@@ -325,6 +333,18 @@ async function get_similarity_dll(syscallIdx, newDllFile, compressed=false)
         buf_vani = Buffer.alloc(preheader.byteLength + dllUncompressed.byteLength);
         preheader.copy(buf_vani);
         dllUncompressed.copy(buf_vani, 0x10);
+
+        //= Copy to [expected] folder
+        {
+            // fs.writeFileSync("./tmp.vani.bin", buf_vani);
+            // FATAL("./tmp.vani.bin");
+
+            ensureDir(gRootDir + `expected`);
+            ensureDir(gRootDir + `expected/${gRomVer}`);
+            ensureDir(gRootDir + `expected/${gRomVer}/dlls`);
+
+            fs.writeFileSync(gRootDir + `expected/${gRomVer}/dlls/${dllName}.raw`, buf_vani);
+        }
     }
     else
     {
@@ -335,9 +355,17 @@ async function get_similarity_dll(syscallIdx, newDllFile, compressed=false)
             dllTableStart[gRomVer] + dllOffsetEnd,
         );
 
-        //!!!!!!!!
-        // fs.writeFileSync("./tmp.vani.bin", buf_vani);
-        // FATAL("./tmp.vani.bin");
+        //= Copy to [expected] folder
+        {
+            // fs.writeFileSync("./tmp.vani.bin", buf_vani);
+            // FATAL("./tmp.vani.bin");
+
+            ensureDir(gRootDir + `expected`);
+            ensureDir(gRootDir + `expected/${gRomVer}`);
+            ensureDir(gRootDir + `expected/${gRomVer}/dlls`);
+
+            fs.writeFileSync(gRootDir + `expected/${gRomVer}/dlls/${dllName}.dll`, buf_vani);
+        }
     }
 
 
@@ -1044,7 +1072,7 @@ async function dll_preheader_encrypt(rawFilePath, rawFile=null)
  * @param {string} rawFilePath
  * @param {Buffer} rawFile the raw dll file (already compiled and linked and everything)
  */
-async function dll_package(rawFilePath, rawFile=null)
+async function dll_compress(rawFilePath, rawFile=null)
 {
     if (!rawFile)
         rawFile = fs.readFileSync(rawFilePath);
@@ -1132,11 +1160,13 @@ async function main()
 
     //- Get version for ROM you want to work with
     {
-        let romVerStr = argv[0];
-        if (!(["usa", "jpn", "eur", "aus"].includes(romVerStr)))
-            FATAL("argv[0]: Pass the rom version (usa/jpn/eur/aus)");
+        // let romVerStr = argv[0];
+        // if (!(["usa", "jpn", "eur", "aus"].includes(romVerStr)))
+        //     FATAL("argv[0]: Pass a rom version (usa/jpn/eur/aus)");
 
-        gRomVer = romVerStr;
+        // gRomVer = romVerStr;
+
+        gRomVer = "usa"; //= default
     }
 
     update_rom_version(gRomVer);
@@ -1188,12 +1218,15 @@ async function main()
     let dllNames = [
         // "glreflight",
         // "bamoveledge",
-        "cosection",
+        // "cosection",
+        // "chlavaarchgrillswitch",
+        ...argv
     ];
 
-
-    dllNames = fs.readdirSync(gRootDir + "src/dlls")
-        .map(name => name.replace(/\.c$/g, ""));
+    //= If no dll names were provided on the command line, do all
+    if (!dllNames.length)
+        dllNames = fs.readdirSync(gRootDir + "src/dlls")
+            .map(name => name.replace(/\.c$/g, ""));
 
     for (let dllName of dllNames)
     {
@@ -1218,11 +1251,11 @@ async function main()
 
 
                 //# Outputs compressed files
-                let [fn_cmp, file_cmp] = await dll_package(fn_raw, file_raw);
+                let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw);
 
                 for (let USE_COMPRESSION of [false, true])
                 {
-                    let similarity = await get_similarity_dll(gSyscallIdxMap[dllName], USE_COMPRESSION ? file_cmp : file_raw, USE_COMPRESSION);
+                    let similarity = await get_similarity_dll(dllName, USE_COMPRESSION ? file_cmp : file_raw, USE_COMPRESSION);
 
                     (USE_COMPRESSION ? results2_cmp : results2_raw).push
                     (

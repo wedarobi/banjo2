@@ -101,6 +101,56 @@ function gct(msg, colour, underline=false)
 }
 
 /**
+ * This function takes an array of strings and puts them in a nice ascii box.
+ * @param {String[]} msgArr
+ */
+function printInBox (msgArr, colour="white")
+{
+    function removeColour (str)
+    {
+        return str.replace(/\x1b.*?m/g, "");
+    }
+    let os = ""; /// out_str
+    let chars = "┌─┐│└─┘".split("");
+    let spacing = 1;
+    let spacer = "";
+    let tmp; /// Temp string for adding colour to box
+    for (let i = 0; i < spacing; i++) spacer += " ";
+    let max_width = 0;
+    for ( let str of msgArr ) {
+        let fstr = removeColour(str);
+        if ( fstr.length > max_width ) {
+            max_width = fstr.length;
+        }
+    }
+    max_width += spacing * 2;
+
+    /// Print first line
+    tmp = "";
+    tmp += chars[0];
+    for ( let i = 0; i < max_width; i++ ) tmp += chars[1];
+    tmp += chars[2] + "\n";
+    os += gct(tmp, colour);
+
+    /// Print the strings
+    for ( let str of msgArr ) {
+        os += `${gct(chars[3], colour)}${spacer}${str}`;
+        for ( let i = 0; i < max_width - removeColour(str).length - spacing; i++) os += " ";
+        os += `${gct(chars[3], colour)}\n`;
+    }
+
+    /// Print last line
+    tmp = "";
+    tmp += chars[4];
+    for ( let i = 0; i < max_width; i++ ) tmp += chars[5];
+    tmp += chars[6] + "\n";
+    os += gct(tmp, colour);
+
+    process.stdout.write(os);
+}
+
+
+/**
  * An absolute path to the repo root, given that this
  * file lives 1 folder down from it.
  */
@@ -223,8 +273,9 @@ function init_gSyscallIdx_map()
  *
  * @param {number} syscallIdx
  * @param {Buffer} newDllFile the encrypted header, along with the decompressed file contents
+ * @param {boolean} compressed if true, compare compressed version instead
  */
-async function get_similarity_dll(syscallIdx, newDllFile)
+async function get_similarity_dll(syscallIdx, newDllFile, compressed=false)
 {
     let dllTableStart =
     {
@@ -256,22 +307,44 @@ async function get_similarity_dll(syscallIdx, newDllFile)
     );
 
     let dllCompressed = gBaserom.slice(
-        dllTableStart[gRomVer] + dllOffsetStart + 0x12,
+        dllTableStart[gRomVer] + dllOffsetStart + 0x10,
         dllTableStart[gRomVer] + dllOffsetEnd,
     );
 
-    //- Decompress the raw vanilla stream
-    let dllUncompressed = zlib.inflateRawSync(dllCompressed);
+    let buf_vani;
+    let buf_cust = newDllFile;
 
-    //- Splice vanilla preheader onto vanilla decompressed file
-    let finalBuffer = Buffer.alloc(preheader.byteLength + dllUncompressed.byteLength);
-    preheader.copy(finalBuffer);
-    dllUncompressed.copy(finalBuffer, 0x10);
+    if (!compressed)
+    {
+        //= The input file was raw (apparently). Decompress and compare raw bytes instead.
+
+        //- Decompress the raw vanilla stream
+        let dllUncompressed = zlib.inflateRawSync(dllCompressed.slice(0x02));
+
+        //- Splice vanilla preheader onto vanilla decompressed file
+        buf_vani = Buffer.alloc(preheader.byteLength + dllUncompressed.byteLength);
+        preheader.copy(buf_vani);
+        dllUncompressed.copy(buf_vani, 0x10);
+    }
+    else
+    {
+        //= Both preheader and compressed body combined
+
+        buf_vani = gBaserom.slice(
+            dllTableStart[gRomVer] + dllOffsetStart,
+            dllTableStart[gRomVer] + dllOffsetEnd,
+        );
+
+        //!!!!!!!!
+        // fs.writeFileSync("./tmp.vani.bin", buf_vani);
+        // FATAL("./tmp.vani.bin");
+    }
+
 
     //- Execute compare
     let similarity = stringSimilarity.compareTwoStrings(
-        finalBuffer.toString(),
-        newDllFile.toString()
+        buf_vani.toString(),
+        buf_cust.toString()
     );
 
     return { found: true, similarity, };
@@ -1006,6 +1079,8 @@ async function dll_package(rawFilePath, rawFile=null)
 
         //- Write final
         fs.writeFileSync(finalOutPath, finalOut);
+
+        return [ finalOutPath, finalOut ];
     }
 }
 
@@ -1105,56 +1180,83 @@ async function main()
 
     // log(`> Compiling...`);
 
-    let results1 = [];
+    let results1_raw = [];
+    let results1_cmp = [];
 
-    for (let dllName of
-    [
-        "chmrtannoy",
+
+
+    let dllNames = [
+        // "glreflight",
+        // "bamoveledge",
         "cosection",
-    ])
+    ];
+
+
+    dllNames = fs.readdirSync(gRootDir + "src/dlls")
+        .map(name => name.replace(/\.c$/g, ""));
+
+    for (let dllName of dllNames)
     {
-        let results2 = [];
+        let results2_raw = [];
+        let results2_cmp = [];
 
-        for (let romVer of ["usa", "jpn", "eur", "aus"])
+        try
         {
-            update_rom_version(romVer);
+            for (let romVer of ["usa", "jpn", "eur", "aus"])
+            // for (let romVer of ["jpn", "eur", "aus"]) //!!!!
+            {
+                update_rom_version(romVer);
 
-            // cosection, chmrtannoy
-            // let dllName = "chmrtannoy";
+                // cosection, chmrtannoy
+                // let dllName = "chmrtannoy";
 
-            let fn_o = await dll_build(dllName);
+                let fn_o = await dll_build(dllName);
 
-            let [fn_raw, file_raw] = await dll_process(dllName, fn_o);
+                let [fn_raw, file_raw] = await dll_process(dllName, fn_o);
 
-            await dll_preheader_encrypt(fn_raw, file_raw);
-
-            let similarity = await get_similarity_dll(gSyscallIdxMap[dllName], file_raw);
-
-            // console.log
-            results2.push
-            (
-                similarity.found && similarity.similarity === 1
-                ? gct(`[${gRomVer}] >>> MATCH!!!`.padEnd(18, " "), "green")
-                : gct(`[${gRomVer}] (bad: ${(similarity.similarity * 100).toFixed(1)}%)`.padEnd(18, " "), "red")
-            );
+                await dll_preheader_encrypt(fn_raw, file_raw);
 
 
+                //# Outputs compressed files
+                let [fn_cmp, file_cmp] = await dll_package(fn_raw, file_raw);
 
-            // await dll_package(fn_raw, file_raw);
+                for (let USE_COMPRESSION of [false, true])
+                {
+                    let similarity = await get_similarity_dll(gSyscallIdxMap[dllName], USE_COMPRESSION ? file_cmp : file_raw, USE_COMPRESSION);
 
+                    (USE_COMPRESSION ? results2_cmp : results2_raw).push
+                    (
+                        similarity.found && similarity.similarity === 1
+                        ? gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + gct(`OK`.padEnd(7, " "), "green")
+                        : gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + gct(`${(similarity.similarity * 100).toFixed(1)}%`.padEnd(7, " "), "red")
+                    );
+                }
 
+                // await dll_package("/mnt/r/chcoderoombits_edited.bin")
 
-            // await dll_package("/mnt/r/chcoderoombits_edited.bin")
+            }
+        }
+        catch (err)
+        {
+            console.error(err);
 
-
+            //= Pass
         }
 
-        results1.push(gct(`[${dllName}] `.padEnd(25, " "), "cyan") + results2.join(" "));
+        results1_raw.push(gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan") + results2_raw.join(" "));
+        results1_cmp.push(gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan") + results2_cmp.join(" "));
     }
 
+    //- Print results
+    for (let USE_COMPRESSION of [false, true])
+    {
+        let strs = [];
 
-    console.log(results1.join("\n"))
+        strs.push(`Results (compression: ${USE_COMPRESSION ? gct("ON", "green"): gct("OFF", "red")})`);
+        strs.push(...(USE_COMPRESSION ? results1_cmp : results1_raw).map(x => gct("> ", "black") + x));
 
+        printInBox(strs, USE_COMPRESSION ? "green" : "red");
+    }
 
     log(`Done!`);
 }

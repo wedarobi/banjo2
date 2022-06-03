@@ -1236,7 +1236,6 @@ async function main()
         try
         {
             for (let romVer of ["usa", "jpn", "eur", "aus"])
-            // for (let romVer of ["jpn", "eur", "aus"]) //!!!!
             {
                 update_rom_version(romVer);
 

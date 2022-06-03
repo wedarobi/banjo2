@@ -2,7 +2,7 @@
 
 #include "include/enum/map.h"
 
-
+#if VERSION_USA
 /**
  * This sets the bootmap to Spiral Mountain,
  * probably for convenience during development.
@@ -13,6 +13,7 @@ MAP DLL_cosection_00_get_dev_bootmap(void)
 {
     return MAP_0AF_SM_MAIN_AREA;
 }
+#endif
 
 MAP DLL_cosection_01_get_retail_bootmap(void)
 {

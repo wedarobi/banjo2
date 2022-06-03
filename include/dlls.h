@@ -3,6 +3,8 @@
 
 #include "include/types.h"
 
+#include "include/2.0L/ultra64.h"
+
 #include "include/struct/object.h"
 #include "include/struct/player.h"
 #include "include/enum/map.h"
@@ -22,11 +24,10 @@
  * 
  *   DLL_{dllName}_{fnIdx}_
  * 
- *     where {fnIdx} is the index of the public function as exposed
+ *     where {fnIdx} is the index of the public function
  *       (in decimal, NOT hex)
  * 
  *******************************************************************
- * 
  * Function declarations must be preceded with a magic comment that
  * hints to the script whether that function is exposed for that
  * respective build of the game. The magic comment does not have to
@@ -35,7 +36,7 @@
  * declaration, put it before the magic comment.
  * 
  * Each character is used to encode whether the function is exposed
- * in that version. A "o" means it is exposed, a "-" means it is not.
+ * in that version. An "o" means it is exposed, a "-" means it is not.
  * With the four currently known versions:
  * 
  *                               @oooo
@@ -45,11 +46,20 @@
  *                          aus ─────┘
  * 
  * Also, function declarations must appear in the same order that they
- * appear in the game. A
+ * appear in the game.
  * 
  * Note: The "counting" system is inflexible and wouldn't work if
  * function order was shuffled between versions, but there is no
  * instance of this in any version of Tooie.
+ * 
+ * Do not modify the dll name comments (the "$ anseq" etc. ones).
+ * 
+ * IMPORTANT:
+ * If you add a declaration for a function for a previously unused
+ * DLL, you MUST allocate a line for EVERY SINGLE pub func for that
+ * DLL, and you MUST fill in the magic comments appropriately for
+ * each declaration. You do not need to make a declaration for each
+ * though, just the magic comments.
  */
 
 /* $ anseq */
@@ -70,7 +80,7 @@
 /* $ badronemem */
 /*@oooo*/ void DLL_badronemem_00(PlayerObj *b, u32 size);
 /*@oooo*/ void DLL_badronemem_01(PlayerObj *b);
-/*@oooo*/ void DLL_badronemem_02(u32 a0);
+/*@oooo*/ void DLL_badronemem_02(u32);
 /*@oooo*/ void DLL_badronemem_03(PlayerObj *b);
 /* $ baduo */
 /* $ badust */
@@ -91,8 +101,8 @@
 /* $ bamovehover */
 /* $ bamoveledge */
 /*@oooo*/ u32  DLL_bamoveledge_00(void);
-/*@oooo*/ void DLL_bamoveledge_01(u32 a0);
-/*@oooo*/ void DLL_bamoveledge_02(u32 a0);
+/*@oooo*/ void DLL_bamoveledge_01(u32);
+/*@oooo*/ void DLL_bamoveledge_02(u32);
 /*@oooo*/ void DLL_bamoveledge_03(PlayerObj *b);
 /* $ bamovespline */
 /* $ bamovethrust */
@@ -111,7 +121,7 @@
 /* $ bastatemem */
 /*@oooo*/ void DLL_bastatemem_00(PlayerObj *b, u32 size);
 /*@oooo*/ void DLL_bastatemem_01(PlayerObj *b);
-/*@oooo*/ void DLL_bastatemem_02(u32 a0);
+/*@oooo*/ void DLL_bastatemem_02(u32);
 /*@oooo*/ void DLL_bastatemem_03(PlayerObj *b);
 /* $ basub */
 /* $ basudie */
@@ -699,16 +709,16 @@
 /* $ dblight */
 /* $ dbmorph */
 /* $ dbpalette */
-/*@oooo*/ void DLL_dbpalette_00(u32 *a0, u32 a1, u32 *a2);
-/*@oooo*/ void DLL_dbpalette_01(u32 *a0, u32 a1, u32 *a2);
+/*@oooo*/ void DLL_dbpalette_00(u32 *, u32, u32 *);
+/*@oooo*/ void DLL_dbpalette_01(u32 *, u32, u32 *);
 /* $ dbshift */
 /* $ dbskeleton */
 /* $ dbtex */
 /* $ dbvpl */
 /* $ dbvtxnormal */
-/*@oooo*/ s32   DLL_dbvtxnormal_00(s32 a0, s32 a1);
-/*@o---*/ void  DLL_dbvtxnormal_01(void *a0);
-/*@o---*/ void *DLL_dbvtxnormal_02(s32 *a0);
+/*@oooo*/ s32   DLL_dbvtxnormal_00(s32, s32);
+/*@o---*/ void  DLL_dbvtxnormal_01(void *);
+/*@o---*/ void *DLL_dbvtxnormal_02(s32 *);
 /* $ dbzone */
 /* $ fxairbub */
 /* $ fxdialog */
@@ -717,6 +727,10 @@
 /* $ fxfontstring */
 /* $ fxgenlist */
 /* $ fxkern */
+/*@o---*/ void DLL_fxkern_00_totalsfont_print(Gfx **dl, s32 x, s32 y, char *str);
+/*@oooo*/ void DLL_fxkern_01_totalsfont_print_centred(Gfx **dl, s32 y, char *str);
+/*@oooo*/ void DLL_fxkern_02_totalsfont_size_reset(void);
+/*@oooo*/ void DLL_fxkern_03_totalsfont_size_set(f32 size);
 /* $ fxleaves */
 /* $ fxmumbo */
 /* $ fxrain */

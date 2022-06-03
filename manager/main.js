@@ -1080,7 +1080,11 @@ async function main()
 
         let similarity = await get_similarity_dll(gSyscallIdxMap[dllName], file_raw);
 
-        console.log(similarity.found && similarity.similarity === 1 ? gct(">>> MATCH!!", "green") : gct("(differs)", "red"));
+        console.log(
+            similarity.found && similarity.similarity === 1
+            ? gct(">>> MATCH!!", "green")
+            : gct(`(differs: ${(similarity.similarity * 100).toFixed(1)}%)`, "red")
+        );
 
         // await dll_package(fn_raw, file_raw);
 

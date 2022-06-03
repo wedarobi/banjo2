@@ -3,6 +3,9 @@ const fsp    = require("fs/promises");
 const cmd    = require("child_process");
 const crypto = require("crypto");
 const path   = require("path");
+const zlib   = require("node:zlib");
+
+const stringSimilarity = require("string-similarity");
 
 const FATAL = msg =>
 {
@@ -35,20 +38,20 @@ function spawn(command)
         else
             proc = cmd.spawn(cmdlist[0], cmdlist.slice(1), { detached: true });
 
-        // let stdout = "";
-        // let stderr = "";
+        let stdout = "";
+        let stderr = "";
 
-        // proc.stdout.on("data", data =>
-        // {
-        //     // stdout += data;
-        //     process.stdout.write(data);
-        // });
+        proc.stdout.on("data", data =>
+        {
+            // stdout += data;
+            process.stdout.write(data);
+        });
 
-        // proc.stderr.on("data", data =>
-        // {
-        //     // stderr += data;
-        //     process.stderr.write(data);
-        // });
+        proc.stderr.on("data", data =>
+        {
+            // stderr += data;
+            process.stderr.write(data);
+        });
 
         proc.on("close", code =>
         {
@@ -75,6 +78,26 @@ function get_hash(buf)
 Number.prototype.hex = function()
 {
     return this.toString(16).toUpperCase();
+}
+
+function gct(msg, colour, underline=false)
+{
+    let ul = underline ? "4m" : "1m";
+    let reset = "\x1b[97;0;1m"; /// standard bright white (force no underline)
+    /// the "4m" in "32;0;4m" makes it underline. "1m" makes it non-underline
+    let codes = {
+        black:  "30",
+        red:    "31",
+        green:  "32",
+        yellow: "33",
+        blue:   "34",
+        pink:   "35",
+        cyan:   "36",
+        white:  "37"
+    };
+    let code = colour in codes ? codes[colour] : codes["pink"]; /// default special colour is pink
+
+    return `\x1b[${code};${ul}${msg}${reset}`;
 }
 
 /**
@@ -133,7 +156,9 @@ function ALIGN(value, pad)
     return value;
 }
 
-
+/**
+ * Map between <DLL_name, syscallIdx>
+ */
 var gSyscallIdxMap;
 
 function init_gSyscallIdx_map()
@@ -184,6 +209,66 @@ function init_gSyscallIdx_map()
     }
 
     gSyscallIdxMap = o;
+}
+
+/**
+ * Get a similarity score for a new DLL file, by comparing it to the one
+ * inside the current baserom.
+ * 
+ * @param {number} syscallIdx 
+ * @param {Buffer} newDllFile the encrypted header, along with the decompressed file contents
+ */
+async function get_similarity_dll(syscallIdx, newDllFile)
+{
+    let dllTableStart =
+    {
+        usa: 0x1E899B0,
+        jpn: 0x1E308D0,
+        eur: 0x1E8DA70,
+        aus: 0x1E18A80,
+    };
+
+    let dllOffsetStart = gBaserom.readUint32BE(dllTableStart[gRomVer] + ((syscallIdx - 1) * 4));
+    let dllOffsetEnd   = gBaserom.readUint32BE(dllTableStart[gRomVer] + ((syscallIdx    ) * 4));
+
+    // console.log(dllOffsetStart.hex())
+    // console.log(dllOffsetEnd.hex())
+
+    let size = dllOffsetEnd - dllOffsetStart;
+
+    if (!size)
+    {
+        // dll missing
+        return { found: false, similarity: 0, };
+    }
+
+    //- Grab file from baserom
+
+    let preheader = gBaserom.slice(
+        dllTableStart[gRomVer] + dllOffsetStart,
+        dllTableStart[gRomVer] + dllOffsetStart + 0x10,
+    );
+
+    let dllCompressed = gBaserom.slice(
+        dllTableStart[gRomVer] + dllOffsetStart + 0x12,
+        dllTableStart[gRomVer] + dllOffsetEnd,
+    );
+
+    //- Decompress the raw vanilla stream
+    let dllUncompressed = zlib.inflateRawSync(dllCompressed);
+
+    //- Splice vanilla preheader onto vanilla decompressed file
+    let finalBuffer = Buffer.alloc(preheader.byteLength + dllUncompressed.byteLength);
+    preheader.copy(finalBuffer);
+    dllUncompressed.copy(finalBuffer, 0x10);
+
+    //- Execute compare
+    let similarity = stringSimilarity.compareTwoStrings(
+        finalBuffer.toString(),
+        newDllFile.toString()
+    );
+
+    return { found: true, similarity, };
 }
 
 /**
@@ -803,22 +888,22 @@ async function dll_process(dll, objFilePath)
         {
             //- Alloc final buffer
 
-            let size_00_header     = header.byteLength;
-            let size_01_pubfns     = buf_functions.byteLength;
-            let size_02_dllname    = buf_dllname.byteLength;
-            let size_03_symbolrefs = buf_symbolRefs.byteLength;
+            let size_00_preheader  = preheader.byteLength;
+            let size_01_header     = header.byteLength;
+            let size_02_pubfns     = buf_functions.byteLength;
+            let size_03_dllname    = buf_dllname.byteLength;
+            let size_04_symbolrefs = buf_symbolRefs.byteLength;
 
-            //# Does not include [preheader], remember! That shit is not compressed together with this.
-            let size_04_fullheader = size_00_header + size_01_pubfns + size_02_dllname + size_03_symbolrefs;
-            size_04_fullheader = ALIGN(size_04_fullheader, 0x10);
+            let size_05_fullheader = size_00_preheader + size_01_header + size_02_pubfns + size_03_dllname + size_04_symbolrefs;
+            size_05_fullheader = ALIGN(size_05_fullheader, 0x10);
 
-            // let size_05_binary = (preheader.readUint16BE(0x0) << 4)
+            // let size_06_binary = (preheader.readUint16BE(0x0) << 4)
             //                    + (preheader.readUint16BE(0x2) << 4)
             //                    + (preheader.readUint16BE(0x4) << 4)
             //                    + (preheader.readUint16BE(0x6) << 4);
-            let size_05_binary = binary.byteLength;
+            let size_06_binary = binary.byteLength;
 
-            let fullSize = size_04_fullheader + size_05_binary;
+            let fullSize = size_05_fullheader + size_06_binary;
 
             finalBinary = Buffer.alloc(fullSize).fill(0);
 
@@ -826,12 +911,14 @@ async function dll_process(dll, objFilePath)
 
             let runningSize = 0;
 
-            header        .copy(finalBinary, runningSize, 0); runningSize += size_00_header;
-            buf_functions .copy(finalBinary, runningSize, 0); runningSize += size_01_pubfns;
-            buf_dllname   .copy(finalBinary, runningSize, 0); runningSize += size_02_dllname;
-            buf_symbolRefs.copy(finalBinary, runningSize, 0); runningSize += size_03_symbolrefs;
+            preheader     .copy(finalBinary, runningSize, 0); runningSize += size_00_preheader;
+            header        .copy(finalBinary, runningSize, 0); runningSize += size_01_header;
+            buf_functions .copy(finalBinary, runningSize, 0); runningSize += size_02_pubfns;
+            buf_dllname   .copy(finalBinary, runningSize, 0); runningSize += size_03_dllname;
+            buf_symbolRefs.copy(finalBinary, runningSize, 0); runningSize += size_04_symbolrefs;
 
-            runningSize = size_04_fullheader;
+            //# Set directly, cause of padding
+            runningSize = size_05_fullheader;
 
             binary.copy(finalBinary, runningSize, 0);
         }
@@ -840,12 +927,80 @@ async function dll_process(dll, objFilePath)
         fs.writeFileSync(binFilePath, finalBinary);
     }
 
+    return [binFilePath, finalBinary];
+}
 
+async function dll_preheader_encrypt(rawFilePath, rawFile=null)
+{
+    if (!rawFile)
+        rawFile = fs.readFileSync(rawFilePath);
 
+    if (rawFile.readUint8(0xF) !== 0x82)
+        FATAL(`Cannot package DLL: missing preheader!`);
 
+    //- Calculate checksum
+    let checksum = [0, 0];
+    {
+        let start = 0x10;
 
+        for (let i = start; i < rawFile.byteLength; i++)
+        {
+            let byte = rawFile.readUint8(i);
+            // checksum[0] += byte;
+            // checksum[1] ^= byte << (checksum[0] & 0x17);
 
+            //= Safeguard against JS f64 inaccuracies
+            checksum[0] = ((checksum[0] + byte) & 0xFFFFFFFF) >>> 0;
+            checksum[1] ^= byte << (checksum[0] & 0x17);
+        }
+    }
 
+    rawFile.writeUInt32BE(rawFile.readUint32BE(0x0) ^ checksum[0], 0x0);
+    rawFile.writeUInt32BE(rawFile.readUint32BE(0x8) ^ checksum[1], 0x8);
+}
+
+/**
+ * Pack a raw dll file with the compression and encryption bullshit that Tooie expects.
+ *
+ * @param {string} rawFilePath
+ * @param {Buffer} rawFile the raw dll file (already compiled and linked and everything)
+ */
+async function dll_package(rawFilePath, rawFile=null)
+{
+    if (!rawFile)
+        rawFile = fs.readFileSync(rawFilePath);
+
+    if (rawFile.readUint8(0xF) !== 0x82)
+        FATAL(`Cannot package DLL: missing preheader!`);
+
+    //- Compress
+    {
+        let bodyOutPath  = rawFilePath + ".body";
+        let gzOutPath    = rawFilePath + ".gz";
+        let finalOutPath = rawFilePath + ".dll";
+
+        if (!fs.existsSync(`${gRootDir}tools/mcompress/bin/mcompress`))
+            FATAL(`Couldn't find [mcompress] binary!`);
+
+        //- Remove preheader before compression
+        fs.writeFileSync(bodyOutPath, rawFile.slice(0x10));
+
+        await spawn(`${gRootDir}tools/mcompress/bin/mcompress -g bt --pad 4 --padval 0 -l 9 -s -i ${path.resolve(bodyOutPath)} -o ${path.resolve(gzOutPath)}`);
+
+        let gzOut = fs.readFileSync(gzOutPath);
+
+        //- Get ready to splice on encrypted preheader
+
+        let finalOut = Buffer.alloc(gzOut.byteLength + 0x10).fill(0);
+
+        {
+            rawFile.copy(finalOut, 0, 0, 0x10);
+            gzOut.copy(finalOut, 0x10, 0);
+        }
+
+        //- Write final
+        fs.writeFileSync(finalOutPath, finalOut);
+    }
 }
 
 
@@ -917,9 +1072,21 @@ async function main()
         // cosection, chmrtannoy
         let dllName = "cosection";
 
-        let file_o = await dll_build(dllName);
+        let fn_o = await dll_build(dllName);
 
-        await dll_process(dllName, file_o);
+        let [fn_raw, file_raw] = await dll_process(dllName, fn_o);
+
+        await dll_preheader_encrypt(fn_raw, file_raw);
+
+        let similarity = await get_similarity_dll(gSyscallIdxMap[dllName], file_raw);
+
+        console.log(similarity.found && similarity.similarity === 1 ? gct(">>> MATCH!!", "green") : gct("(differs)", "red"));
+
+        // await dll_package(fn_raw, file_raw);
+
+
+
+        // await dll_package("/mnt/r/chcoderoombits_edited.bin")
 
 
     }

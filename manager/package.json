@@ -7,5 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "string-similarity": "^4.0.4"
+  },
+  "devDependencies": {
+    "@types/string-similarity": "^4.0.0"
+  }
 }

@@ -74,3 +74,5 @@ undefined_funcs_auto*
 #progress reports
 *.csv
 symbol_addrs.us.v10.txt
+
+node_modules

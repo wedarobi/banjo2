@@ -140,8 +140,14 @@ async function dll_build(dll)
     cmd += `-O2 -mips2 -D_FINALROM -DF3DEX2_GBI ${CMD.include} `;
     cmd += `${file_in} -o ${file_out}`;
 
+    //- Env vars
+    let env = "";
+    {
+        //- Pass "VERSION_USA" etc macros
+        env += `-DVERSION_${gRomVer.toUpperCase()}=1`;
+    }
 
-    await spawn(`${CMD.cc} ${cmd}`);
+    await spawn(`${CMD.cc} ${cmd} ${env}`);
 
     return file_out;
 }
@@ -1008,6 +1014,35 @@ var gRomVer;
 /** @type {Buffer} */
 var gBaserom;
 
+/**
+ * 
+ * @param {string} newRomVer 
+ */
+function update_rom_version(newRomVer)
+{
+    //- Get version for ROM you want to work with
+    {
+        let romVerStr = newRomVer;
+        if (!(["usa", "jpn", "eur", "aus"].includes(romVerStr)))
+            FATAL("Invalid rom version (usa/jpn/eur/aus)");
+
+        gRomVer = romVerStr;
+    }
+
+    //- Load the baserom
+    {
+        let baseromPath = gRootDir + `ver/${gRomVer}/baserom.z64`;
+
+        if (!fs.existsSync(baseromPath))
+            FATAL(`No baserom for the curr rom version: ${baseromPath}`);
+
+        gBaserom = fs.readFileSync(baseromPath);
+    }
+
+    //- Initialise the syscall map
+    init_gSyscallIdx_map();
+}
+
 async function main()
 {
     // if (!path.resolve(".").endsWith(path.sep + "bt"))
@@ -1029,20 +1064,21 @@ async function main()
         gRomVer = romVerStr;
     }
 
+    update_rom_version(gRomVer);
+
     //- Load the baserom
-    {
-        let baseromPath = gRootDir + `ver/${gRomVer}/baserom.z64`;
+    // {
+    //     let baseromPath = gRootDir + `ver/${gRomVer}/baserom.z64`;
 
-        if (!fs.existsSync(baseromPath))
-            FATAL(`No baserom for the curr rom version: ${baseromPath}`);
+    //     if (!fs.existsSync(baseromPath))
+    //         FATAL(`No baserom for the curr rom version: ${baseromPath}`);
 
-        gBaserom = fs.readFileSync(baseromPath);
-    }
+    //     gBaserom = fs.readFileSync(baseromPath);
+    // }
 
 
 
-    // Initialise the syscall map
-    init_gSyscallIdx_map();
+
 
 
     // console.log(gSyscallIdxMap)
@@ -1068,9 +1104,15 @@ async function main()
     }
 
     // log(`> Compiling...`);
+
+    let results = [];
+
+    for (let romVer of ["usa", "jpn", "eur", "aus"])
     {
+        update_rom_version(romVer);
+
         // cosection, chmrtannoy
-        let dllName = "cosection";
+        let dllName = "chmrtannoy";
 
         let fn_o = await dll_build(dllName);
 
@@ -1080,11 +1122,15 @@ async function main()
 
         let similarity = await get_similarity_dll(gSyscallIdxMap[dllName], file_raw);
 
-        console.log(
+        // console.log
+        results.push
+        (
             similarity.found && similarity.similarity === 1
-            ? gct(">>> MATCH!!", "green")
-            : gct(`(differs: ${(similarity.similarity * 100).toFixed(1)}%)`, "red")
+            ? gct(`[${gRomVer}] >>> MATCH!!`, "green")
+            : gct(`[${gRomVer}] (differs: ${(similarity.similarity * 100).toFixed(1)}%)`, "red")
         );
+
+
 
         // await dll_package(fn_raw, file_raw);
 
@@ -1094,6 +1140,8 @@ async function main()
 
 
     }
+
+    console.log(results.join("\n"))
 
 
     log(`Done!`);

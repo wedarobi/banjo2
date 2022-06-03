@@ -220,8 +220,8 @@ function init_gSyscallIdx_map()
 /**
  * Get a similarity score for a new DLL file, by comparing it to the one
  * inside the current baserom.
- * 
- * @param {number} syscallIdx 
+ *
+ * @param {number} syscallIdx
  * @param {Buffer} newDllFile the encrypted header, along with the decompressed file contents
  */
 async function get_similarity_dll(syscallIdx, newDllFile)
@@ -1015,8 +1015,8 @@ var gRomVer;
 var gBaserom;
 
 /**
- * 
- * @param {string} newRomVer 
+ *
+ * @param {string} newRomVer
  */
 function update_rom_version(newRomVer)
 {
@@ -1118,18 +1118,18 @@ async function main()
         for (let romVer of ["usa", "jpn", "eur", "aus"])
         {
             update_rom_version(romVer);
-    
+
             // cosection, chmrtannoy
             // let dllName = "chmrtannoy";
-    
+
             let fn_o = await dll_build(dllName);
-    
+
             let [fn_raw, file_raw] = await dll_process(dllName, fn_o);
-    
+
             await dll_preheader_encrypt(fn_raw, file_raw);
-    
+
             let similarity = await get_similarity_dll(gSyscallIdxMap[dllName], file_raw);
-    
+
             // console.log
             results2.push
             (
@@ -1137,16 +1137,16 @@ async function main()
                 ? gct(`[${gRomVer}] >>> MATCH!!!`.padEnd(18, " "), "green")
                 : gct(`[${gRomVer}] (bad: ${(similarity.similarity * 100).toFixed(1)}%)`.padEnd(18, " "), "red")
             );
-    
-    
-    
+
+
+
             // await dll_package(fn_raw, file_raw);
-    
-    
-    
+
+
+
             // await dll_package("/mnt/r/chcoderoombits_edited.bin")
-    
-    
+
+
         }
 
         results1.push(gct(`[${dllName}] `.padEnd(25, " "), "cyan") + results2.join(" "));

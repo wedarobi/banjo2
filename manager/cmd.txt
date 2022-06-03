@@ -8,8 +8,7 @@
 
 
 [check disassembly of ELF]
-
-    mips64-linux-gnuabi64-objdump -d cosection.o
+    mips64-linux-gnuabi64-objdump -d build/usa/dlls/dbpalette.o
 
 [compiler]
     tools/ido5.3_recomp/cc -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm  -signed -O2 -mips2 -D_FINALROM -DF3DEX2_GBI -I . -I include -I include/2.0L -I include/2.0L/PR src/dlls/cosection.c

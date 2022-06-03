@@ -1,0 +1,24 @@
+func_800C3FC0 = 0x800CCBC8;
+func_800C9BB4 = 0x800D24FC;
+DAT_8007DB54 = 0x80087F64;
+
+fn_malloc      = 0x8001A70C;
+fn_malloc_temp = 0x8001A6EC;
+fn_free        = 0x8001AAA4;
+
+func_8009BC08 = 0x800A56A8;
+fn_player_vel_cpy = 0x800A55C4;
+func_8009B98C = 0x800A542C;
+
+fn_vec_scale = 0x800F5AA0;
+fn_vec_add_direct = 0x800F57EC;
+
+fn_gamespeed_get = 0x800E1138;
+
+
+
+
+
+
+
+

@@ -75,4 +75,10 @@ undefined_funcs_auto*
 *.csv
 symbol_addrs.us.v10.txt
 
+# js dependencies
 node_modules
+
+# auto-generated linker symbols
+ver/*/syms/AUTO.txt
+
+tools/mcompress/gzip

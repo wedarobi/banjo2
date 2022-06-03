@@ -1,34 +1,8 @@
-#pragma once
+#ifndef __STRUCT_PLAYER_H__
+#define __STRUCT_PLAYER_H__
 
-#include "include/2.0L/PR/ultratypes.h"
+#include "include/types.h"
 
-typedef u8  BYTE;
-typedef u16 HALF;
-typedef u32 WORD;
-
-typedef int bool;
-
-typedef s32 MODEL; //!
-typedef s32 FORM; //!
-typedef s32 MS; //!
-
-typedef struct {
-    f32 x;
-    f32 y;
-    f32 z;
-} tuple_f;
-
-typedef struct {
-    f32 x;
-    f32 y;
-    f32 z;
-} Vec3f;
-
-typedef struct {
-    u32 x;
-    u32 y;
-    u32 z;
-} tuple_u32;
 
 // #include "../types.h"
 // #include "model.h"
@@ -540,3 +514,5 @@ typedef struct PlayerObj {
 } PlayerObj;
 
 
+
+#endif // __STRUCT_PLAYER_H__

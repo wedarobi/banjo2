@@ -40,54 +40,54 @@ except ModuleNotFoundError:
 
 parser = argparse.ArgumentParser(description="Diff MIPS or AArch64 assembly.")
 
-start_argument = parser.add_argument(
-    "start",
-    help="Function name or address to start diffing from.",
-)
+# start_argument = parser.add_argument(
+#     "start",
+#     help="Function name or address to start diffing from.",
+# )
 
-if argcomplete:
+# if argcomplete:
 
-    def complete_symbol(
-        prefix: str, parsed_args: argparse.Namespace, **kwargs: object
-    ) -> List[str]:
-        if not prefix or prefix.startswith("-"):
-            # skip reading the map file, which would
-            # result in a lot of useless completions
-            return []
-        config: Dict[str, Any] = {}
-        diff_settings.apply(config, parsed_args)  # type: ignore
-        mapfile = config.get("mapfile")
-        if not mapfile:
-            return []
-        completes = []
-        with open(mapfile) as f:
-            data = f.read()
-            # assume symbols are prefixed by a space character
-            search = f" {prefix}"
-            pos = data.find(search)
-            while pos != -1:
-                # skip the space character in the search string
-                pos += 1
-                # assume symbols are suffixed by either a space
-                # character or a (unix-style) line return
-                spacePos = data.find(" ", pos)
-                lineReturnPos = data.find("\n", pos)
-                if lineReturnPos == -1:
-                    endPos = spacePos
-                elif spacePos == -1:
-                    endPos = lineReturnPos
-                else:
-                    endPos = min(spacePos, lineReturnPos)
-                if endPos == -1:
-                    match = data[pos:]
-                    pos = -1
-                else:
-                    match = data[pos:endPos]
-                    pos = data.find(search, endPos)
-                completes.append(match)
-        return completes
+#     def complete_symbol(
+#         prefix: str, parsed_args: argparse.Namespace, **kwargs: object
+#     ) -> List[str]:
+#         if not prefix or prefix.startswith("-"):
+#             # skip reading the map file, which would
+#             # result in a lot of useless completions
+#             return []
+#         config: Dict[str, Any] = {}
+#         diff_settings.apply(config, parsed_args)  # type: ignore
+#         mapfile = config.get("mapfile")
+#         if not mapfile:
+#             return []
+#         completes = []
+#         with open(mapfile) as f:
+#             data = f.read()
+#             # assume symbols are prefixed by a space character
+#             search = f" {prefix}"
+#             pos = data.find(search)
+#             while pos != -1:
+#                 # skip the space character in the search string
+#                 pos += 1
+#                 # assume symbols are suffixed by either a space
+#                 # character or a (unix-style) line return
+#                 spacePos = data.find(" ", pos)
+#                 lineReturnPos = data.find("\n", pos)
+#                 if lineReturnPos == -1:
+#                     endPos = spacePos
+#                 elif spacePos == -1:
+#                     endPos = lineReturnPos
+#                 else:
+#                     endPos = min(spacePos, lineReturnPos)
+#                 if endPos == -1:
+#                     match = data[pos:]
+#                     pos = -1
+#                 else:
+#                     match = data[pos:endPos]
+#                     pos = data.find(search, endPos)
+#                 completes.append(match)
+#         return completes
 
-    setattr(start_argument, "completer", complete_symbol)
+#     setattr(start_argument, "completer", complete_symbol)
 
 parser.add_argument(
     "end",
@@ -558,30 +558,56 @@ def dump_objfile() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
     )
 
 
+# def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
+#     if not baseimg or not myimg:
+#         fail("Missing myimg/baseimg in config.")
+#     if args.make:
+#         run_make(myimg)
+#     start_addr = maybe_eval_int(args.start)
+#     if start_addr is None:
+#         _, start_addr = search_map_file(args.start)
+#         if start_addr is None:
+#             fail("Not able to find function in map file.")
+#     if args.end is not None:
+#         end_addr = eval_int(args.end, "End address must be an integer expression.")
+#     else:
+#         end_addr = start_addr + MAX_FUNCTION_SIZE_BYTES
+#     objdump_flags = ["-Dz", "-bbinary", "-EB"]
+#     flags1 = [
+#         f"--start-address={start_addr + base_shift}",
+#         f"--stop-address={end_addr + base_shift}",
+#     ]
+#     flags2 = [f"--start-address={start_addr}", f"--stop-address={end_addr}"]
+#     return (
+#         myimg,
+#         (objdump_flags + flags1, baseimg, None),
+#         (objdump_flags + flags2, myimg, None),
+#     )
+
 def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
-    if not baseimg or not myimg:
-        fail("Missing myimg/baseimg in config.")
-    if args.make:
-        run_make(myimg)
-    start_addr = maybe_eval_int(args.start)
-    if start_addr is None:
-        _, start_addr = search_map_file(args.start)
-        if start_addr is None:
-            fail("Not able to find function in map file.")
-    if args.end is not None:
-        end_addr = eval_int(args.end, "End address must be an integer expression.")
-    else:
-        end_addr = start_addr + MAX_FUNCTION_SIZE_BYTES
-    objdump_flags = ["-Dz", "-bbinary", "-EB"]
-    flags1 = [
-        f"--start-address={start_addr + base_shift}",
-        f"--stop-address={end_addr + base_shift}",
-    ]
-    flags2 = [f"--start-address={start_addr}", f"--stop-address={end_addr}"]
+    dlls = {
+        "chcoderoombits": [0x10DC, 0xE0],
+        "fxkern": [0x114, 0xf4]
+    }
+
+    dll_name = "fxkern"
+
+    baseimg = f"../../../expected/usa/dlls/{dll_name}.raw"
+    myimg   = f"../../../build/usa/dlls/{dll_name}.bin"
+
+    start_base = dlls[dll_name][0] #0x100
+    start_my   = dlls[dll_name][1]
+
+    end_base   = start_base + MAX_FUNCTION_SIZE_BYTES
+    end_my     = start_my   + MAX_FUNCTION_SIZE_BYTES
+
+    objdump_flags = ['-Dz', '-bbinary', '-mmips', '-EB']
+    flags1 = [f"--start-address={start_base}", f"--stop-address={end_base}"]
+    flags2 = [f"--start-address={start_my}",   f"--stop-address={end_my}"]
     return (
         myimg,
         (objdump_flags + flags1, baseimg, None),
-        (objdump_flags + flags2, myimg, None),
+        (objdump_flags + flags2, myimg,   None)
     )
 
 
@@ -1530,44 +1556,49 @@ class Display:
 
 
 def main() -> None:
-    if args.diff_elf_symbol:
-        make_target, basecmd, mycmd = dump_elf()
-    elif args.diff_obj:
-        make_target, basecmd, mycmd = dump_objfile()
-    else:
-        make_target, basecmd, mycmd = dump_binary()
+    # if args.diff_elf_symbol:
+    #     make_target, basecmd, mycmd = dump_elf()
+    # elif args.diff_obj:
+    #     make_target, basecmd, mycmd = dump_objfile()
+    # else:
+    #     make_target, basecmd, mycmd = dump_binary()
 
-    map_build_target_fn = getattr(diff_settings, "map_build_target", None)
-    if map_build_target_fn:
-        make_target = map_build_target_fn(make_target=make_target)
+    # map_build_target_fn = getattr(diff_settings, "map_build_target", None)
+    # if map_build_target_fn:
+    #     make_target = map_build_target_fn(make_target=make_target)
 
-    if args.write_asm is not None:
-        mydump = run_objdump(mycmd)
-        with open(args.write_asm, "w") as f:
-            f.write(mydump)
-        print(f"Wrote assembly to {args.write_asm}.")
-        sys.exit(0)
+    # if args.write_asm is not None:
+    #     mydump = run_objdump(mycmd)
+    #     with open(args.write_asm, "w") as f:
+    #         f.write(mydump)
+    #     print(f"Wrote assembly to {args.write_asm}.")
+    #     sys.exit(0)
 
-    if args.base_asm is not None:
-        with open(args.base_asm) as f:
-            basedump = f.read()
-    else:
-        basedump = run_objdump(basecmd)
+    # if args.base_asm is not None:
+    #     with open(args.base_asm) as f:
+    #         basedump = f.read()
+    # else:
+    #     basedump = run_objdump(basecmd)
 
-    mydump = run_objdump(mycmd)
+    # mydump = run_objdump(mycmd)
+
+    make_target, basecmd, mycmd = dump_binary()
+
+    mydump   = run_objdump(mycmd)
+    basedump = run_objdump(basecmd)
 
     display = Display(basedump, mydump)
 
     if not args.watch:
         display.run_sync()
     else:
-        if not args.make:
-            yn = input(
-                "Warning: watch-mode (-w) enabled without auto-make (-m). "
-                "You will have to run make manually. Ok? (Y/n) "
-            )
-            if yn.lower() == "n":
-                return
+        # if not args.make:
+        #     yn = input(
+        #         "Warning: watch-mode (-w) enabled without auto-make (-m). "
+        #         "You will have to run make manually. Ok? (Y/n) "
+        #     )
+        #     if yn.lower() == "n":
+        #         return
         if args.make:
             watch_sources = None
             watch_sources_for_target_fn = getattr(

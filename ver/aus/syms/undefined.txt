@@ -31,7 +31,7 @@ fn_gfx_head_printing = 0x800C0F04;
 fn_gfx_tail_printing = 0x800C110C;
 fn_gfx_print_char = 0x800C1F24;
 
-
+fn_crc_transform_seed = 0x8011B800;
 
 
 

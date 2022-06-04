@@ -775,6 +775,8 @@
 /* $ gczoomboxdata */
 /* $ gemarkersDll */
 /* $ glcrc */
+/*@oooo*/ u32 DLL_glcrc_00_crc_calc_and_update  (u8 *data, s32 len);
+/*@oooo*/ u32 DLL_glcrc_01_crc_calc_and_validate(u8 *data, s32 len);
 /* $ glcutDll */
 /* $ gldbDll */
 /* $ gldbstring */

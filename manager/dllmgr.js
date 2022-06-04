@@ -1150,36 +1150,12 @@ function update_rom_version(newRomVer)
     init_gSyscallIdx_map();
 }
 
-async function main()
+async function dll_full_build_multi(dllNames)
 {
-    const argv = process.argv.slice(2);
-
-    // if (!argv.length)
-    //     FATAL(`ERR: Provide filename of ROM to use as a target!`);
-
-    //- Set version for ROM you want to work with
-    gRomVer = "usa"; //= default
-
-    update_rom_version(gRomVer);
-
+    log(`Building ${dllNames.length} DLL(s)...`);
 
     let results1_raw = [];
     let results1_cmp = [];
-
-    let dllNames = [
-        // "glreflight",
-        // "bamoveledge",
-        // "cosection",
-        // "chlavaarchgrillswitch",
-        ...argv
-    ];
-
-    //= If no dll names were provided on the command line, do all
-    if (!dllNames.length)
-        dllNames = fs.readdirSync(gRootDir + "src/dlls")
-            .map(name => name.replace(/\.c$/g, ""));
-
-    log(`Building ${dllNames.length} DLL(s)...`);
 
     const SHOW_FILE_SIZES = false;
 
@@ -1193,9 +1169,6 @@ async function main()
             for (let romVer of ["usa", "jpn", "eur", "aus"])
             {
                 update_rom_version(romVer);
-
-                // cosection, chmrtannoy
-                // let dllName = "chmrtannoy";
 
                 let fn_o = await dll_build(dllName);
 
@@ -1253,8 +1226,76 @@ async function main()
 
         printInBox(strs, USE_COMPRESSION ? "green" : "red");
     }
+}
 
-    log(`Done!`);
+async function main()
+{
+    const argv = process.argv.slice(2);
+
+    // if (!argv.length)
+    //     FATAL(`ERR: Provide filename of ROM to use as a target!`);
+
+    //- Set version for ROM you want to work with
+    gRomVer = "usa"; //= default
+
+    update_rom_version(gRomVer);
+
+    let arg_toWatch = argv.filter(x => x.startsWith("-") && x.includes("w")).length > 0;
+
+    let dllNames = [
+        // "glreflight",
+        // "bamoveledge",
+        // "cosection",
+        // "chlavaarchgrillswitch",
+
+        //- All non-flag arguments (dll names)
+        ...(argv.filter(x => !x.startsWith("-"))),
+    ];
+
+    //= If no dll names were provided on the command line, do all
+    if (!dllNames.length)
+        dllNames = fs.readdirSync(gRootDir + "src/dlls")
+            .map(name => name.replace(/\.c$/g, ""));
+
+
+    if (arg_toWatch)
+    {
+        if (dllNames.length > 1)
+        {
+            FATAL(`Cannot watch more than one DLL file!`);
+        }
+    }
+
+    await dll_full_build_multi(dllNames);
+
+    //- Watch for changes
+    if (arg_toWatch)
+    {
+        for (let dll of dllNames)
+        {
+            var lastModTime = 0;
+            const delay = 0.5;
+
+            fs.watch(gRootDir + `src/dlls/${dll}.c`, {}, async e =>
+            {
+                let now = (new Date()).getTime();
+
+                if (now < lastModTime + delay * 1000)
+                    //# Too quick, debounce and reject
+                    return;
+
+                lastModTime = now;
+
+                await dll_full_build_multi([dll]);
+            });
+        }
+
+        log(`Watching for file changes for autobuild...`);
+    }
+    else
+    {
+        log(`Done!`);
+    }
 }
 
 main();

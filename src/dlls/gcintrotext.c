@@ -277,7 +277,7 @@ static u16 arr01[] =
 /*  25 */ { MAP_13F_CCL_BOSS_MINGY_JONGOS_SKULL,               },
 };
 
-s32 DLL_gcintrotext_02(MAP map, u32 *a1, u32 *a2)
+s32 DLL_gcintrotext_02(MAP map, u32 *dst_asset, u32 *dst_idxInAsset)
 {
     struct struct00 *s00;
 
@@ -289,8 +289,8 @@ s32 DLL_gcintrotext_02(MAP map, u32 *a1, u32 *a2)
     if (s00 == NULL)
         return -1;
 
-    *a1 = s00->asset;
-    *a2 = s00->idxInAsset;
+    *dst_asset      = s00->asset;
+    *dst_idxInAsset = s00->idxInAsset;
 
     return fn_priv_01(map);
 }

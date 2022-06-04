@@ -7,6 +7,21 @@ const zlib   = require("node:zlib");
 
 const stringSimilarity = require("string-similarity");
 
+/* constants ***********************************************/
+
+const allRomVers = ["usa", "jpn", "eur", "aus"];
+const VERSION_CONSTANTS =
+{
+    DLL_CALL_TBL: { usa: 0x80082540, jpn: 0x80081CD0, eur: 0x8008C920, aus: 0x8008C920, },
+    BUILD_IDX:    { usa: 0, jpn: 1, eur: 2, aus: 3, },
+};
+
+
+/***********************************************************/
+
+
+
+
 const FATAL = msg =>
 {
     console.error(msg);
@@ -155,6 +170,12 @@ function printInBox (msgArr, colour="white")
     process.stdout.write(os);
 }
 
+function ensureFile(path)
+{
+    if (!fs.existsSync(path))
+        fs.writeFileSync(path, "");
+}
+
 function ensureDir(path)
 {
     if (!fs.existsSync(path))
@@ -234,6 +255,12 @@ function ALIGN(value, pad)
  * Map between <DLL_name, syscallIdx>
  */
 var gSyscallIdxMap;
+/**
+ * Map between <DLL_name, callTableOffset>
+ * 
+ * WARN: Only usable inside certain functions, it's only updated for a version on-demand
+ */
+var gCallTableOffsetMap;
 
 function init_gSyscallIdx_map()
 {
@@ -283,6 +310,31 @@ function init_gSyscallIdx_map()
     }
 
     gSyscallIdxMap = o;
+}
+
+function init_gCallTableOffset_map(romVer)
+{
+    const fCallTableOffset = gCurrDir + `enum/calltableoffset/${romVer}.txt`;
+
+    if (!fs.existsSync(fCallTableOffset))
+        FATAL(`File missing: [${fCallTableOffset}]`);
+
+    let lines = fs.readFileSync(fCallTableOffset).toString().split(/\r?\n/g);
+
+    //- We want to create a map between <DLL_name, callTableOffset> with the following loop
+    let o = {};
+
+    for (let line of lines)
+    {
+        if (line === "")
+            continue;
+
+        let words = line.split(/\s+/g);
+
+        o[words[0]] = parseInt(words[1], 16);
+    }
+
+    gCallTableOffsetMap = o;
 }
 
 /**
@@ -958,7 +1010,7 @@ async function dll_process(dll, objFilePath)
             let LINKER_INCLUDES = "";
             LINKER_INCLUDES += ` -T misc/linkerscript/dll.ld`;
             LINKER_INCLUDES += ` -T ver/${gRomVer}/syms/undefined.txt`;
-            // LINKER_INCLUDES += ` -T ver/${gRomVer}/syms/DLL.txt`;
+            LINKER_INCLUDES += ` -T ver/${gRomVer}/syms/DLL.txt`;
 
             let FILE_OBJECT = `build/${gRomVer}/dlls/${dll}.o`;
             let FILE_LINKED = `build/${gRomVer}/dlls/${dll}.lpo`;
@@ -1146,7 +1198,7 @@ function update_rom_version(newRomVer)
     //- Get version for ROM you want to work with
     {
         let romVerStr = newRomVer;
-        if (!(["usa", "jpn", "eur", "aus"].includes(romVerStr)))
+        if (!(allRomVers.includes(romVerStr)))
             FATAL("Invalid rom version (usa/jpn/eur/aus)");
 
         gRomVer = romVerStr;
@@ -1166,25 +1218,122 @@ function update_rom_version(newRomVer)
     init_gSyscallIdx_map();
 }
 
+/**
+ * Parses the [include/dlls.h] file and generates the linker symbols
+ * needed for all DLLs declarations automatically.
+ */
+async function HELPER_parse_out_dll_linker_symbols()
+{
+    const fn_dlls_h = gRootDir + `include/dlls.h`;
+
+    const dlls_h = fs.readFileSync(fn_dlls_h).toString();
+
+    for (let romVer of allRomVers)
+    {
+        if (!(romVer in VERSION_CONSTANTS.DLL_CALL_TBL))
+            FATAL(`DLL_CALL_TBL constant missing for romVer: ${romVer}`);
+
+        init_gCallTableOffset_map(romVer);
+
+        //# The linker requires it to exist at least, so we ensure it
+        let outpath = gRootDir + `ver/${romVer}/syms/DLL.txt`;
+        ensureFile(outpath);
+
+        const dllCallTblStart = VERSION_CONSTANTS.DLL_CALL_TBL[romVer] >>> 0;
+
+        {
+            /**
+             * The name of the currently recognised DLL
+             */
+            let currDllName = "";
+            /**
+             * The current call table address we are at
+             */
+            let currCtoAddr = 0x00000000;
+
+            /**
+             * Arbitrary, but large enough to cover all symbols
+             */
+            const lookahead = 100;
+
+            let waiting = false;
+
+            let symbols = [];
+
+            for (let i = 0; i < dlls_h.length; i++)
+            {
+                if (dlls_h.substr(i, 5) === "/* $ ")
+                {
+                    //# New DLL, initialise vars
+                    currDllName = dlls_h.substr(i + 5, lookahead).split(/\s+/g)[0];
+                    currCtoAddr = (dllCallTblStart + (gCallTableOffsetMap[currDllName] * 8)) >>> 0;
+
+                    continue;
+                }
+
+                if (dlls_h.substr(i, 4) === "\n/*@")
+                {
+                    //# New public function, initialise
+                    let magic = dlls_h.substr(i + 4, lookahead).split(/\s+/g)[0];
+
+                    //# Grab the character corresponding to the current build version
+                    let magicCharForCurrVer = magic.substr(VERSION_CONSTANTS.BUILD_IDX[romVer], 1);
+
+                    if (magicCharForCurrVer === "-")
+                        //# Doesn't apply, skip
+                        waiting = false;
+
+                    else if (magicCharForCurrVer === "o")
+                        //# Applies, now wait until we find the symbol
+                        waiting = true;
+
+                    continue;
+                }
+
+                if (waiting && dlls_h.substr(i, lookahead * 2).startsWith(`DLL_${currDllName}_`))
+                {
+                    let symbol = dlls_h.substr(i, lookahead * 2).split(/[\s\r\n(<]+/g)[0];
+
+                    symbols.push({
+                        symbol,
+                        addr: currCtoAddr,
+                    });
+
+                    //# Prime for the next declaration for the same DLL
+                    waiting = false;
+                    currCtoAddr += 8;
+                }
+            }
+
+            //- Write all symbols to file
+            {
+                let lengthOfLongestSymbol = symbols.reduce((acc, e) => Math.max(acc, e.symbol.length), 0);
+                let data = symbols.map(e => `${e.symbol.padEnd(lengthOfLongestSymbol + 2, " ")} = 0x${e.addr.toString(16).toUpperCase()};`)
+
+                fs.writeFileSync(outpath, data.join("\n"));
+            }
+        }
+    }
+}
+
 async function dll_full_build_multi(dllNames)
 {
-    let results1_raw = [];
-    let results1_cmp = [];
+    await HELPER_parse_out_dll_linker_symbols();
 
     const SHOW_FILE_SIZES = false;
 
-    let results2_raw = [];
-    let results2_cmp = [];
+    let results_raw = [];
+    let results_cmp = [];
 
-    for (let romVer of ["usa", "jpn", "eur", "aus"])
+    for (let romVer of allRomVers)
     {
         update_rom_version(romVer);
 
         for (let [idx, dllName] of dllNames.entries())
         {
-            //# Init results string
-            if (!results2_raw[idx]) results2_raw[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
-            if (!results2_cmp[idx]) results2_cmp[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
+            //# Init results strings
+            if (!results_raw[idx]) results_raw[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
+            if (!results_cmp[idx]) results_cmp[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
 
             try
             {
@@ -1192,9 +1341,9 @@ async function dll_full_build_multi(dllNames)
 
                 if (!fs.existsSync(fn_c) || fs.statSync(fn_c).size === 0)
                 {
-                    //= Invalid DLL, don't waste time processing it
-                    results2_raw[idx] += "".padEnd(18, " ");
-                    results2_cmp[idx] += "".padEnd(18, " ");
+                    //= Placeholder DLL, don't waste time processing it
+                    results_raw[idx] += "".padEnd(18, " ");
+                    results_cmp[idx] += "".padEnd(18, " ");
 
                     continue;
                 }
@@ -1222,7 +1371,7 @@ async function dll_full_build_multi(dllNames)
                         ? gct(`OK`, "green") + gct(` ${filesize}`.padEnd(endPad - 2, " "), "black")
                         : gct(`OK`.padEnd(endPad, " "), "green");
 
-                    let results = USE_COMPRESSION ? results2_cmp : results2_raw;
+                    let results = USE_COMPRESSION ? results_cmp : results_raw;
 
                     results[idx] += similarity.found && similarity.similarity === 1
                         ? gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + sizeSuffix
@@ -1241,9 +1390,6 @@ async function dll_full_build_multi(dllNames)
                 //= Pass
             }
         }
-
-        // results1_raw.push(gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan") + results2_raw.join(" "));
-        // results1_cmp.push(gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan") + results2_cmp.join(" "));
     }
 
     //- Print results
@@ -1252,7 +1398,7 @@ async function dll_full_build_multi(dllNames)
         let strs = [];
 
         strs.push(`Results (compression: ${USE_COMPRESSION ? gct("ON", "green"): gct("OFF", "red")})`);
-        strs.push(...(USE_COMPRESSION ? results2_cmp : results2_raw).map(x => gct("> ", "black") + x));
+        strs.push(...(USE_COMPRESSION ? results_cmp : results_raw).map(x => gct("> ", "black") + x));
 
         printInBox(strs, USE_COMPRESSION ? "green" : "red");
     }

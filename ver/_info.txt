@@ -7,6 +7,7 @@ ver
     └── syms                     # Linker symbols:
         ├──  AUTO.txt            #   - automatically generated based on [searchbase] symbols for other versions.
         │                        #     should not be committed to the repo, only generated (unless it's too slow)
+        ├──  DLL.txt             #   - automatically generated based on [include/dll.h] declarations
         ├──  searchbase.txt      #   - symbols that will be used to generate [AUTO] symbols for other versions.
         │                        #     will still be used as normal symbols for the same version though.
         └──  undefined.txt       #   - miscellaneous symbols

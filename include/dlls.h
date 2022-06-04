@@ -35,6 +35,9 @@
  * nothing else in-between them. If you want to comment the
  * declaration, put it before the magic comment.
  * 
+ * They must appear at the start of the line, and be typed exactly,
+ * with no whitespace inside.
+ * 
  * Each character is used to encode whether the function is exposed
  * in that version. An "o" means it is exposed, a "-" means it is not.
  * With the four currently known versions:

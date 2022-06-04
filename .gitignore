@@ -78,7 +78,8 @@ symbol_addrs.us.v10.txt
 # js dependencies
 node_modules
 
-# auto-generated linker symbols
+# Do not commit auto-generated linker symbols
 ver/*/syms/AUTO.txt
+ver/*/syms/DLL.txt
 
 tools/mcompress/gzip

@@ -71,7 +71,7 @@ typedef struct Player_LockStateObj {
     /* 0x08 */ WORD  unk_0x08;
     /* 0x0C */ union PACKED {
         MODEL modelIdx : 16; u16 modelIdx_;
-    } UNION_0x0C;
+    };
     /* 0x0E */ HALF  unk_0x0C;
     /* 0x10 */ BYTE  unk_0x10;
     /* 0x11 */ BYTE  unk_0x11;
@@ -116,14 +116,14 @@ typedef struct Player_FpvReticleObj {
         u8 active;
         u8 : 8;
         u8 : 8;
-    } STRUCT_0x08;
+    };
     /* 0x0C */ f32 transitionTimer;
     /* 0x10 */ struct {
         u8 : 8;
         u8 : 8;
         BYTE : 8;
         BYTE : 8;
-    } STRUCT_0x10;
+    };
     /* 0x14 */ u32 opacity;
     /* 0x18 */ f32 scale;
 } Player_FpvReticleObj; // 0x1C
@@ -194,10 +194,10 @@ typedef struct Player_SlopeObj {
     /* 0x00 >>> */ BYTE PAD_0x00[0x28];
     /* 0x28 */ union PACKED {
         FORM transformingInfo : 8; u8 transformingInfo_;
-    } UNION_0x28;
+    };
     /* 0x29 */ union PACKED {
         FORM currentTrans : 8; u8 currentTrans_;
-    } UNION_0x29;
+    };
     /* 0x2A >>> */ BYTE PAD_0x2A[0xE];
     /* 0x38 */ f32 slopeTimer;
     /* 0x3C >>> */ BYTE PAD_0x3C;
@@ -232,15 +232,15 @@ typedef struct Player_PositionObj {
     /* 0x00 */ union {
         Vec3f     position1;
         tuple_u32 position1_u32;
-    } UNION_0x00;
+    };
     /* 0x0C */ union {
         Vec3f     position2;
         tuple_u32 position2_u32;
-    } UNION_0x0C;
+    };
     /* 0x18 */ union {
         Vec3f     position3;
         tuple_u32 position3_u32;
-    } UNION_0x18;
+    };
 } Player_PositionObj;
 
 typedef struct Player_RotZObj {
@@ -252,11 +252,11 @@ typedef struct Player_RotYObj {
     /* 0x00 */  union {
         f32 facingAngle; // a.k.a. curr
         u32 facingAngle_u32;
-    } UNION_0x00;
+    };
     /* 0x04 */ union {
         f32 movingAngle; // a.k.a. target
         u32 movingAngle_u32;
-    } UNION_0x04;
+    };
 } Player_RotYObj;
 
 typedef struct Player_MovementStateObj {

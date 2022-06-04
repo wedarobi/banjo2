@@ -46,7 +46,7 @@ fn_flag_get_and_set              = 0x800D7CB4;
 
 gsWorldGetSection = 0x800E5F1C;
 
-
+fn_Object_privStorPtr_get = 0x800FAB54;
 
 
 

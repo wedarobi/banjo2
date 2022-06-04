@@ -23,7 +23,14 @@ void fn_vec_add_direct   (Vec3f *, Vec3f *);
 void func_8009B98C       (PlayerObj *, Vec3f *);
 
 
-
+/* -> fxkern */
+s32  fn_font_char_visual_width_get(s32, u8);
+void fn_currFont_set(s32);
+void fn_currFont_reset_params(void);
+void fn_currFont_size_set(f32);
+void fn_gfx_head_printing(Gfx **);
+void fn_gfx_tail_printing(Gfx **);
+void fn_gfx_print_char(Gfx **, s32, s32, u8);
 
 
 

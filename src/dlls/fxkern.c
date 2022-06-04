@@ -1,20 +1,8 @@
 #include "include/2.0L/ultra64.h"
 
 #include "include/functions.h"
+#include "include/variables.h"
 
-
-//! double check, and hoist
-#define FRAMEBUFFER_WIDTH  (304)
-#define FRAMEBUFFER_HEIGHT (228)
-
-
-extern s32  fn_font_char_visual_width_get(s32, u8);
-extern void fn_currFont_set(s32);
-extern void fn_currFont_reset_params(void);
-extern void fn_currFont_size_set(f32);
-extern void fn_gfx_head_printing(Gfx **);
-extern void fn_gfx_tail_printing(Gfx **);
-extern void fn_gfx_print_char(Gfx **, s32, s32, u8);
 
 static struct
 {

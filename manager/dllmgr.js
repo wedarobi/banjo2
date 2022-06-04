@@ -954,8 +954,18 @@ async function dll_process(dll, objFilePath)
 
         let out = `build/${gRomVer}/dlls/${dll}.out`;
 
-        await spawn(`mips-linux-gnu-ld -T misc/linkerscript/dll.ld -T ver/${gRomVer}/syms/undefined.txt build/${gRomVer}/dlls/${dll}.o -o build/${gRomVer}/dlls/${dll}.lpo`);
-        await spawn(`mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary build/${gRomVer}/dlls/${dll}.lpo ${out}`);
+        {
+            let LINKER_INCLUDES = "";
+            LINKER_INCLUDES += ` -T misc/linkerscript/dll.ld`;
+            LINKER_INCLUDES += ` -T ver/${gRomVer}/syms/undefined.txt`;
+            // LINKER_INCLUDES += ` -T ver/${gRomVer}/syms/DLL.txt`;
+
+            let FILE_OBJECT = `build/${gRomVer}/dlls/${dll}.o`;
+            let FILE_LINKED = `build/${gRomVer}/dlls/${dll}.lpo`;
+
+            await spawn(`mips-linux-gnu-ld ${LINKER_INCLUDES} ${FILE_OBJECT} -o ${FILE_LINKED}`);
+            await spawn(`mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary ${FILE_LINKED} ${out}`);
+        }
 
         if (!fs.existsSync(out))
             FATAL(`Build failed: objcopy result missing for: ${dll}`);
@@ -1163,16 +1173,31 @@ async function dll_full_build_multi(dllNames)
 
     const SHOW_FILE_SIZES = false;
 
-    for (let dllName of dllNames)
-    {
-        let results2_raw = [];
-        let results2_cmp = [];
+    let results2_raw = [];
+    let results2_cmp = [];
 
-        try
+    for (let romVer of ["usa", "jpn", "eur", "aus"])
+    {
+        update_rom_version(romVer);
+
+        for (let [idx, dllName] of dllNames.entries())
         {
-            for (let romVer of ["usa", "jpn", "eur", "aus"])
+            //# Init results string
+            if (!results2_raw[idx]) results2_raw[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
+            if (!results2_cmp[idx]) results2_cmp[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
+
+            try
             {
-                update_rom_version(romVer);
+                let fn_c = gRootDir + `src/dlls/${dllName}.c`;
+
+                if (!fs.existsSync(fn_c) || fs.statSync(fn_c).size === 0)
+                {
+                    //= Invalid DLL, don't waste time processing it
+                    results2_raw[idx] += "".padEnd(18, " ");
+                    results2_cmp[idx] += "".padEnd(18, " ");
+
+                    continue;
+                }
 
                 let fn_o = await dll_build(dllName);
 
@@ -1197,27 +1222,28 @@ async function dll_full_build_multi(dllNames)
                         ? gct(`OK`, "green") + gct(` ${filesize}`.padEnd(endPad - 2, " "), "black")
                         : gct(`OK`.padEnd(endPad, " "), "green");
 
-                    (USE_COMPRESSION ? results2_cmp : results2_raw).push
-                    (
-                        similarity.found && similarity.similarity === 1
+                    let results = USE_COMPRESSION ? results2_cmp : results2_raw;
+
+                    results[idx] += similarity.found && similarity.similarity === 1
                         ? gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + sizeSuffix
                         : gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + gct(`${(similarity.similarity * 100).toFixed(1)}%`.padEnd(endPad, " "), "red")
-                    );
+
                 }
 
                 // await dll_package("/mnt/r/chcoderoombits_edited.bin")
 
+
+            }
+            catch (err)
+            {
+                console.error(err);
+    
+                //= Pass
             }
         }
-        catch (err)
-        {
-            console.error(err);
 
-            //= Pass
-        }
-
-        results1_raw.push(gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan") + results2_raw.join(" "));
-        results1_cmp.push(gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan") + results2_cmp.join(" "));
+        // results1_raw.push(gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan") + results2_raw.join(" "));
+        // results1_cmp.push(gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan") + results2_cmp.join(" "));
     }
 
     //- Print results
@@ -1226,7 +1252,7 @@ async function dll_full_build_multi(dllNames)
         let strs = [];
 
         strs.push(`Results (compression: ${USE_COMPRESSION ? gct("ON", "green"): gct("OFF", "red")})`);
-        strs.push(...(USE_COMPRESSION ? results1_cmp : results1_raw).map(x => gct("> ", "black") + x));
+        strs.push(...(USE_COMPRESSION ? results2_cmp : results2_raw).map(x => gct("> ", "black") + x));
 
         printInBox(strs, USE_COMPRESSION ? "green" : "red");
     }

@@ -1,3 +1,4 @@
 #!/bin/sh
 
-python3 diff3.py -w3
+python3 diff3.py -w3 $@
+#python3 diff3.py -w3s $@

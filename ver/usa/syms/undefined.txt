@@ -21,6 +21,51 @@ func_800B2344 = 0x800B2344;
 func_800B27A0 = 0x800B27A0;
 fn_memcpy_fast = 0x8001BBC8;
 
+func_800D3E14 = 0x800D3E14;
+
+/* font */
+fn_font_char_visual_width_get = 0x800D36C4;
+fn_currFont_set = 0x800B8C98;
+fn_currFont_reset_params = 0x800B8C50;
+fn_currFont_size_set = 0x800B8CF0;
+fn_gfx_head_printing = 0x800B7F14;
+fn_gfx_tail_printing = 0x800B811C;
+fn_gfx_print_char = 0x800B8DEC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

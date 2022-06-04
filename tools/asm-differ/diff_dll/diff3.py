@@ -587,13 +587,14 @@ def dump_objfile() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
 def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
     dlls = {
         "chcoderoombits": [0x10DC, 0xE0],
-        "fxkern": [0x114, 0xf4]
+        "fxkern": [0, 0]
     }
 
     dll_name = "fxkern"
+    romver   = "jpn"
 
-    baseimg = f"../../../expected/usa/dlls/{dll_name}.raw"
-    myimg   = f"../../../build/usa/dlls/{dll_name}.bin"
+    baseimg = f"../../../expected/{romver}/dlls/{dll_name}.raw"
+    myimg   = f"../../../build/{romver}/dlls/{dll_name}.bin"
 
     start_base = dlls[dll_name][0] #0x100
     start_my   = dlls[dll_name][1]

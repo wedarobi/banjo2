@@ -20,7 +20,8 @@
     // Copies only the sections we want (.text, .rodata, .data, .bss)
     mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary build/usa/dlls/chmrtannoy.lpo build/usa/dlls/chmrtannoy.out
 
-
+[binary compare between two files]
+    hexdiff expected/usa/dlls/chcoderoombits.raw build/usa/dlls/chcoderoombits.bin
 
 
 

@@ -765,8 +765,8 @@ async function dll_process(dll, objFilePath)
 
 
     let sections = elf_get_sections(elf, [
-            ".text",     ".rodata",     ".data", ".bss", ".symtab",
-        ".rel.text", ".rel.rodata", ".rel.data",
+            ".text",     ".rodata",     ".data",     ".bss", ".symtab",
+        ".rel.text", ".rel.rodata", ".rel.data", ".rel.bss",
     ]);
 
     // console.log(sections)
@@ -853,8 +853,7 @@ async function dll_process(dll, objFilePath)
         const elementSize = 0x08;
 
         //# The order of the sections matter. Rare did it in this order.
-        //# Also, .bss doesn't have relocs dummy
-        let sectionsWithRelocs = [ "_text", "_rodata", "_data" ];
+        let sectionsWithRelocs = [ "_text", "_rodata", "_data", "_bss" ];
 
         let symbols = elf_get_syms(elf, sectionsWithRelocs.map(x => x.replace(/^_/g, ".")));
 
@@ -1153,72 +1152,19 @@ function update_rom_version(newRomVer)
 
 async function main()
 {
-    // if (!path.resolve(".").endsWith(path.sep + "bt"))
-    //     //! Dumb hacky check, update it at some point
-    //     //! Or just make it so cwd doesn't matter
-    //     FATAL("Make sure to call this from the repo base path!");
-
     const argv = process.argv.slice(2);
 
     // if (!argv.length)
     //     FATAL(`ERR: Provide filename of ROM to use as a target!`);
 
-    //- Get version for ROM you want to work with
-    {
-        // let romVerStr = argv[0];
-        // if (!(["usa", "jpn", "eur", "aus"].includes(romVerStr)))
-        //     FATAL("argv[0]: Pass a rom version (usa/jpn/eur/aus)");
-
-        // gRomVer = romVerStr;
-
-        gRomVer = "usa"; //= default
-    }
+    //- Set version for ROM you want to work with
+    gRomVer = "usa"; //= default
 
     update_rom_version(gRomVer);
 
-    //- Load the baserom
-    // {
-    //     let baseromPath = gRootDir + `ver/${gRomVer}/baserom.z64`;
-
-    //     if (!fs.existsSync(baseromPath))
-    //         FATAL(`No baserom for the curr rom version: ${baseromPath}`);
-
-    //     gBaserom = fs.readFileSync(baseromPath);
-    // }
-
-
-
-
-
-
-    // console.log(gSyscallIdxMap)
-
-
-
-    // const inputFilenameFull = argv[0];
-    // const inputFilename     = path.basename(inputFilenameFull);
-
-    const filenames =
-    {
-        // original: inputFilename,
-        // baserom:  `bk_orig.z64`,
-        // patch:    `${inputFilename}.xdelta`,
-        // test:     `TESTFILE`,
-    };
-
-
-
-    // log(`> Preparing environment...`);
-    {
-
-    }
-
-    // log(`> Compiling...`);
 
     let results1_raw = [];
     let results1_cmp = [];
-
-
 
     let dllNames = [
         // "glreflight",

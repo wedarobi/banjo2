@@ -36,8 +36,8 @@ except ModuleNotFoundError:
 
 parser = argparse.ArgumentParser(
         description="Diff MIPS assembly.")
-parser.add_argument('start',
-        help="Function name or address to start diffing from.")
+# parser.add_argument('start',
+#         help="Function name or address to start diffing from.")
 parser.add_argument('end', nargs='?',
         help="Address to end diff at.")
 parser.add_argument('-o', dest='diff_obj', action='store_true',
@@ -199,57 +199,88 @@ def search_map_file(fn_name):
         return cands[0]
     return None, None
 
-def dump_objfile():
-    if base_shift:
-        fail("--base-shift not compatible with -o")
-    if args.end is not None:
-        fail("end address not supported together with -o")
-    if args.start.startswith('0'):
-        fail("numerical start address not supported with -o; pass a function name")
+# def dump_objfile():
+#     if base_shift:
+#         fail("--base-shift not compatible with -o")
+#     if args.end is not None:
+#         fail("end address not supported together with -o")
+#     if args.start.startswith('0'):
+#         fail("numerical start address not supported with -o; pass a function name")
 
-    objfile, _ = search_map_file(args.start)
-    if not objfile:
-        fail("Not able to find .o file for function.")
+#     objfile, _ = search_map_file(args.start)
+#     if not objfile:
+#         fail("Not able to find .o file for function.")
 
-    if args.make:
-        run_make(objfile)
+#     if args.make:
+#         run_make(objfile)
 
-    if not os.path.isfile(objfile):
-        fail(f"Not able to find .o file for function: {objfile} is not a file.")
+#     if not os.path.isfile(objfile):
+#         fail(f"Not able to find .o file for function: {objfile} is not a file.")
 
-    refobjfile = "expected/" + objfile
-    if not os.path.isfile(refobjfile):
-        fail(f'Please ensure an OK .o file exists at "{refobjfile}".')
+#     refobjfile = "expected/" + objfile
+#     if not os.path.isfile(refobjfile):
+#         fail(f'Please ensure an OK .o file exists at "{refobjfile}".')
 
-    objdump_flags = ["-drz"]
-    return (
-        objfile,
-        (objdump_flags, refobjfile, args.start),
-        (objdump_flags, objfile, args.start)
-    )
+#     objdump_flags = ["-drz"]
+#     return (
+#         objfile,
+#         (objdump_flags, refobjfile, args.start),
+#         (objdump_flags, objfile, args.start)
+#     )
+
+
+
+# def dump_binary():
+#     if not baseimg or not myimg:
+#         fail("Missing myimg/baseimg in config.")
+#     if args.make:
+#         run_make(myimg)
+#     start_addr = eval_int(args.start)
+#     if start_addr is None:
+#         _, start_addr = search_map_file(args.start)
+#         if start_addr is None:
+#             fail("Not able to find function in map file.")
+#     if args.end is not None:
+#         end_addr = eval_int(args.end, "End address must be an integer expression.")
+#     else:
+#         end_addr = start_addr + MAX_FUNCTION_SIZE_BYTES
+#     objdump_flags = ['-Dz', '-bbinary', '-mmips', '-EB']
+#     flags1 = [f"--start-address={start_addr + base_shift}", f"--stop-address={end_addr + base_shift}"]
+#     flags2 = [f"--start-address={start_addr}", f"--stop-address={end_addr}"]
+#     return (
+#         myimg,
+#         (objdump_flags + flags1, baseimg, None),
+#         (objdump_flags + flags2, myimg, None)
+#     )
 
 def dump_binary():
-    if not baseimg or not myimg:
-        fail("Missing myimg/baseimg in config.")
-    if args.make:
-        run_make(myimg)
-    start_addr = eval_int(args.start)
-    if start_addr is None:
-        _, start_addr = search_map_file(args.start)
-        if start_addr is None:
-            fail("Not able to find function in map file.")
-    if args.end is not None:
-        end_addr = eval_int(args.end, "End address must be an integer expression.")
-    else:
-        end_addr = start_addr + MAX_FUNCTION_SIZE_BYTES
+
+    dlls = {
+        "chcoderoombits": [0x10DC, 0xE0],
+        "fxkern": [0x114, 0xf4]
+    }
+
+    dll_name = "fxkern"
+
+    baseimg = f"../../../expected/usa/dlls/{dll_name}.raw"
+    myimg   = f"../../../build/usa/dlls/{dll_name}.bin"
+
+    start_base = dlls[dll_name][0] #0x100
+    start_my   = dlls[dll_name][1]
+
+    end_base   = start_base + MAX_FUNCTION_SIZE_BYTES
+    end_my     = start_my   + MAX_FUNCTION_SIZE_BYTES
+
     objdump_flags = ['-Dz', '-bbinary', '-mmips', '-EB']
-    flags1 = [f"--start-address={start_addr + base_shift}", f"--stop-address={end_addr + base_shift}"]
-    flags2 = [f"--start-address={start_addr}", f"--stop-address={end_addr}"]
+    flags1 = [f"--start-address={start_base}", f"--stop-address={end_base}"]
+    flags2 = [f"--start-address={start_my}",   f"--stop-address={end_my}"]
     return (
         myimg,
         (objdump_flags + flags1, baseimg, None),
-        (objdump_flags + flags2, myimg, None)
+        (objdump_flags + flags2, myimg,   None)
     )
+
+
 
 # Alignment with ANSI colors is broken, let's fix it.
 def ansi_ljust(s, width):
@@ -737,35 +768,20 @@ class Display():
 
 
 def main():
-    if args.diff_obj:
-        make_target, basecmd, mycmd = dump_objfile()
-    else:
-        make_target, basecmd, mycmd = dump_binary()
+    make_target, basecmd, mycmd = dump_binary()
 
-    if args.write_asm is not None:
-        mydump = run_objdump(mycmd)
-        with open(args.write_asm) as f:
-            f.write(mydump)
-        print(f"Wrote assembly to {args.write_asm}.")
-        sys.exit(0)
-
-    if args.base_asm is not None:
-        with open(args.base_asm) as f:
-            basedump = f.read()
-    else:
-        basedump = run_objdump(basecmd)
-
-    mydump = run_objdump(mycmd)
+    mydump   = run_objdump(mycmd)
+    basedump = run_objdump(basecmd)
 
     display = Display(basedump, mydump)
 
     if not args.watch:
         display.run_sync()
     else:
-        if not args.make:
-            yn = input("Warning: watch-mode (-w) enabled without auto-make (-m). You will have to run make manually. Ok? (Y/n) ")
-            if yn.lower() == 'n':
-                return
+        # if not args.make:
+        #     yn = input("Warning: watch-mode (-w) enabled without auto-make (-m). You will have to run make manually. Ok? (Y/n) ")
+        #     if yn.lower() == 'n':
+        #         return
         if args.make:
             watch_sources = None
             if hasattr(diff_settings, "watch_sources_for_target"):

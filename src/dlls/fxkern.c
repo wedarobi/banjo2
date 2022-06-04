@@ -88,7 +88,7 @@ static s32 calculate_incremental_letter_offsets(u8 *str)
     letterOffsets[0].offsetX = 0;
     letterOffsets[0].offsetY = 0;
 
-    for (i = 1; str[i] != '\0' && i != 64; i++)
+    for (i = 1; str[i] != '\0' && i < ARRLEN(letterOffsets); i++)
     {
         s32 tmp1;
         s32 tmp2;

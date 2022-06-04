@@ -5,6 +5,8 @@
 #define FRAMEBUFFER_WIDTH  (304)
 #define FRAMEBUFFER_HEIGHT (228)
 
+#define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
+// #define ARRLEN(x) (sizeof(x) / sizeof(typeof(x[0])))
 
 
 

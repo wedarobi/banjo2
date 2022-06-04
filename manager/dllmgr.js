@@ -1181,6 +1181,8 @@ async function main()
 
     log(`Building ${dllNames.length} DLL(s)...`);
 
+    const SHOW_FILE_SIZES = false;
+
     for (let dllName of dllNames)
     {
         let results2_raw = [];
@@ -1207,13 +1209,22 @@ async function main()
 
                 for (let USE_COMPRESSION of [false, true])
                 {
-                    let similarity = await get_similarity_dll(dllName, USE_COMPRESSION ? file_cmp : file_raw, USE_COMPRESSION);
+                    let file = USE_COMPRESSION ? file_cmp : file_raw;
+
+                    let similarity = await get_similarity_dll(dllName, file, USE_COMPRESSION);
+                    let endPad = SHOW_FILE_SIZES ? 14 : 10;
+
+                    // let filesize = (typeof file !== "string" ? (file.byteLength / 1000).toFixed(1) : "0") + " kB";
+                    let filesize = (typeof file !== "string" ? file.byteLength : 0).toString() + " B";
+                    let sizeSuffix = SHOW_FILE_SIZES
+                        ? gct(`OK`, "green") + gct(` ${filesize}`.padEnd(endPad - 2, " "), "black")
+                        : gct(`OK`.padEnd(endPad, " "), "green");
 
                     (USE_COMPRESSION ? results2_cmp : results2_raw).push
                     (
                         similarity.found && similarity.similarity === 1
-                        ? gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + gct(`OK`.padEnd(7, " "), "green")
-                        : gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + gct(`${(similarity.similarity * 100).toFixed(1)}%`.padEnd(7, " "), "red")
+                        ? gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + sizeSuffix
+                        : gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + gct(`${(similarity.similarity * 100).toFixed(1)}%`.padEnd(endPad, " "), "red")
                     );
                 }
 

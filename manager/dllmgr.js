@@ -1257,14 +1257,8 @@ async function main()
         dllNames = fs.readdirSync(gRootDir + "src/dlls")
             .map(name => name.replace(/\.c$/g, ""));
 
-
-    if (arg_toWatch)
-    {
-        if (dllNames.length > 1)
-        {
-            FATAL(`Cannot watch more than one DLL file!`);
-        }
-    }
+    if (arg_toWatch && dllNames.length > 1)
+        FATAL(`Cannot watch more than one DLL file!`);
 
     await dll_full_build_multi(dllNames);
 

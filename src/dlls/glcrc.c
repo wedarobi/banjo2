@@ -65,7 +65,8 @@ u32 DLL_glcrc_01_crc_calc_and_validate(u8 *data, s32 len)
 
     calc_checksum(data, checksum, calculated);
 
-    return checksum[0] != calculated[0] || checksum[1] != calculated[1]
+    return checksum[0] != calculated[0]
+        || checksum[1] != calculated[1]
         //# Failed: returns some strange constant
         ? 0x6E382
         //# Success

@@ -1152,8 +1152,6 @@ function update_rom_version(newRomVer)
 
 async function dll_full_build_multi(dllNames)
 {
-    log(`Building ${dllNames.length} DLL(s)...`);
-
     let results1_raw = [];
     let results1_cmp = [];
 
@@ -1257,9 +1255,10 @@ async function main()
         dllNames = fs.readdirSync(gRootDir + "src/dlls")
             .map(name => name.replace(/\.c$/g, ""));
 
-    if (arg_toWatch && dllNames.length > 1)
-        FATAL(`Cannot watch more than one DLL file!`);
+    // if (arg_toWatch && dllNames.length > 1)
+    //     FATAL(`Cannot watch more than one DLL file!`);
 
+    log(`Building ${dllNames.length} DLL(s)...`);
     await dll_full_build_multi(dllNames);
 
     //- Watch for changes
@@ -1280,11 +1279,12 @@ async function main()
 
                 lastModTime = now;
 
+                log(gct(`  Detected change, rebuilding: ${gct(dll, "yellow")}`, "black"));
                 await dll_full_build_multi([dll]);
             });
         }
 
-        log(`Watching for file changes for autobuild...`);
+        log(gct(`  Autobuild enabled, watching for file changes...`, "black"));
     }
     else
     {

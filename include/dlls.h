@@ -700,8 +700,8 @@
 /* $ chwumbawigwam */
 /* $ chzubba */
 /* $ cosection */
-/*@o---*/ MAP DLL_cosection_00_get_dev_bootmap(void);
-/*@oooo*/ MAP DLL_cosection_01_get_retail_bootmap(void);
+/*@o---*/ MAP DLL_cosection_00_get_dev_bootmap    (void);
+/*@oooo*/ MAP DLL_cosection_01_get_retail_bootmap (void);
 /* $ cosectionstor */
 /* $ cothemedll */
 /* $ dbanim */
@@ -727,10 +727,10 @@
 /* $ fxfontstring */
 /* $ fxgenlist */
 /* $ fxkern */
-/*@o---*/ void DLL_fxkern_00_totalsfont_print(Gfx **dl, s32 x, s32 y, char *str);
-/*@oooo*/ void DLL_fxkern_01_totalsfont_print_centred(Gfx **dl, s32 y, char *str);
-/*@oooo*/ void DLL_fxkern_02_totalsfont_size_reset(void);
-/*@oooo*/ void DLL_fxkern_03_totalsfont_size_set(f32 size);
+/*@o---*/ void DLL_fxkern_00_totalsfont_print         (Gfx **dl, s32 x, s32 y, char *str);
+/*@oooo*/ void DLL_fxkern_01_totalsfont_print_centred (Gfx **dl, s32 y, char *str);
+/*@oooo*/ void DLL_fxkern_02_totalsfont_size_reset    (void);
+/*@oooo*/ void DLL_fxkern_03_totalsfont_size_set      (f32 size);
 /* $ fxleaves */
 /* $ fxmumbo */
 /* $ fxrain */
@@ -775,8 +775,8 @@
 /* $ gczoomboxdata */
 /* $ gemarkersDll */
 /* $ glcrc */
-/*@oooo*/ u32 DLL_glcrc_00_crc_calc_and_update  (u8 *data, s32 len);
-/*@oooo*/ u32 DLL_glcrc_01_crc_calc_and_validate(u8 *data, s32 len);
+/*@oooo*/ u32 DLL_glcrc_00_crc_calc_and_update   (u8 *data, s32 len);
+/*@oooo*/ u32 DLL_glcrc_01_crc_calc_and_validate (u8 *data, s32 len);
 /* $ glcutDll */
 /* $ gldbDll */
 /* $ gldbstring */

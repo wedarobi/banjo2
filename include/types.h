@@ -9,9 +9,10 @@ typedef u32 WORD;
 
 typedef int bool;
 
-typedef s32 MODEL; //!
-typedef s32 FORM; //!
-typedef s32 MS; //!
+typedef u32 MODEL; //!
+typedef u32 FORM; //!
+typedef u32 MS; //!
+// typedef u32 ASSET; //!
 
 typedef struct {
     f32 x;

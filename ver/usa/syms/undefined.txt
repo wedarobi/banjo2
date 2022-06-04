@@ -34,9 +34,18 @@ fn_gfx_print_char = 0x800B8DEC;
 
 fn_crc_transform_seed = 0x801168AC;
 
+/* flag */
+fn_flag_get                      = 0x800DA298;
+fn_flag_set                      = 0x800DA3B8;
+fn_flag_set_FALSE                = 0x800DA524;
+fn_flag_set_TRUE                 = 0x800DA544;
+fn_flag_get_multi                = 0x800DA564;
+fn_flag_set_multi                = 0x800DA7A8;
+fn_flag_get_and_increment_multi  = 0x800DA944;
+fn_flag_get_multi_sum            = 0x800DA980;
+fn_flag_get_and_set              = 0x800DA9E4;
 
-
-
+gsWorldGetSection = 0x800EA05C;
 
 
 

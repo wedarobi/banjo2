@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __ENUM_MAP__
+#define __ENUM_MAP__
 
 typedef enum LEVEL
 {
@@ -20,8 +21,10 @@ typedef enum LEVEL
 
 typedef enum MAP
 {
+    MAP_MIN = 0x00A0,
+
     /*// 0x0001 - 0x00A0 unused (leftover from Banjo-Kazooie?)*/
-    /* 0x00A1 */ MAP_0A1_CUTSCENE_TWO_YEARS_HAVE_PASSED = 0x00A1, /* exit 0 */
+    /* 0x00A1 */ MAP_0A1_CUTSCENE_TWO_YEARS_HAVE_PASSED, /* exit 0 */
     /* 0x00A2 */ MAP_0A2_CUTSCENE_HAG_1_ARRIVES, /* exit 1 */
     /* 0x00A3 */ MAP_0A3_CUTSCENE_SISTERS_ARRIVE,
     /* 0x00A4 */ MAP_0A4_CUTSCENE_GRUNTILDA_REVIVED,
@@ -285,5 +288,9 @@ typedef enum MAP
     /* 0x01A6 */ MAP_1A6_JRL_SMUGGLERS_CAVERN,
     /* 0x01A7 */ MAP_1A7_JRL_MAIN_AREA,
     /* 0x01A8 */ MAP_1A8_JRL_ATLANTIS,
-    /* 0x01A9 */ MAP_1A9_JRL_SEA_BOTTOM
+    /* 0x01A9 */ MAP_1A9_JRL_SEA_BOTTOM,
+
+    MAP_MAX // 0x1AA
 } MAP;
+
+#endif // __ENUM_MAP__

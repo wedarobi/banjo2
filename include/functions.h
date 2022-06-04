@@ -6,6 +6,9 @@
 #include "include/struct/object.h"
 #include "include/struct/player.h"
 
+#include "include/enum/flag.h"
+#include "include/enum/map.h"
+
 void func_800C3FC0(u32, f32, u32);
 void func_800C9BB4(f32, u32, f32, u32);
 
@@ -23,7 +26,7 @@ void fn_vec_add_direct   (Vec3f *, Vec3f *);
 void func_8009B98C       (PlayerObj *, Vec3f *);
 
 
-/* -> fxkern */
+/* ref from -> fxkern */
 s32  fn_font_char_visual_width_get(s32, u8);
 void fn_currFont_set(s32);
 void fn_currFont_reset_params(void);
@@ -33,11 +36,18 @@ void fn_gfx_tail_printing(Gfx **);
 void fn_gfx_print_char(Gfx **, s32, s32, u8);
 
 
+/* flag */
+bool fn_flag_get(FLAG flag);
+void fn_flag_set(FLAG flag);
+void fn_flag_set_FALSE(FLAG flag);
+void fn_flag_set_TRUE(FLAG flag);
+s32  fn_flag_get_multi(FLAG flag, u32 width);
+void fn_flag_set_multi(FLAG flag, s32 value, u32 width);
+s32  fn_flag_get_and_increment_multi(FLAG flag, u32 width);
+s32  fn_flag_get_multi_sum(FLAG flag, u32 width);
+bool fn_flag_get_and_set(FLAG flag, bool value);
 
-
-
-
-
+MAP gsWorldGetSection(void);
 
 
 

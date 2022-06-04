@@ -198,9 +198,15 @@ async function dll_build(dll)
     const file_out = gRootDir + `build/${gRomVer}/dlls/${dll}.o`;
 
     let cmd = "";
-    cmd += `-c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm -signed `;
-    cmd += `-O2 -mips2 -D_FINALROM -DF3DEX2_GBI ${CMD.include} `;
-    cmd += `${file_in} -o ${file_out}`;
+    cmd += ` -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm -signed`;
+    /**
+     * 649: "Missing member name in struct/union"
+     * 807: ?
+     * 838: "Microsoft extension" > nested structs/unions (?)
+     */
+    cmd += ` -woff 649,807,838`;
+    cmd += ` -O2 -mips2 -D_FINALROM -DF3DEX2_GBI ${CMD.include}`;
+    cmd += ` ${file_in} -o ${file_out}`;
 
     //- Env vars
     let env = "";

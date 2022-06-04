@@ -5,7 +5,7 @@
 
 //! double check, and hoist
 #define FRAMEBUFFER_WIDTH  (304)
-#define FRAMEBUFFER_HEIGHT (216)
+#define FRAMEBUFFER_HEIGHT (228)
 
 
 extern s32  fn_font_char_visual_width_get(s32, u8);

@@ -16,6 +16,13 @@ const VERSION_CONSTANTS =
     BUILD_IDX:    { usa: 0, jpn: 1, eur: 2, aus: 3, },
 };
 
+// TODO: Make a single place to store all file paths
+//# placeholder
+// function get_paths(romVer)
+// {
+//     return { dlls: `vers/dlls/${romVer}/misc`, };
+// }
+
 
 /***********************************************************/
 

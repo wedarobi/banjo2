@@ -42,8 +42,7 @@ struct struct00
     u32 idxInAsset : 6;
 };
 
-static struct struct00
-arr00[] =
+static struct struct00 arr00[] =
 {
 /* dec */
 /*   0 */ { MAP_0A1_CUTSCENE_TWO_YEARS_HAVE_PASSED,           ASSET_INTROTEXT_SM_1,        0  },
@@ -247,17 +246,36 @@ arr00[] =
 /* 198 */ { MAP_188_MULTIPLAYER_CCL_ZUBBAS_NEST,              ASSET_INTROTEXT_MULTIPLAYER, 12 },
 };
 
-struct struct01
+static u16 arr01[] =
 {
-    u32 _;
+/* dec */
+/*   0 */ { MAP_0E5_WW_HOOP_HURRY,                             },
+/*   1 */ { MAP_0E4_WW_BALLOON_BURST_GAME,                     },
+/*   2 */ { MAP_123_TDL_INSIDE_CHOMPAS_BELLY,                  },
+/*   3 */ { MAP_10A_GI_FLOOR_3_PACKING_ROOM,                   },
+/*   4 */ { MAP_0F9_WW_BOSS_MR_PATCH,                          },
+/*   5 */ { MAP_0D1_GGM_BOSS_INSIDE_CHUFFYS_BOILER,            },
+/*   6 */ { MAP_0FC_JRL_BOSS_LORD_WOO_FAK_FAK,                 },
+/*   7 */ { MAP_110_GI_BASEMENT_BOSS_REPAIR_DEPOT,             },
+/*   8 */ { MAP_141_SM_BOSS_INSIDE_THE_DIGGER_TUNNEL,          },
+/*   9 */ { MAP_15B_IOH_BOSS_INSIDE_ANOTHER_DIGGER_TUNNEL,     },
+/*  10 */ { MAP_15E_CK_BOSS_THE_GATEHOUSE,                     },
+/*  11 */ { MAP_17A_MT_BOSS_TARGITZANS_REALLY_SACRED_CHAMBER,  },
+/*  12 */ { MAP_113_TDL_BOSS_TERRYS_NEST,                      },
+/*  13 */ { MAP_0C6_MT_KICKBALL_ARENA_1,                       },
+/*  14 */ { MAP_0C8_MT_KICKBALL_ARENA_2,                       },
+/*  15 */ { MAP_0C9_MT_KICKBALL_ARENA_3,                       },
+/*  16 */ { MAP_0DE_WW_DODGEM_CHALLENGE_1V1,                   },
+/*  17 */ { MAP_0DF_WW_DODGEM_CHALLENGE_2V1,                   },
+/*  18 */ { MAP_0E0_WW_DODGEM_CHALLENGE_3V1,                   },
+/*  19 */ { MAP_12E_HFP_LAVA_KICKBALL_STADIUM_1,               },
+/*  20 */ { MAP_12F_HFP_LAVA_KICKBALL_STADIUM_2,               },
+/*  21 */ { MAP_130_HFP_LAVA_KICKBALL_STADIUM_3,               },
+/*  22 */ { MAP_19A_CK_BOSS_HAG_1,                             },
+/*  23 */ { MAP_12B_HFP_LAVA_BOSS_CHILLI_BILLI,                },
+/*  24 */ { MAP_12C_HFP_ICY_BOSS_CHILLY_WILLY,                 },
+/*  25 */ { MAP_13F_CCL_BOSS_MINGY_JONGOS_SKULL,               },
 };
-
-static struct struct01
-arr01[] =
-{
-    0
-};
-
 
 s32 DLL_gcintrotext_02(MAP map, u32 *a1, u32 *a2)
 {
@@ -277,7 +295,7 @@ s32 DLL_gcintrotext_02(MAP map, u32 *a1, u32 *a2)
     return fn_priv_01(map);
 }
 
-/*static*/ struct struct00 *fn_priv_00(MAP map)
+static struct struct00 *fn_priv_00(MAP map)
 {
     s32 i;
 
@@ -290,7 +308,13 @@ s32 DLL_gcintrotext_02(MAP map, u32 *a1, u32 *a2)
 
 static bool fn_priv_01(MAP map)
 {
-    return FALSE;
+    s32 i;
+
+    for (i = 0; i < ARRLEN(arr01); i++)
+        if (map == arr01[i])
+            return FALSE;
+
+    return TRUE;
 }
 
 

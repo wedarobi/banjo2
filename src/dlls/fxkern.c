@@ -126,12 +126,14 @@ static void print(Gfx **dl, s32 x, s32 y, u8 *str, s32 lastIdx)
     fn_gfx_head_printing(dl);
 
     for (; lastIdx >= 0; lastIdx--)
+    {
         fn_gfx_print_char(
             dl,
             x + letterOffsets[lastIdx].offsetX,
             y + letterOffsets[lastIdx].offsetY,
             str[lastIdx]
         );
+    }
 
     fn_gfx_tail_printing(dl);
 }

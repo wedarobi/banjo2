@@ -44,6 +44,8 @@ fn_flag_get_and_increment_multi  = 0x800E2884;
 fn_flag_get_multi_sum            = 0x800E28C0;
 fn_flag_get_and_set              = 0x800E2924;
 
+fn_flag_set_675_TRUE = 0x80103F7C;
+
 gsWorldGetSection = 0x800F0B8C;
 
 fn_Object_privStorPtr_get = 0x801057C4;

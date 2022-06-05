@@ -47,6 +47,8 @@ s32  fn_flag_get_and_increment_multi(FLAG flag, u32 width);
 s32  fn_flag_get_multi_sum(FLAG flag, u32 width);
 bool fn_flag_get_and_set(FLAG flag, bool value);
 
+void fn_flag_set_675_TRUE(void);
+
 MAP gsWorldGetSection(void);
 
 void fn_rom_fetch_WORD(u32 addr, u32 *dst);

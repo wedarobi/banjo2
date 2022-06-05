@@ -269,7 +269,7 @@ var gSyscallIdxMap;
  */
 var gCallTableOffsetMap;
 
-function init_gSyscallIdx_map()
+function init_gSyscallIdx_map(romVer)
 {
     const fSyscallIdx = gCurrDir + "enum/syscallidx.txt";
 
@@ -278,7 +278,7 @@ function init_gSyscallIdx_map()
 
     let lines = fs.readFileSync(fSyscallIdx).toString().split(/\r?\n/g);
 
-    let isUsa = gRomVer === "usa";
+    let isUsa = romVer === "usa";
 
     //- We want to create a map between <DLL_name, syscallIdx> with the following loop
     let o = {};
@@ -1161,19 +1161,108 @@ async function dll_compress(rawFilePath, rawFile=null)
 
     //- Compress
     {
+        //# Dump just for fun
+        let bodyWithPreOutPath  = rawFilePath + ".raw";
+        //- Remove preheader before compression
+        fs.writeFileSync(bodyWithPreOutPath, rawFile);
+
         let bodyOutPath  = rawFilePath + ".body";
         let gzOutPath    = rawFilePath + ".gz";
         let finalOutPath = rawFilePath + ".dll";
 
-        if (!fs.existsSync(`${gRootDir}tools/mcompress/bin/mcompress`))
-            FATAL(`Couldn't find [mcompress] binary!`);
+        if (!fs.existsSync(`${gRootDir}tools/mcompress/bin/minigzip`))
+            FATAL(`Couldn't find [minigzip] (zlib:1.0.6) binary!`);
 
         //- Remove preheader before compression
         fs.writeFileSync(bodyOutPath, rawFile.slice(0x10));
 
-        await spawn(`${gRootDir}tools/mcompress/bin/mcompress -g bt --pad 4 --padval 0 -l 9 -s -i ${path.resolve(bodyOutPath)} -o ${path.resolve(gzOutPath)}`);
+        let gzOut;
 
-        let gzOut = fs.readFileSync(gzOutPath);
+        const USE_ZLIB_BINARY = false;
+
+        if (USE_ZLIB_BINARY)
+        {
+            //# zlib binary overwrites file completely, so make a copy
+            fs.writeFileSync(gzOutPath,   rawFile.slice(0x10));
+    
+            await spawn(`${gRootDir}tools/mcompress/bin/minigzip ${path.resolve(gzOutPath)}`);
+            //# zlib binary appends .gz to the end of everything, cut it
+            fs.renameSync(gzOutPath + ".gz", gzOutPath);
+    
+            gzOut = fs.readFileSync(gzOutPath);
+        }
+        else
+        {
+            gzOut = zlib.deflateRawSync(rawFile.slice(0x10));
+            //# Write just for fun
+            fs.writeFile(gzOutPath, gzOut, () => {});
+        }
+
+
+        //= Postprocess the zlib-compressed file
+        {
+            //# Trim the file buffer appropriately
+
+            if (USE_ZLIB_BINARY)
+            {
+                /**
+                 * The zlib binary [minigzip] prepends a header and appends
+                 * a checksum. We need to trim both off, and also prepend
+                 * the 2-byte decompressed size value.
+                 */
+
+                let start = 0x08;
+                // Where the checksum starts. We need to zero this area.
+                let tail  = gzOut.byteLength - 8;
+                let end   = tail;
+    
+                while (end % 4)
+                    end++;
+
+                //# Write decompressed size (2 bytes)
+                {
+                    let decompressedSize = (ALIGN(rawFile.byteLength, 0x10) - 0x10) / 0x10;
+                    gzOut.writeUint16BE(decompressedSize, start);
+                }
+
+                for (let i = tail; i < end; i++)
+                    // Zero-fill
+                    gzOut.writeUint8(0, i);
+    
+                //# Perform final slice
+                gzOut = gzOut.slice(start, end);
+            }
+            else
+            {
+                /**
+                 * node:zlib.deflateRawSync() only returns the stream, no extraneous
+                 * checksums or headers, so we don't need to trim it.
+                 * 
+                 * We just need to prepend the decompressed size.
+                 */
+
+                let decompressedSizeLength = 0x02;
+
+                let start = 0;
+                let end = gzOut.byteLength + decompressedSizeLength;
+
+                while (end % 4)
+                    end++;                
+
+                //= Alloc extended buffer. Needs to be extended for extra padding.
+                let newBuf = Buffer.alloc(end).fill(0);
+
+                //# Write decompressed size (2 bytes)
+                {
+                    let decompressedSize = (ALIGN(rawFile.byteLength, 0x10) - 0x10) / 0x10;
+                    newBuf.writeUint16BE(decompressedSize, start);
+                }
+
+                gzOut.slice(start).copy(newBuf, decompressedSizeLength);
+
+                gzOut = newBuf;
+            }
+        }
 
         //- Get ready to splice on encrypted preheader
 
@@ -1222,7 +1311,7 @@ function update_rom_version(newRomVer)
     }
 
     //- Initialise the syscall map
-    init_gSyscallIdx_map();
+    init_gSyscallIdx_map(gRomVer);
 }
 
 /**

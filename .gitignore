@@ -83,3 +83,4 @@ ver/*/syms/AUTO.txt
 ver/*/syms/DLL.txt
 
 tools/mcompress/gzip
+tools/mcompress/zlib

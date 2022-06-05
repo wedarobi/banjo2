@@ -264,7 +264,7 @@ function ALIGN(value, pad)
 var gSyscallIdxMap;
 /**
  * Map between <DLL_name, callTableOffset>
- * 
+ *
  * WARN: Only usable inside certain functions, it's only updated for a version on-demand
  */
 var gCallTableOffsetMap;
@@ -1180,7 +1180,7 @@ async function dll_compress(rawFilePath, rawFile=null)
 
         /**
          * There's no real difference.
-         * 
+         *
          * The 25-year old zlib binary and the node.js implementation both seem
          * to produce identical outputs. Choose whichever you prefer.
          */
@@ -1190,11 +1190,11 @@ async function dll_compress(rawFilePath, rawFile=null)
         {
             //# zlib binary overwrites file completely, so make a copy
             fs.writeFileSync(gzOutPath,   rawFile.slice(0x10));
-    
+
             await spawn(`${gRootDir}tools/mcompress/bin/minigzip ${path.resolve(gzOutPath)}`);
             //# zlib binary appends .gz to the end of everything, cut it
             fs.renameSync(gzOutPath + ".gz", gzOutPath);
-    
+
             gzOut = fs.readFileSync(gzOutPath);
         }
         else
@@ -1235,7 +1235,7 @@ async function dll_compress(rawFilePath, rawFile=null)
                 for (let i = tail; i < end; i++)
                     // Zero-fill
                     gzOut.writeUint8(0, i);
-    
+
                 //# Perform final slice
                 gzOut = gzOut.slice(start, end);
             }
@@ -1244,7 +1244,7 @@ async function dll_compress(rawFilePath, rawFile=null)
                 /**
                  * node:zlib.deflateRawSync() only returns the stream, no extraneous
                  * checksums or headers, so we don't need to trim it.
-                 * 
+                 *
                  * We just need to prepend the decompressed size.
                  */
 
@@ -1255,7 +1255,7 @@ async function dll_compress(rawFilePath, rawFile=null)
 
                 //# Calculate padding requirements
                 while (end % 4)
-                    end++;                
+                    end++;
 
                 //# Alloc extended buffer. Needs to be extended for extra padding.
                 let newBuf = Buffer.alloc(end).fill(0);
@@ -1492,7 +1492,7 @@ async function dll_full_build_multi(dllNames)
             catch (err)
             {
                 console.error(err);
-    
+
                 //= Pass
             }
         }

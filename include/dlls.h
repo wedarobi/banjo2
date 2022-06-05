@@ -781,6 +781,31 @@
 /*@oooo*/ u32 DLL_glcrc_00_crc_calc_and_update   (u8 *data, s32 len);
 /*@oooo*/ u32 DLL_glcrc_01_crc_calc_and_validate (u8 *data, s32 len);
 /* $ glcutDll */
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/ void DLL_glcutDll_06(u32, u32);
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/ bool DLL_glcutDll_19(u32);
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/
+/*@oooo*/ void DLL_glcutDll_24(u32, u32, u32);
 /* $ gldbDll */
 /* $ gldbstring */
 /* $ gldialog */
@@ -932,9 +957,9 @@
 /* $ sufreezy */
 /* $ suinv */
 /* $ sujiggy */
-/*@oooo*/ u32  DLL_sujiggy_00_completed_puzzle_flags_get   (void);
-/*@oooo*/ u32  DLL_sujiggy_01_total_puzzle_count_get       (void);
-/*@oooo*/ u8   DLL_sujiggy_02                              (s32 a0);
+/*@oooo*/ s32  DLL_sujiggy_00_completed_puzzle_flags_get   (void);
+/*@oooo*/ s32  DLL_sujiggy_01_total_puzzle_count_get       (void);
+/*@oooo*/ s32  DLL_sujiggy_02                              (s32 a0);
 /*@oooo*/ f32  DLL_sujiggy_03                              (s32 a0);
 /*@oooo*/ MAP  DLL_sujiggy_04                              (s32 a0);
 /*@oooo*/ u8   DLL_sujiggy_05                              (s32 a0);
@@ -946,17 +971,18 @@
 /*@oooo*/ u32  DLL_sujiggy_11                              (void);
 /*@oooo*/ u32  DLL_sujiggy_12                              (void);
 /*@oooo*/ u32  DLL_sujiggy_13                              (void);
-/*@oooo*/ u32  DLL_sujiggy_14                              (s32 a0, s32 a1);
-/*@oooo*/ u32  DLL_sujiggy_15                              (void);
+/*@oooo*/ u32  DLL_sujiggy_14                              (void);
+/*@oooo*/ u32  DLL_sujiggy_15                              (s32 a0, s32 a1);
 /*@oooo*/ u32  DLL_sujiggy_16                              (void);
-/*@oooo*/ bool DLL_sujiggy_17                              (void);
-/*@oooo*/ s32  DLL_sujiggy_18                              (void);
-/*@oooo*/ bool DLL_sujiggy_19                              (s32 a0);
-/*@oooo*/ bool DLL_sujiggy_20                              (void);
-/*@oooo*/ u8   DLL_sujiggy_21                              (s32 a0);
-/*@oooo*/ u16  DLL_sujiggy_22                              (s32 a0);
-/*@oooo*/ u32  DLL_sujiggy_23                              (void);
-/*@oooo*/ u32  DLL_sujiggy_24                              (s32 a0);
+/*@oooo*/ s32  DLL_sujiggy_17                              (void);
+/*@oooo*/ bool DLL_sujiggy_18                              (void);
+/*@oooo*/ s32  DLL_sujiggy_19                              (void);
+/*@oooo*/ bool DLL_sujiggy_20                              (s32 a0);
+/*@oooo*/ bool DLL_sujiggy_21                              (void);
+/*@oooo*/ u8   DLL_sujiggy_22                              (s32 a0);
+/*@oooo*/ u16  DLL_sujiggy_23                              (s32 a0);
+/*@oooo*/ u32  DLL_sujiggy_24                              (void);
+/*@oooo*/ u32  DLL_sujiggy_25                              (s32 a0);
 /* $ sukickball */
 /* $ sulights */
 /* $ sumissilehome */

@@ -49,7 +49,9 @@ bool fn_flag_get_and_set(FLAG flag, bool value);
 
 MAP gsWorldGetSection(void);
 
+void fn_rom_fetch_WORD(u32 addr, u32 *dst);
 
+s32 fn_SPITEM_count_get(u32);
 
 
 

@@ -21,7 +21,7 @@ typedef enum LEVEL
 
 typedef enum MAP
 {
-    MAP_MIN = 0x00A0,
+    MAP_0A0_MIN = 0x00A0,
 
     /*// 0x0001 - 0x00A0 unused (leftover from Banjo-Kazooie?)*/
     /* 0x00A1 */ MAP_0A1_CUTSCENE_TWO_YEARS_HAVE_PASSED, /* exit 0 */
@@ -290,7 +290,7 @@ typedef enum MAP
     /* 0x01A8 */ MAP_1A8_JRL_ATLANTIS,
     /* 0x01A9 */ MAP_1A9_JRL_SEA_BOTTOM,
 
-    MAP_MAX // 0x1AA
+    MAP_1AA_MAX // 0x1AA
 } MAP;
 
 #endif // __ENUM_MAP__

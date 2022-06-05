@@ -796,7 +796,7 @@
 /* $ glpackvtx */
 /* $ glrecord */
 /* $ glreflight */
-/*@oooo*/ u32 DLL_glreflight_00(void);
+/*@oooo*/ s32 DLL_glreflight_00(void);
 /* $ glrtc */
 /* $ glsavegame */
 /* $ glsplineDll */
@@ -932,6 +932,31 @@
 /* $ sufreezy */
 /* $ suinv */
 /* $ sujiggy */
+/*@oooo*/ u32  DLL_sujiggy_00_completed_puzzle_flags_get   (void);
+/*@oooo*/ u32  DLL_sujiggy_01_total_puzzle_count_get       (void);
+/*@oooo*/ u8   DLL_sujiggy_02                              (s32 a0);
+/*@oooo*/ f32  DLL_sujiggy_03                              (s32 a0);
+/*@oooo*/ MAP  DLL_sujiggy_04                              (s32 a0);
+/*@oooo*/ u8   DLL_sujiggy_05                              (s32 a0);
+/*@oooo*/ u8   DLL_sujiggy_06                              (s32 a0);
+/*@oooo*/ u8   DLL_sujiggy_07                              (s32 a0);
+/*@oooo*/ void DLL_sujiggy_08                              (void);
+/*@oooo*/ void DLL_sujiggy_09                              (void);
+/*@oooo*/ void DLL_sujiggy_10                              (void);
+/*@oooo*/ u32  DLL_sujiggy_11                              (void);
+/*@oooo*/ u32  DLL_sujiggy_12                              (void);
+/*@oooo*/ u32  DLL_sujiggy_13                              (void);
+/*@oooo*/ u32  DLL_sujiggy_14                              (s32 a0, s32 a1);
+/*@oooo*/ u32  DLL_sujiggy_15                              (void);
+/*@oooo*/ u32  DLL_sujiggy_16                              (void);
+/*@oooo*/ bool DLL_sujiggy_17                              (void);
+/*@oooo*/ s32  DLL_sujiggy_18                              (void);
+/*@oooo*/ bool DLL_sujiggy_19                              (s32 a0);
+/*@oooo*/ bool DLL_sujiggy_20                              (void);
+/*@oooo*/ u8   DLL_sujiggy_21                              (s32 a0);
+/*@oooo*/ u16  DLL_sujiggy_22                              (s32 a0);
+/*@oooo*/ u32  DLL_sujiggy_23                              (void);
+/*@oooo*/ u32  DLL_sujiggy_24                              (s32 a0);
 /* $ sukickball */
 /* $ sulights */
 /* $ sumissilehome */

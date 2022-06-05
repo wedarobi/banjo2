@@ -48,9 +48,9 @@ gsWorldGetSection = 0x800F0CEC;
 
 fn_Object_privStorPtr_get = 0x80105984;
 
+fn_rom_fetch_WORD = 0x8001D8C0;
 
-
-
+fn_SPITEM_count_get = 0x800D88CC;
 
 
 

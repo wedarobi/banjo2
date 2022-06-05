@@ -2,6 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 import argparse
 import sys
+import re
 from typing import (
     Any,
     Dict,
@@ -235,6 +236,45 @@ parser.add_argument(
     help="The maximum length of the diff, in lines.",
 )
 
+#=============================
+#= DLL
+parser.add_argument(
+    "-d",
+    "--dll",
+    dest="NAME_OF_DLL",
+    type=str,
+    default="",
+    help="The name of the DLL to diff.",
+)
+parser.add_argument(
+    "-f",
+    "--func",
+    "--fn",
+    "--function",
+    dest="NAME_OF_FUNCTION",
+    type=str,
+    default="",
+    help="The public function inside the DLL to diff against.",
+)
+parser.add_argument(
+    "-r",
+    "--rom",
+    "--romver",
+    dest="NAME_OF_ROMVER",
+    type=str,
+    default="",
+    help="The build of the game to use.",
+)
+parser.add_argument(
+    "--bs",
+    "--base_start",
+    dest="BASE_START",
+    type=str,
+    default="",
+    help="",
+)
+#=============================
+
 # Project-specific flags, e.g. different versions/make arguments.
 add_custom_arguments_fn = getattr(diff_settings, "add_custom_arguments", None)
 if add_custom_arguments_fn:
@@ -274,6 +314,10 @@ except ModuleNotFoundError as e:
 # ==== CONFIG ====
 
 args = parser.parse_args()
+
+# print(args)
+# import os
+# os._exit(0)
 
 # Set imgs, map file and make flags in a project-specific manner.
 config: Dict[str, Any] = {}
@@ -558,49 +602,64 @@ def dump_objfile() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
     )
 
 
-# def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
-#     if not baseimg or not myimg:
-#         fail("Missing myimg/baseimg in config.")
-#     if args.make:
-#         run_make(myimg)
-#     start_addr = maybe_eval_int(args.start)
-#     if start_addr is None:
-#         _, start_addr = search_map_file(args.start)
-#         if start_addr is None:
-#             fail("Not able to find function in map file.")
-#     if args.end is not None:
-#         end_addr = eval_int(args.end, "End address must be an integer expression.")
-#     else:
-#         end_addr = start_addr + MAX_FUNCTION_SIZE_BYTES
-#     objdump_flags = ["-Dz", "-bbinary", "-EB"]
-#     flags1 = [
-#         f"--start-address={start_addr + base_shift}",
-#         f"--stop-address={end_addr + base_shift}",
-#     ]
-#     flags2 = [f"--start-address={start_addr}", f"--stop-address={end_addr}"]
-#     return (
-#         myimg,
-#         (objdump_flags + flags1, baseimg, None),
-#         (objdump_flags + flags2, myimg, None),
-#     )
-
 def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
-    dlls = {
-        "chcoderoombits": [0x10DC, 0xE0],
-        "fxkern": [0, 0]
-    }
 
-    dll_name = "fxkern"
-    romver   = "jpn"
+    if not args.NAME_OF_DLL:
+        print(f"Pass the name of a DLL with -d")
+
+    if not args.NAME_OF_FUNCTION:
+        print(f"Pass the name of a DLL public function with -f")
+
+    if not args.NAME_OF_ROMVER:
+        print(f"Pass the name of the rom version to use with -r")
+
+    if not args.BASE_START:
+        print(f"Pass the offset of where to start diffing the base DLL with --bs")
+
+    dll_name = args.NAME_OF_DLL
+    romver   = args.NAME_OF_ROMVER
 
     baseimg = f"../../../expected/{romver}/dlls/{dll_name}.raw"
-    myimg   = f"../../../build/{romver}/dlls/{dll_name}.bin"
+    myimg   = f"../../../build/{   romver}/dlls/{dll_name}.bin"
 
-    start_base = dlls[dll_name][0] #0x100
-    start_my   = dlls[dll_name][1]
+    path_myPubFnDump = f"../../../build/{romver}/dlls/{dll_name}_pubfndump.txt"
+
+    myPubFnDump = ""
+
+    with open(path_myPubFnDump, "r") as f:
+        myPubFnDump = f.read()
+
+    #- Split the dump into lines
+    myPubFnDump = re.split(r"\r?\n", myPubFnDump)
+
+    #- arg should be a hex string
+    if not args.BASE_START:
+        args.BASE_START = 0
+    elif type(args.BASE_START) == str:
+        args.BASE_START = int(args.BASE_START, 0)
+
+    start_base = args.BASE_START # dlls[dll_name][0] #0x100
+    start_my   = 0 # dlls[dll_name][1]
 
     end_base   = start_base + MAX_FUNCTION_SIZE_BYTES
     end_my     = start_my   + MAX_FUNCTION_SIZE_BYTES
+
+    found = False
+
+    #- Parse in lines from the _pubfndump.txt
+    for line in myPubFnDump:
+        words = re.split(r"\s+", line)
+
+        if args.NAME_OF_FUNCTION == words[0]:
+            start_my = words[1]
+            end_my   = int(words[1], 0) + int(words[2], 0)
+            found    = True
+
+            break
+
+    if not found:
+        print(f"FATAL: Public function not found! Make sure it's non-static!")
+        sys.exit(1)
 
     objdump_flags = ['-Dz', '-bbinary', '-mmips', '-EB']
     flags1 = [f"--start-address={start_base}", f"--stop-address={end_base}"]
@@ -1634,8 +1693,13 @@ def main() -> None:
                             error=True,
                         )
                         continue
-                mydump = run_objdump(mycmd)
+
+                #- Re-dump binary to update the pubfndump offsets
+                _, _, mycmd = dump_binary()
+                mydump      = run_objdump(mycmd)
+
                 display.update(mydump, error=False)
+
         except KeyboardInterrupt:
             display.terminate()
 

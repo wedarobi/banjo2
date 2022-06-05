@@ -7,6 +7,8 @@ const zlib   = require("node:zlib");
 
 const stringSimilarity = require("string-similarity");
 
+
+
 /* constants ***********************************************/
 
 const allRomVers = ["usa", "jpn", "eur", "aus"];
@@ -22,7 +24,6 @@ const VERSION_CONSTANTS =
 // {
 //     return { dlls: `vers/dlls/${romVer}/misc`, };
 // }
-
 
 /***********************************************************/
 
@@ -799,6 +800,8 @@ async function dll_process(dll, objFilePath)
     // output path
     const binFilePath = objFilePath.replace(/\.o$/, ".bin");
 
+    const pubFnDumpPath = objFilePath.replace(/\.o$/, "_pubfndump.txt");
+
     if (!(dll in gSyscallIdxMap))
         FATAL(`DLL [${dll}] not in curr rom version [${gRomVer}]`);
 
@@ -893,8 +896,9 @@ async function dll_process(dll, objFilePath)
 
                 //- Pub functions all found!
 
-            }
+                //= We can't dump pub fns to disk yet, because we haven't determined the header size
 
+            }
         }
     }
 
@@ -1107,6 +1111,15 @@ async function dll_process(dll, objFilePath)
             runningSize = size_05_fullheader;
 
             binary.copy(finalBinary, runningSize, 0);
+
+
+            //= Write pub func dump - used by diff script to find functions without a .map file
+            //# We can do this now because we can calculate the full header size
+            {
+                fs.writeFileSync(pubFnDumpPath,
+                    pubFns.map(p => `${p.name} 0x${(p.loc + size_05_fullheader).hex()} 0x${p.size.hex()}`).join("\n")
+                );
+            }
         }
 
         //- Write final buffer out
@@ -1170,9 +1183,6 @@ async function dll_compress(rawFilePath, rawFile=null)
         let gzOutPath    = rawFilePath + ".gz";
         let finalOutPath = rawFilePath + ".dll";
 
-        if (!fs.existsSync(`${gRootDir}tools/mcompress/bin/minigzip`))
-            FATAL(`Couldn't find [minigzip] (zlib:1.0.6) binary!`);
-
         //- Remove preheader before compression
         fs.writeFileSync(bodyOutPath, rawFile.slice(0x10));
 
@@ -1188,10 +1198,15 @@ async function dll_compress(rawFilePath, rawFile=null)
 
         if (USE_ZLIB_BINARY)
         {
-            //# zlib binary overwrites file completely, so make a copy
-            fs.writeFileSync(gzOutPath,   rawFile.slice(0x10));
+            const bin = `${gRootDir}tools/mcompress/bin/minigzip`;
 
-            await spawn(`${gRootDir}tools/mcompress/bin/minigzip ${path.resolve(gzOutPath)}`);
+            if (!fs.existsSync(bin))
+                FATAL(`Couldn't find [minigzip] (zlib:1.0.6) binary! Either provide it, or switch to using internal zlib.`);
+
+            //# zlib binary overwrites file completely, so make a copy
+            fs.writeFileSync(gzOutPath, rawFile.slice(0x10));
+
+            await spawn(`${bin} ${path.resolve(gzOutPath)}`);
             //# zlib binary appends .gz to the end of everything, cut it
             fs.renameSync(gzOutPath + ".gz", gzOutPath);
 
@@ -1200,7 +1215,7 @@ async function dll_compress(rawFilePath, rawFile=null)
         else
         {
             gzOut = zlib.deflateRawSync(rawFile.slice(0x10));
-            //# Write just for fun
+            //# (async) Write just for fun
             fs.writeFile(gzOutPath, gzOut, () => {});
         }
 

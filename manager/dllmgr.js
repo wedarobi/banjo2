@@ -1178,6 +1178,12 @@ async function dll_compress(rawFilePath, rawFile=null)
 
         let gzOut;
 
+        /**
+         * There's no real difference.
+         * 
+         * The 25-year old zlib binary and the node.js implementation both seem
+         * to produce identical outputs. Choose whichever you prefer.
+         */
         const USE_ZLIB_BINARY = false;
 
         if (USE_ZLIB_BINARY)
@@ -1215,7 +1221,8 @@ async function dll_compress(rawFilePath, rawFile=null)
                 // Where the checksum starts. We need to zero this area.
                 let tail  = gzOut.byteLength - 8;
                 let end   = tail;
-    
+
+                //# Calculate padding requirements
                 while (end % 4)
                     end++;
 
@@ -1246,10 +1253,11 @@ async function dll_compress(rawFilePath, rawFile=null)
                 let start = 0;
                 let end = gzOut.byteLength + decompressedSizeLength;
 
+                //# Calculate padding requirements
                 while (end % 4)
                     end++;                
 
-                //= Alloc extended buffer. Needs to be extended for extra padding.
+                //# Alloc extended buffer. Needs to be extended for extra padding.
                 let newBuf = Buffer.alloc(end).fill(0);
 
                 //# Write decompressed size (2 bytes)
@@ -1258,8 +1266,10 @@ async function dll_compress(rawFilePath, rawFile=null)
                     newBuf.writeUint16BE(decompressedSize, start);
                 }
 
+                //# Copy across into new buffer
                 gzOut.slice(start).copy(newBuf, decompressedSizeLength);
 
+                //# Store reference
                 gzOut = newBuf;
             }
         }

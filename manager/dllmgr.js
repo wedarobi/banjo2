@@ -1389,6 +1389,11 @@ async function HELPER_parse_out_dll_linker_symbols()
                     currDllName = dlls_h.substr(i + 5, lookahead).split(/\s+/g)[0];
                     currCtoAddr = (dllCallTblStart + (gCallTableOffsetMap[currDllName] * 8)) >>> 0;
 
+                    //# We +8 whenever we encounter a declaration, so prime for the first one by a -8
+                    currCtoAddr -= 8;
+
+                    waiting = false;
+
                     continue;
                 }
 
@@ -1405,8 +1410,12 @@ async function HELPER_parse_out_dll_linker_symbols()
                         waiting = false;
 
                     else if (magicCharForCurrVer === "o")
+                    {
                         //# Applies, now wait until we find the symbol
                         waiting = true;
+
+                        currCtoAddr += 8;
+                    }
 
                     continue;
                 }
@@ -1422,7 +1431,6 @@ async function HELPER_parse_out_dll_linker_symbols()
 
                     //# Prime for the next declaration for the same DLL
                     waiting = false;
-                    currCtoAddr += 8;
                 }
             }
 

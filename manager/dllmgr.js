@@ -1218,7 +1218,7 @@ async function dll_compress(rawFilePath, rawFile=null)
                  */
 
                 let start = 0x08;
-                // Where the checksum starts. We need to zero this area.
+                //# Where the checksum starts. We need to zero this area.
                 let tail  = gzOut.byteLength - 8;
                 let end   = tail;
 
@@ -1233,7 +1233,7 @@ async function dll_compress(rawFilePath, rawFile=null)
                 }
 
                 for (let i = tail; i < end; i++)
-                    // Zero-fill
+                    //# Zero-fill
                     gzOut.writeUint8(0, i);
 
                 //# Perform final slice

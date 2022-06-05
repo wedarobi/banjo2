@@ -171,7 +171,7 @@ u32 DLL_sujiggy_15(s32 a0, s32 a1)
 {
     if (fn_flag_get(FLAG_58A_UNK))
     {
-        DLL_glcutDll_06(decrypt_map_with_bootcode(mapInfo[a0].encryptedLevelEntranceMapIdx), a0 + 0x7A);
+        DLL_glcutDll_06(decrypt_map_with_bootcode(mapInfo[a0].encryptedLevelEntranceMapIdx), 0x7A + a0);
     }
     else if (a1 != 0)
     {
@@ -180,7 +180,7 @@ u32 DLL_sujiggy_15(s32 a0, s32 a1)
     else
     {
         fn_flag_set_TRUE(FLAG_58A_UNK);
-        DLL_glcutDll_24(decrypt_map_with_bootcode(mapInfo[a0].encryptedLevelEntranceMapIdx), MAP_151_IOH_JIGGYWIGGYS_TEMPLE, a0 + 0x7A);
+        DLL_glcutDll_24(decrypt_map_with_bootcode(mapInfo[a0].encryptedLevelEntranceMapIdx), MAP_151_IOH_JIGGYWIGGYS_TEMPLE, 0x7A + a0);
     }
 }
 
@@ -221,7 +221,7 @@ s32 DLL_sujiggy_19(void)
 
 bool DLL_sujiggy_20(s32 a0)
 {
-    return DLL_glcutDll_19(a0 + 0x7A) == FALSE
+    return DLL_glcutDll_19(0x7A + a0) == FALSE
         && DLL_sujiggy_00_completed_puzzle_flags_get() > a0
         && fn_flag_get(FLAG_392_PROGRESS_OPENED_WORLD_MT + a0) == FALSE;
 }

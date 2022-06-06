@@ -1516,26 +1516,80 @@ async function dll_full_build_multi(dllNames)
             {
                 console.error(err);
 
+                //# Append empty space
+                results_raw[idx] += "".padStart(18, " ");
+
                 //= Pass
             }
         }
     }
 
-    //- Print results
-    for (let USE_COMPRESSION of [false, true])
+    //- Postprocess results
     {
-        let strs = [];
+        //# Check if compression worked for all builds
+        {
+            for (let i = 0; i < results_cmp.length; i++)
+            {
+                let m = results_cmp[i].match(/OK/g);
 
-        strs.push(`Results (compression: ${USE_COMPRESSION ? gct("ON", "green"): gct("OFF", "red")})`);
-        strs.push(...(USE_COMPRESSION ? results_cmp : results_raw).map(x => gct("> ", "black") + x));
+                // console.log(m)
 
-        printInBox(strs, USE_COMPRESSION ? "green" : "red");
+                if (m?.length === allRomVers.length)
+                {
+                    //- Worked for all builds
+
+                    //# Splice on a line in the raw result
+                    results_raw[i] += `   ${gct(`DONE`, "black")}`;
+
+                    //# Remove the line in the compressed results
+                    results_cmp[i] = "";
+                }
+                else
+                {
+                    //- Failed for at least one build
+
+                    //# Splice on a line in the raw result
+                    results_raw[i] += `   ${gct(`----`, "red")}`;
+                }
+            }
+        }
     }
+
+    //- Print results
+    {
+        //= Raw
+        {
+            let strs = [];
+
+            strs.push(`Status`);
+            strs.push(...results_raw.filter(x => x).map(x => gct("> ", "black") + x));
+
+            printInBox(strs, "cyan");            
+        }
+
+        //= Compressed
+        if (results_cmp.filter(x => x).length)
+        {
+            let strs = [];
+
+            strs.push(`Non-matching compression`);
+            strs.push(...results_cmp.filter(x => x).map(x => gct("> ", "black") + x));
+
+            printInBox(strs, "red");
+        }
+    }
+}
+
+const argv = process.argv.slice(2);
+
+function _ARG(letter)
+{
+    return argv.filter(x => new RegExp("^-[A-Za-z0-9]*?" + letter + "[A-Za-z0-9]*?").test(x)).length > 0;
 }
 
 async function main()
 {
-    const argv = process.argv.slice(2);
+    // const argv = process.argv.slice(2);
 
     // if (!argv.length)
     //     FATAL(`ERR: Provide filename of ROM to use as a target!`);
@@ -1545,9 +1599,11 @@ async function main()
 
     update_rom_version(gRomVer);
 
-    let arg_toWatch = argv.filter(x => x.startsWith("-") && x.includes("w")).length > 0;
+    let arg_toWatch          = _ARG("w");
+    let arg_noInitialCompile = _ARG("n");
 
-    let dllNames = [
+    let dllNames =
+    [
         // "glreflight",
         // "bamoveledge",
         // "cosection",
@@ -1565,8 +1621,11 @@ async function main()
     // if (arg_toWatch && dllNames.length > 1)
     //     FATAL(`Cannot watch more than one DLL file!`);
 
-    log(`Building ${dllNames.length} DLL(s)...`);
-    await dll_full_build_multi(dllNames);
+    if (!arg_noInitialCompile)
+    {
+        log(`Building ${dllNames.length} DLL(s)...`);
+        await dll_full_build_multi(dllNames);
+    }
 
     //- Watch for changes
     if (arg_toWatch)

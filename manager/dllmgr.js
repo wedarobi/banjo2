@@ -1628,7 +1628,12 @@ async function dll_full_build_multi(dllNames)
 
     const LEGEND_MARK = "●";
 
-    var numCompleteDlls = 0;
+    var numDlls =
+    {
+        OK:  0,
+        CMP: 0,
+        BAD: 0,
+    };
 
     //- Postprocess results
     {
@@ -1646,8 +1651,12 @@ async function dll_full_build_multi(dllNames)
                     : str_contains_colour(str, MATCH_COLOURS.OK ) ? MATCH_COLOURS.OK
                     : MATCH_COLOURS.BAD;
 
-                if (colour === MATCH_COLOURS.OK)
-                    numCompleteDlls++;
+                switch (colour)
+                {
+                    case MATCH_COLOURS.OK:  numDlls.OK++;  break;
+                    case MATCH_COLOURS.CMP: numDlls.CMP++; break;
+                    case MATCH_COLOURS.BAD: numDlls.BAD++; break;
+                }
 
                 results[i] = `${gct(LEGEND_MARK + " ", colour)}` + str;
             }
@@ -1670,13 +1679,39 @@ async function dll_full_build_multi(dllNames)
             {
                 //- Show a large stylised box for multiple DLLs
 
-                let header = `Status`.padEnd(27, " ");
-                header += gct(LEGEND_MARK,          MATCH_COLOURS.BAD);
-                header += gct(" non-matching   ",   "black");
-                header += gct(LEGEND_MARK,          MATCH_COLOURS.CMP);
-                header += gct(" compression   ",    "black");
-                header += gct(LEGEND_MARK,          MATCH_COLOURS.OK);
+                let str_counts = "";
+                // str_counts    += gct("  < ", "black");
+                // str_counts    += gct(numDlls.OK, MATCH_COLOURS.OK);
+                // str_counts    += gct(" / ", "black");
+                // str_counts    += gct(numDlls.CMP, MATCH_COLOURS.CMP);
+                // str_counts    += gct(" / ", "black");
+                // str_counts    += gct(numDlls.BAD, MATCH_COLOURS.BAD);
+                // str_counts    += gct(" >", "black");
+
+                // let str_counts = ` ${gct("<", "black")} ${gct(numDlls.OK, MATCH_COLOURS.OK)} / ${gct(numDlls.CMP, MATCH_COLOURS.CMP)} / ${gct(numDlls.BAD, MATCH_COLOURS.BAD)} >`;
+
+                //# If string does not contain any colour codes
+                let headerPad = 27;
+                //# If contains colour codes
+                // headerPad += 16 * /* num gct() calls -> */ 7;
+
+                let remainingDllCount;
+                {
+                    //= The build with the most DLLs is "usa"
+                    init_gSyscallIdx_map("usa");
+
+                    remainingDllCount = Object.keys(gSyscallIdxMap).length - dllNames.length;
+                }
+
+                let header = `Status${str_counts}`.padEnd(headerPad, " ");
+                header += gct(numDlls.OK,           MATCH_COLOURS.OK);
                 header += gct(" matching   ",       "black");
+                header += gct(numDlls.CMP,          MATCH_COLOURS.CMP);
+                header += gct(" compression   ",    "black");
+                header += gct(numDlls.BAD,          MATCH_COLOURS.BAD);
+                header += gct(" non-matching   ",   "black");
+                header += gct(remainingDllCount,    "black");
+                header += gct(" unlisted   ",       "black");
     
                 strs.push(header);
                 strs.push(...results_raw.filter(x => x));

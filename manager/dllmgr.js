@@ -112,9 +112,11 @@ Number.prototype.hex = function()
 function gct(msg, colour, underline=false)
 {
     let ul = underline ? "4m" : "1m";
-    let reset = "\x1b[97;0;1m"; /// standard bright white (force no underline)
-    /// the "4m" in "32;0;4m" makes it underline. "1m" makes it non-underline
-    let codes = {
+    //# standard bright white (force no underline)
+    let reset = "\x1b[97;0;1m";
+
+    let codes =
+    {
         black:  "30",
         red:    "31",
         green:  "32",
@@ -124,7 +126,11 @@ function gct(msg, colour, underline=false)
         cyan:   "36",
         white:  "37"
     };
-    let code = colour in codes ? codes[colour] : codes["pink"]; /// default special colour is pink
+
+    let code = colour in codes
+        ? codes[colour]
+        //# default special colour is pink
+        : codes["pink"];
 
     return `\x1b[${code};${ul}${msg}${reset}`;
 }
@@ -1462,7 +1468,7 @@ async function dll_full_build_multi(dllNames)
         {
             //# Init results strings
             if (!results_raw[idx]) results_raw[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
-            if (!results_cmp[idx]) results_cmp[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
+            // if (!results_cmp[idx]) results_cmp[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
 
             try
             {
@@ -1487,6 +1493,16 @@ async function dll_full_build_multi(dllNames)
                 //# Outputs compressed files
                 let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw);
 
+                /**
+                 * Used to know whether to override the raw status with
+                 * the compressed status.
+                 * 
+                 * If true, uses compression's status instead.
+                 */
+                let rawIsMatching = false;
+
+                let resultToAppend = "";
+
                 for (let USE_COMPRESSION of [false, true])
                 {
                     let file = USE_COMPRESSION ? file_cmp : file_raw;
@@ -1494,23 +1510,31 @@ async function dll_full_build_multi(dllNames)
                     let similarity = await get_similarity_dll(dllName, file, USE_COMPRESSION);
                     let endPad = SHOW_FILE_SIZES ? 14 : 10;
 
-                    // let filesize = (typeof file !== "string" ? (file.byteLength / 1000).toFixed(1) : "0") + " kB";
+                    if (!USE_COMPRESSION && similarity.found && similarity.similarity === 1)
+                    {
+                        rawIsMatching = true;
+
+                        //# Defer to the compressed result
+                        continue;
+                    }
+
                     let filesize = (typeof file !== "string" ? file.byteLength : 0).toString() + " B";
                     let sizeSuffix = SHOW_FILE_SIZES
                         ? gct(`OK`, "green") + gct(` ${filesize}`.padEnd(endPad - 2, " "), "black")
                         : gct(`OK`.padEnd(endPad, " "), "green");
 
-                    let results = USE_COMPRESSION ? results_cmp : results_raw;
 
-                    results[idx] += similarity.found && similarity.similarity === 1
-                        ? gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + sizeSuffix
-                        : gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " " + gct(`${(similarity.similarity * 100).toFixed(1)}%`.padEnd(endPad, " "), "red")
+                    if (!USE_COMPRESSION || rawIsMatching)
+                    {
+                        resultToAppend = gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " ";
 
+                        resultToAppend += similarity.found && similarity.similarity === 1
+                            ? sizeSuffix
+                            : gct(`${(similarity.similarity * 100).toFixed(1)}%`.padEnd(endPad, " "), USE_COMPRESSION ? "yellow" : "red")
+                    }
                 }
 
-                // await dll_package("/mnt/r/chcoderoombits_edited.bin")
-
-
+                results_raw[idx] += resultToAppend;
             }
             catch (err)
             {
@@ -1524,32 +1548,33 @@ async function dll_full_build_multi(dllNames)
         }
     }
 
+    // var numCompleteDlls = 0;
+
     //- Postprocess results
     {
         //# Check if compression worked for all builds
         {
-            for (let i = 0; i < results_cmp.length; i++)
-            {
-                let m = results_cmp[i].match(/OK/g);
+            let results = results_raw;
 
-                // console.log(m)
+            for (let i = 0; i < results.length; i++)
+            {
+                let m = results[i].match(/OK/g);
 
                 if (m?.length === allRomVers.length)
                 {
                     //- Worked for all builds
 
                     //# Splice on a line in the raw result
-                    results_raw[i] += `   ${gct(`DONE`, "black")}`;
+                    results[i] += `   ${gct(`DONE`, "black")}`;
 
-                    //# Remove the line in the compressed results
-                    results_cmp[i] = "";
+                    // numCompleteDlls++;
                 }
                 else
                 {
                     //- Failed for at least one build
 
                     //# Splice on a line in the raw result
-                    results_raw[i] += `   ${gct(`----`, "red")}`;
+                    results[i] += `   ${gct(`----`, "red")}`;
                 }
             }
         }
@@ -1561,21 +1586,20 @@ async function dll_full_build_multi(dllNames)
         {
             let strs = [];
 
-            strs.push(`Status`);
+            const LEGEND_MARK = "●";
+
+            let header = `Status`.padEnd(27, " ");
+            header += gct(LEGEND_MARK,          "red");
+            header += gct(" non-matching   ",   "black");
+            header += gct(LEGEND_MARK,          "yellow");
+            header += gct(" compression   ",    "black");
+            header += gct(LEGEND_MARK,          "green");
+            header += gct(" matching   ",       "black");
+
+            strs.push(header);
             strs.push(...results_raw.filter(x => x).map(x => gct("> ", "black") + x));
 
             printInBox(strs, "cyan");            
-        }
-
-        //= Compressed
-        if (results_cmp.filter(x => x).length)
-        {
-            let strs = [];
-
-            strs.push(`Non-matching compression`);
-            strs.push(...results_cmp.filter(x => x).map(x => gct("> ", "black") + x));
-
-            printInBox(strs, "red");
         }
     }
 }

@@ -1548,7 +1548,7 @@ async function dll_full_build_multi(dllNames)
         }
     }
 
-    // var numCompleteDlls = 0;
+    var numCompleteDlls = 0;
 
     //- Postprocess results
     {
@@ -1567,7 +1567,7 @@ async function dll_full_build_multi(dllNames)
                     //# Splice on a line in the raw result
                     results[i] += `   ${gct(`DONE`, "black")}`;
 
-                    // numCompleteDlls++;
+                    numCompleteDlls++;
                 }
                 else
                 {
@@ -1599,7 +1599,13 @@ async function dll_full_build_multi(dllNames)
             strs.push(header);
             strs.push(...results_raw.filter(x => x).map(x => gct("> ", "black") + x));
 
-            printInBox(strs, "cyan");            
+            printInBox(strs,
+                  dllNames.length > 1
+                ? "yellow"
+                : numCompleteDlls === 1
+                ? "green"
+                : "red"
+            );
         }
     }
 }

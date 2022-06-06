@@ -47,6 +47,11 @@ const log = (msg, prefix="INFO") =>
     console.log(msg);
 }
 
+const rlog = (msg) =>
+{
+    process.stdout.write(msg + "\r");
+}
+
 function DEBUG_LOG(msg)
 {
     if (false)
@@ -109,37 +114,42 @@ Number.prototype.hex = function()
     return this.toString(16).toUpperCase();
 }
 
+const COLOUR_CODES =
+{
+    black:  "30",
+    red:    "31",
+    green:  "32",
+    yellow: "33",
+    blue:   "34",
+    pink:   "35",
+    cyan:   "36",
+    white:  "37"
+};
+
 function gct(msg, colour, underline=false)
 {
     let ul = underline ? "4m" : "1m";
     //# standard bright white (force no underline)
     let reset = "\x1b[97;0;1m";
 
-    let codes =
-    {
-        black:  "30",
-        red:    "31",
-        green:  "32",
-        yellow: "33",
-        blue:   "34",
-        pink:   "35",
-        cyan:   "36",
-        white:  "37"
-    };
-
-    let code = colour in codes
-        ? codes[colour]
+    let code = colour in COLOUR_CODES
+        ? COLOUR_CODES[colour]
         //# default special colour is pink
-        : codes["pink"];
+        : COLOUR_CODES["pink"];
 
     return `\x1b[${code};${ul}${msg}${reset}`;
+}
+
+function str_contains_colour(str, colour)
+{
+    return str.includes(`\x1b[${COLOUR_CODES[colour]};`);
 }
 
 /**
  * This function takes an array of strings and puts them in a nice ascii box.
  * @param {String[]} msgArr
  */
-function printInBox (msgArr, colour="white")
+function print_lines_in_box(msgArr, colour="white")
 {
     function removeColour (str)
     {
@@ -1485,38 +1495,62 @@ async function HELPER_parse_out_dll_linker_symbols()
     }
 }
 
+const MATCH_COLOURS =
+{
+    //# matching
+    OK:  "green",
+    //# compressed
+    CMP: "yellow",
+    //# non-matching
+    BAD: "red",
+};
+
 async function dll_full_build_multi(dllNames)
 {
     await HELPER_parse_out_dll_linker_symbols();
 
-    const SHOW_FILE_SIZES = false;
+    // const SHOW_FILE_SIZES = false;
 
     let results_raw = [];
     let results_cmp = [];
 
-    for (let romVer of allRomVers)
+    /**
+     * If even one version of a DLL is not skipped, we want
+     * to remember that.
+     */
+    let ifDllNotSkipped = [];
+
+    for (let [rvIdx, romVer] of allRomVers.entries())
     {
         update_rom_version(romVer);
 
         for (let [idx, dllName] of dllNames.entries())
         {
-            
+            const CELL_PADDING = 17;
+
+            const CELL_PREPAD = rvIdx === 0 ? 0 : 3;
+
             try
             {
                 let fn_c = gRootDir + `src/dlls/${dllName}.c`;
-                
-                let toSkip = await dll_get_if_to_skip_build(dllName);
+
+                let toSkip = !arg_forceCompileAll && await dll_get_if_to_skip_build(dllName);
+
+                if (!ifDllNotSkipped[idx])
+                    ifDllNotSkipped[idx] = 0;
+
+                ifDllNotSkipped[idx] |= !toSkip;
                 
                 //# Init results strings
-                if (!results_raw[idx]) results_raw[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), !toSkip ? "cyan" : "black");
-                // if (!results_cmp[idx]) results_cmp[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
+                if (!results_raw[idx])
+                    results_raw[idx] = "";
 
 
                 if (!fs.existsSync(fn_c) || fs.statSync(fn_c).size === 0)
                 {
                     //= Placeholder DLL, don't waste time processing it
-                    results_raw[idx] += "".padEnd(18, " ");
-                    results_cmp[idx] += "".padEnd(18, " ");
+                    results_raw[idx] += "".padStart(CELL_PADDING, " ");
+                    results_cmp[idx] += "".padStart(CELL_PADDING, " ");
 
                     continue;
                 }
@@ -1553,7 +1587,7 @@ async function dll_full_build_multi(dllNames)
                     }
 
                     let similarity = await get_similarity_dll(dllName, file, USE_COMPRESSION, toSkip);
-                    let endPad = SHOW_FILE_SIZES ? 14 : 10;
+                    let endPad = 10;
 
                     if (!USE_COMPRESSION && similarity.found && similarity.similarity === 1)
                     {
@@ -1563,19 +1597,13 @@ async function dll_full_build_multi(dllNames)
                         continue;
                     }
 
-                    let filesize = (typeof file !== "string" ? file.byteLength : 0).toString() + " B";
-                    let sizeSuffix = SHOW_FILE_SIZES
-                        ? gct(`OK`, "green") + gct(` ${filesize}`.padEnd(endPad - 2, " "), "black")
-                        : gct(`OK`.padEnd(endPad, " "), "green");
-
-
                     if (!USE_COMPRESSION || rawIsMatching)
                     {
-                        resultToAppend = gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black") + " ";
+                        resultToAppend = gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black").padStart(CELL_PREPAD, " ") + " ";
 
                         resultToAppend += similarity.found && similarity.similarity === 1
-                            ? sizeSuffix
-                            : gct(`${(similarity.similarity * 100).toFixed(1)}%`.padEnd(endPad, " "), USE_COMPRESSION ? "yellow" : "red")
+                            ? gct(`OK`.padEnd(endPad, " "), MATCH_COLOURS.OK)
+                            : gct(`${(similarity.similarity * 100).toFixed(1)}%`.padEnd(endPad), USE_COMPRESSION ? MATCH_COLOURS.CMP : MATCH_COLOURS.BAD)
                     }
                 }
 
@@ -1586,12 +1614,19 @@ async function dll_full_build_multi(dllNames)
                 console.error(err);
 
                 //# Append empty space
-                results_raw[idx] += "".padStart(18, " ");
+                results_raw[idx] += "".padStart(CELL_PADDING, " ");
 
                 //= Pass
             }
         }
     }
+
+
+    for (let [idx, dllName] of dllNames.entries())
+        results_raw[idx] =
+            gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), ifDllNotSkipped[idx] ? "cyan" : "black") + results_raw[idx];
+
+    const LEGEND_MARK = "●";
 
     var numCompleteDlls = 0;
 
@@ -1603,24 +1638,18 @@ async function dll_full_build_multi(dllNames)
 
             for (let i = 0; i < results.length; i++)
             {
-                let m = results[i].match(/OK/g);
+                let str = results[i];
 
-                if (m?.length === allRomVers.length)
-                {
-                    //- Worked for all builds
+                let colour =
+                      str_contains_colour(str, MATCH_COLOURS.BAD) ? MATCH_COLOURS.BAD
+                    : str_contains_colour(str, MATCH_COLOURS.CMP) ? MATCH_COLOURS.CMP
+                    : str_contains_colour(str, MATCH_COLOURS.OK ) ? MATCH_COLOURS.OK
+                    : MATCH_COLOURS.BAD;
 
-                    //# Splice on a line in the raw result
-                    results[i] += `   ${gct(`DONE`, "black")}`;
-
+                if (colour === MATCH_COLOURS.OK)
                     numCompleteDlls++;
-                }
-                else
-                {
-                    //- Failed for at least one build
 
-                    //# Splice on a line in the raw result
-                    results[i] += `   ${gct(`----`, "red")}`;
-                }
+                results[i] = `${gct(LEGEND_MARK + " ", colour)}` + str;
             }
         }
     }
@@ -1631,26 +1660,29 @@ async function dll_full_build_multi(dllNames)
         {
             let strs = [];
 
-            const LEGEND_MARK = "●";
+            if (dllNames.length === 1)
+            {
+                ///- Show compact log line for single DLL
 
-            let header = `Status`.padEnd(27, " ");
-            header += gct(LEGEND_MARK,          "red");
-            header += gct(" non-matching   ",   "black");
-            header += gct(LEGEND_MARK,          "yellow");
-            header += gct(" compression   ",    "black");
-            header += gct(LEGEND_MARK,          "green");
-            header += gct(" matching   ",       "black");
+                log(`  ${results_raw[0]}`);
+            }
+            else
+            {
+                //- Show a large stylised box for multiple DLLs
 
-            strs.push(header);
-            strs.push(...results_raw.filter(x => x).map(x => gct("> ", "black") + x));
+                let header = `Status`.padEnd(27, " ");
+                header += gct(LEGEND_MARK,          MATCH_COLOURS.BAD);
+                header += gct(" non-matching   ",   "black");
+                header += gct(LEGEND_MARK,          MATCH_COLOURS.CMP);
+                header += gct(" compression   ",    "black");
+                header += gct(LEGEND_MARK,          MATCH_COLOURS.OK);
+                header += gct(" matching   ",       "black");
+    
+                strs.push(header);
+                strs.push(...results_raw.filter(x => x));
 
-            printInBox(strs,
-                  dllNames.length > 1
-                ? "yellow"
-                : numCompleteDlls === 1
-                ? "green"
-                : "red"
-            );
+                print_lines_in_box(strs, "yellow");
+            }
         }
     }
 }
@@ -1661,6 +1693,11 @@ function _ARG(letter)
 {
     return argv.filter(x => new RegExp("^-[A-Za-z0-9]*?" + letter + "[A-Za-z0-9]*?").test(x)).length > 0;
 }
+
+const arg_toWatch          = _ARG("w");
+const arg_noInitialCompile = _ARG("n");
+const arg_forceCompileAll  = _ARG("f");
+
 
 async function main()
 {
@@ -1674,8 +1711,6 @@ async function main()
 
     update_rom_version(gRomVer);
 
-    let arg_toWatch          = _ARG("w");
-    let arg_noInitialCompile = _ARG("n");
 
     let dllNames =
     [
@@ -1720,7 +1755,9 @@ async function main()
 
                 lastModTime = now;
 
-                log(gct(`  Detected change, rebuilding: ${gct(dll, "yellow")}`, "black"));
+                //# rlog: Allow the next printed line to overwrite it
+                rlog(gct(`  Detected change, rebuilding: ${gct(dll, "yellow")}`, "black"));
+
                 await dll_full_build_multi([dll]);
             });
         }

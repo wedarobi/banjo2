@@ -1505,6 +1505,52 @@ const MATCH_COLOURS =
     BAD: "red",
 };
 
+/**
+ * Order log result strings by the colour of the initial dot etc.
+ * 
+ * The higher the number, the lower it'll be on the list.
+ * 
+ * @param {string} str 
+ * @returns 
+ */
+function _order_colours(str)
+{
+    switch (str.substr(0, 5))
+    {
+        case `\x1b[${COLOUR_CODES[MATCH_COLOURS.OK ]};`: return 10;
+        case `\x1b[${COLOUR_CODES[MATCH_COLOURS.CMP]};`: return 20;
+        case `\x1b[${COLOUR_CODES[MATCH_COLOURS.BAD]};`:
+        {
+            //# The more % signs, the more builds at least succeeded, so show them higher
+            let countPercentChars = str.match(/%/g)?.length;
+            if (!countPercentChars)
+                countPercentChars = 0;
+
+            return 100 - countPercentChars;
+        }
+        default:
+            return 0;
+    }
+}
+
+/**
+ * 
+ * @param {string[]} rArr 
+ * @returns 
+ */
+function _order_dll_result_strings_by_status(rArr)
+{
+    return rArr.sort((a, b) =>
+    {
+        a = _order_colours(a);
+        b = _order_colours(b);
+
+        if      (a < b) return -1;
+        else if (a > b) return 1;
+        else            return 0;
+    });
+}
+
 async function dll_full_build_multi(dllNames)
 {
     await HELPER_parse_out_dll_linker_symbols();
@@ -1714,7 +1760,7 @@ async function dll_full_build_multi(dllNames)
                 header += gct(" unlisted   ",       "black");
     
                 strs.push(header);
-                strs.push(...results_raw.filter(x => x));
+                strs.push(..._order_dll_result_strings_by_status(results_raw.filter(x => x)));
 
                 print_lines_in_box(strs, "yellow");
             }

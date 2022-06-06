@@ -210,47 +210,54 @@ const CMD =
     include:   "-I . -I include -I include/2.0L -I include/2.0L/PR",
 };
 
+async function dll_get_if_to_skip_build(dll)
+{
+    ensureDir("build");
+    ensureDir(`build/${gRomVer}`);
+    ensureDir(`build/${gRomVer}/dlls`);
+
+    const file_in  = gRootDir + `src/dlls/${dll}.c`;
+    const file_out = gRootDir + `build/${gRomVer}/dlls/${dll}.lpo`;
+
+    return fs.existsSync(file_in)
+        && fs.existsSync(file_out)
+        && (await fsp.stat(file_in)).mtimeMs < (await fsp.stat(file_out)).mtimeMs;
+}
 
 /**
  * Builds the .c file for a DLL and outputs an ELF .o file.
  *
  * @param {string} dll name of dll, as a string. e.g. "cosection"
  */
-async function dll_build(dll)
+async function dll_build(dll, toSkip=false)
 {
     //- Exec
-
-    if (!fs.existsSync("build"))
-        fs.mkdirSync("build");
-
-    if (!fs.existsSync(`build/${gRomVer}`))
-        fs.mkdirSync(`build/${gRomVer}`);
-
-    if (!fs.existsSync(`build/${gRomVer}/dlls`))
-        fs.mkdirSync(`build/${gRomVer}/dlls`);
 
     const file_in  = gRootDir + `src/dlls/${dll}.c`;
     const file_out = gRootDir + `build/${gRomVer}/dlls/${dll}.o`;
 
-    let cmd = "";
-    cmd += ` -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm -signed`;
-    /**
-     * 649: "Missing member name in struct/union"
-     * 807: ?
-     * 838: "Microsoft extension" > nested structs/unions (?)
-     */
-    cmd += ` -woff 649,807,838`;
-    cmd += ` -O2 -mips2 -D_FINALROM -DF3DEX2_GBI ${CMD.include}`;
-    cmd += ` ${file_in} -o ${file_out}`;
-
-    //- Env vars
-    let env = "";
+    if (!toSkip)
     {
-        //- Pass "VERSION_USA" etc macros
-        env += `-DVERSION_${gRomVer.toUpperCase()}=1`;
-    }
+        let cmd = "";
+        cmd += ` -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm -signed`;
+        /**
+         * 649: "Missing member name in struct/union"
+         * 807: ?
+         * 838: "Microsoft extension" > nested structs/unions (?)
+         */
+        cmd += ` -woff 649,807,838`;
+        cmd += ` -O2 -mips2 -D_FINALROM -DF3DEX2_GBI ${CMD.include}`;
+        cmd += ` ${file_in} -o ${file_out}`;
 
-    await spawn(`${CMD.cc} ${cmd} ${env}`);
+        //- Env vars
+        let env = "";
+        {
+            //- Pass "VERSION_USA" etc macros
+            env += `-DVERSION_${gRomVer.toUpperCase()}=1`;
+        }
+
+        await spawn(`${CMD.cc} ${cmd} ${env}`);
+    }
 
     return file_out;
 }
@@ -359,7 +366,7 @@ function init_gCallTableOffset_map(romVer)
  * @param {Buffer} newDllFile the encrypted header, along with the decompressed file contents
  * @param {boolean} compressed if true, compare compressed version instead
  */
-async function get_similarity_dll(dllName, newDllFile, compressed=false)
+async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=false)
 {
     let syscallIdx = gSyscallIdxMap[dllName];
 
@@ -413,6 +420,7 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false)
         dllUncompressed.copy(buf_vani, 0x10);
 
         //= Copy to [expected] folder
+        if (!toSkip)
         {
             // fs.writeFileSync("./tmp.vani.bin", buf_vani);
             // FATAL("./tmp.vani.bin");
@@ -434,6 +442,7 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false)
         );
 
         //= Copy to [expected] folder
+        if (!toSkip)
         {
             // fs.writeFileSync("./tmp.vani.bin", buf_vani);
             // FATAL("./tmp.vani.bin");
@@ -801,7 +810,7 @@ function elf_get_syms(elf, symNameArr)
  * @param {string} dll         name of dll, as a string. e.g. "cosection"
  * @param {string} objFilePath the path to the .o file to use as input
  */
-async function dll_process(dll, objFilePath)
+async function dll_process(dll, objFilePath, toSkip=false)
 {
     // output path
     const binFilePath = objFilePath.replace(/\.o$/, ".bin");
@@ -1032,8 +1041,11 @@ async function dll_process(dll, objFilePath)
             let FILE_OBJECT = `build/${gRomVer}/dlls/${dll}.o`;
             let FILE_LINKED = `build/${gRomVer}/dlls/${dll}.lpo`;
 
-            await spawn(`mips-linux-gnu-ld ${LINKER_INCLUDES} ${FILE_OBJECT} -o ${FILE_LINKED}`);
-            await spawn(`mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary ${FILE_LINKED} ${out}`);
+            if (!toSkip)
+            {
+                await spawn(`mips-linux-gnu-ld ${LINKER_INCLUDES} ${FILE_OBJECT} -o ${FILE_LINKED}`);
+                await spawn(`mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary ${FILE_LINKED} ${out}`);
+            }
         }
 
         if (!fs.existsSync(out))
@@ -1122,14 +1134,20 @@ async function dll_process(dll, objFilePath)
             //= Write pub func dump - used by diff script to find functions without a .map file
             //# We can do this now because we can calculate the full header size
             {
-                fs.writeFileSync(pubFnDumpPath,
-                    pubFns.map(p => `${p.name} 0x${(p.loc + size_05_fullheader).hex()} 0x${p.size.hex()}`).join("\n")
-                );
+                if (!toSkip)
+                {
+                    fs.writeFileSync(pubFnDumpPath,
+                        pubFns.map(p => `${p.name} 0x${(p.loc + size_05_fullheader).hex()} 0x${p.size.hex()}`).join("\n")
+                    );
+                }
             }
         }
 
-        //- Write final buffer out
-        fs.writeFileSync(binFilePath, finalBinary);
+        if (!toSkip)
+        {
+            //- Write final buffer out
+            fs.writeFileSync(binFilePath, finalBinary);
+        }
     }
 
     return [binFilePath, finalBinary];
@@ -1170,7 +1188,7 @@ async function dll_preheader_encrypt(rawFilePath, rawFile=null)
  * @param {string} rawFilePath
  * @param {Buffer} rawFile the raw dll file (already compiled and linked and everything)
  */
-async function dll_compress(rawFilePath, rawFile=null)
+async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
 {
     if (!rawFile)
         rawFile = fs.readFileSync(rawFilePath);
@@ -1178,19 +1196,25 @@ async function dll_compress(rawFilePath, rawFile=null)
     if (rawFile.readUint8(0xF) !== 0x82)
         FATAL(`Cannot package DLL: missing preheader!`);
 
+    //# Dump just for fun
+    let bodyWithPreOutPath  = rawFilePath + ".raw";
+
+    let bodyOutPath  = rawFilePath + ".body";
+    let gzOutPath    = rawFilePath + ".gz";
+    let finalOutPath = rawFilePath + ".dll";
+
+    let finalOut;
+
     //- Compress
     {
-        //# Dump just for fun
-        let bodyWithPreOutPath  = rawFilePath + ".raw";
-        //- Remove preheader before compression
-        fs.writeFileSync(bodyWithPreOutPath, rawFile);
+        if (!toSkip)
+        {
+            //- Remove preheader before compression
+            fs.writeFileSync(bodyWithPreOutPath, rawFile);
 
-        let bodyOutPath  = rawFilePath + ".body";
-        let gzOutPath    = rawFilePath + ".gz";
-        let finalOutPath = rawFilePath + ".dll";
-
-        //- Remove preheader before compression
-        fs.writeFileSync(bodyOutPath, rawFile.slice(0x10));
+            //- Remove preheader before compression
+            fs.writeFileSync(bodyOutPath, rawFile.slice(0x10));
+        }
 
         let gzOut;
 
@@ -1206,23 +1230,30 @@ async function dll_compress(rawFilePath, rawFile=null)
         {
             const bin = `${gRootDir}tools/mcompress/bin/minigzip`;
 
-            if (!fs.existsSync(bin))
-                FATAL(`Couldn't find [minigzip] (zlib:1.0.6) binary! Either provide it, or switch to using internal zlib.`);
+            if (!toSkip)
+            {
+                if (!fs.existsSync(bin))
+                    FATAL(`Couldn't find [minigzip] (zlib:1.0.6) binary! Either provide it, or switch to using internal zlib.`);
 
-            //# zlib binary overwrites file completely, so make a copy
-            fs.writeFileSync(gzOutPath, rawFile.slice(0x10));
+                //# zlib binary overwrites file completely, so make a copy
+                fs.writeFileSync(gzOutPath, rawFile.slice(0x10));
 
-            await spawn(`${bin} ${path.resolve(gzOutPath)}`);
-            //# zlib binary appends .gz to the end of everything, cut it
-            fs.renameSync(gzOutPath + ".gz", gzOutPath);
+                await spawn(`${bin} ${path.resolve(gzOutPath)}`);
+                //# zlib binary appends .gz to the end of everything, cut it
+                fs.renameSync(gzOutPath + ".gz", gzOutPath);
+            }
 
             gzOut = fs.readFileSync(gzOutPath);
         }
         else
         {
             gzOut = zlib.deflateRawSync(rawFile.slice(0x10));
-            //# (async) Write just for fun
-            fs.writeFile(gzOutPath, gzOut, () => {});
+
+            if (!toSkip)
+            {
+                //# (async) Write just for fun
+                fs.writeFile(gzOutPath, gzOut, () => {});
+            }
         }
 
 
@@ -1297,18 +1328,21 @@ async function dll_compress(rawFilePath, rawFile=null)
 
         //- Get ready to splice on encrypted preheader
 
-        let finalOut = Buffer.alloc(gzOut.byteLength + 0x10).fill(0);
+        finalOut = Buffer.alloc(gzOut.byteLength + 0x10).fill(0);
 
         {
             rawFile.copy(finalOut, 0, 0, 0x10);
             gzOut.copy(finalOut, 0x10, 0);
         }
 
-        //- Write final
-        fs.writeFileSync(finalOutPath, finalOut);
-
-        return [ finalOutPath, finalOut ];
+        if (!toSkip)
+        {
+            //- Write final
+            fs.writeFileSync(finalOutPath, finalOut);
+        }
     }
+
+    return [ finalOutPath, finalOut ];
 }
 
 
@@ -1466,13 +1500,17 @@ async function dll_full_build_multi(dllNames)
 
         for (let [idx, dllName] of dllNames.entries())
         {
-            //# Init results strings
-            if (!results_raw[idx]) results_raw[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
-            // if (!results_cmp[idx]) results_cmp[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
-
+            
             try
             {
                 let fn_c = gRootDir + `src/dlls/${dllName}.c`;
+                
+                let toSkip = await dll_get_if_to_skip_build(dllName);
+                
+                //# Init results strings
+                if (!results_raw[idx]) results_raw[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), !toSkip ? "cyan" : "black");
+                // if (!results_cmp[idx]) results_cmp[idx] = gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), "cyan");
+
 
                 if (!fs.existsSync(fn_c) || fs.statSync(fn_c).size === 0)
                 {
@@ -1483,15 +1521,16 @@ async function dll_full_build_multi(dllNames)
                     continue;
                 }
 
-                let fn_o = await dll_build(dllName);
 
-                let [fn_raw, file_raw] = await dll_process(dllName, fn_o);
+                let fn_o = await dll_build(dllName, toSkip);
+
+                let [fn_raw, file_raw] = await dll_process(dllName, fn_o, toSkip);
 
                 await dll_preheader_encrypt(fn_raw, file_raw);
 
 
                 //# Outputs compressed files
-                let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw);
+                let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw, toSkip);
 
                 /**
                  * Used to know whether to override the raw status with
@@ -1507,7 +1546,13 @@ async function dll_full_build_multi(dllNames)
                 {
                     let file = USE_COMPRESSION ? file_cmp : file_raw;
 
-                    let similarity = await get_similarity_dll(dllName, file, USE_COMPRESSION);
+                    if (file === undefined)
+                    {
+                        log(dllName)
+                        log(USE_COMPRESSION)
+                    }
+
+                    let similarity = await get_similarity_dll(dllName, file, USE_COMPRESSION, toSkip);
                     let endPad = SHOW_FILE_SIZES ? 14 : 10;
 
                     if (!USE_COMPRESSION && similarity.found && similarity.similarity === 1)

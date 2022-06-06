@@ -38,7 +38,7 @@ void fn_gfx_print_char(Gfx **, s32, s32, u8);
 
 /* flag */
 bool fn_flag_get(FLAG flag);
-void fn_flag_set(FLAG flag);
+void fn_flag_set(FLAG flag, bool value);
 void fn_flag_set_FALSE(FLAG flag);
 void fn_flag_set_TRUE(FLAG flag);
 s32  fn_flag_get_multi(FLAG flag, u32 width);
@@ -55,7 +55,10 @@ void fn_rom_fetch_WORD(u32 addr, u32 *dst);
 
 s32 fn_SPITEM_count_get(u32);
 
-
+/* gcwater */
+void *func_800BEB28(s32);
+void *func_800B2720(void *);
+s32   func_800AAD80(void *);
 
 
 

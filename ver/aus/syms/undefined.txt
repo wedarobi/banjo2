@@ -54,7 +54,9 @@ fn_rom_fetch_WORD = 0x8001D8C0;
 
 fn_SPITEM_count_get = 0x800D87AC;
 
-
+func_800BEB28 = 0x800C7894;
+func_800B2720 = 0x800BB9BC;
+func_800AAD80 = 0x800B410C;
 
 
 

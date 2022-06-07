@@ -293,14 +293,14 @@ var gSyscallIdxMap;
  */
 var gCallTableOffsetMap;
 
-function init_gSyscallIdx_map(romVer)
+async function init_gSyscallIdx_map(romVer)
 {
     const fSyscallIdx = gCurrDir + "enum/syscallidx.txt";
 
     if (!fs.existsSync(fSyscallIdx))
         FATAL(`File missing: [${fSyscallIdx}]`);
 
-    let lines = fs.readFileSync(fSyscallIdx).toString().split(/\r?\n/g);
+    let lines = (await fsp.readFile(fSyscallIdx)).toString().split(/\r?\n/g);
 
     let isUsa = romVer === "usa";
 
@@ -343,14 +343,14 @@ function init_gSyscallIdx_map(romVer)
     gSyscallIdxMap = o;
 }
 
-function init_gCallTableOffset_map(romVer)
+async function init_gCallTableOffset_map(romVer)
 {
     const fCallTableOffset = gCurrDir + `enum/calltableoffset/${romVer}.txt`;
 
     if (!fs.existsSync(fCallTableOffset))
         FATAL(`File missing: [${fCallTableOffset}]`);
 
-    let lines = fs.readFileSync(fCallTableOffset).toString().split(/\r?\n/g);
+    let lines = (await fsp.readFile(fCallTableOffset)).toString().split(/\r?\n/g);
 
     //- We want to create a map between <DLL_name, callTableOffset> with the following loop
     let o = {};
@@ -439,7 +439,7 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=
             ensureDir(gRootDir + `expected/${gRomVer}`);
             ensureDir(gRootDir + `expected/${gRomVer}/dlls`);
 
-            fs.writeFileSync(gRootDir + `expected/${gRomVer}/dlls/${dllName}.raw`, buf_vani);
+            await fsp.writeFile(gRootDir + `expected/${gRomVer}/dlls/${dllName}.raw`, buf_vani);
         }
     }
     else
@@ -461,7 +461,7 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=
             ensureDir(gRootDir + `expected/${gRomVer}`);
             ensureDir(gRootDir + `expected/${gRomVer}/dlls`);
 
-            fs.writeFileSync(gRootDir + `expected/${gRomVer}/dlls/${dllName}.dll`, buf_vani);
+            await fsp.writeFile(gRootDir + `expected/${gRomVer}/dlls/${dllName}.dll`, buf_vani);
         }
     }
 
@@ -839,7 +839,7 @@ async function dll_process(dll, objFilePath, toSkip=false)
     //- Prepare to read from the ELF .o file
 
     /** @type {Buffer} */
-    let elf = fs.readFileSync(objFilePath);
+    let elf = await fsp.readFile(objFilePath);
 
     let preheader = Buffer.alloc(0x10).fill(0);
     //# This is all written in-game, we don't need to touch it
@@ -1061,7 +1061,7 @@ async function dll_process(dll, objFilePath, toSkip=false)
         if (!fs.existsSync(out))
             FATAL(`Build failed: objcopy result missing for: ${dll}`);
 
-        let binary = fs.readFileSync(out);
+        let binary = await fsp.readFile(out);
         {
             //- Fix linking "errors"
             /**
@@ -1146,7 +1146,7 @@ async function dll_process(dll, objFilePath, toSkip=false)
             {
                 if (!toSkip)
                 {
-                    fs.writeFileSync(pubFnDumpPath,
+                    await fsp.writeFile(pubFnDumpPath,
                         pubFns.map(p => `${p.name} 0x${(p.loc + size_05_fullheader).hex()} 0x${p.size.hex()}`).join("\n")
                     );
                 }
@@ -1156,7 +1156,7 @@ async function dll_process(dll, objFilePath, toSkip=false)
         if (!toSkip)
         {
             //- Write final buffer out
-            fs.writeFileSync(binFilePath, finalBinary);
+            await fsp.writeFile(binFilePath, finalBinary);
         }
     }
 
@@ -1166,7 +1166,7 @@ async function dll_process(dll, objFilePath, toSkip=false)
 async function dll_preheader_encrypt(rawFilePath, rawFile=null)
 {
     if (!rawFile)
-        rawFile = fs.readFileSync(rawFilePath);
+        rawFile = await fsp.readFile(rawFilePath);
 
     if (rawFile.readUint8(0xF) !== 0x82)
         FATAL(`Cannot package DLL: missing preheader!`);
@@ -1201,7 +1201,7 @@ async function dll_preheader_encrypt(rawFilePath, rawFile=null)
 async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
 {
     if (!rawFile)
-        rawFile = fs.readFileSync(rawFilePath);
+        rawFile = await fsp.readFile(rawFilePath);
 
     if (rawFile.readUint8(0xF) !== 0x82)
         FATAL(`Cannot package DLL: missing preheader!`);
@@ -1220,10 +1220,10 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
         if (!toSkip)
         {
             //- Remove preheader before compression
-            fs.writeFileSync(bodyWithPreOutPath, rawFile);
+            await fsp.writeFile(bodyWithPreOutPath, rawFile);
 
             //- Remove preheader before compression
-            fs.writeFileSync(bodyOutPath, rawFile.slice(0x10));
+            await fsp.writeFile(bodyOutPath, rawFile.slice(0x10));
         }
 
         let gzOut;
@@ -1246,14 +1246,14 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
                     FATAL(`Couldn't find [minigzip] (zlib:1.0.6) binary! Either provide it, or switch to using internal zlib.`);
 
                 //# zlib binary overwrites file completely, so make a copy
-                fs.writeFileSync(gzOutPath, rawFile.slice(0x10));
+                await fsp.writeFile(gzOutPath, rawFile.slice(0x10));
 
                 await spawn(`${bin} ${path.resolve(gzOutPath)}`);
                 //# zlib binary appends .gz to the end of everything, cut it
-                fs.renameSync(gzOutPath + ".gz", gzOutPath);
+                await fsp.rename(gzOutPath + ".gz", gzOutPath);
             }
 
-            gzOut = fs.readFileSync(gzOutPath);
+            gzOut = await fsp.readFile(gzOutPath);
         }
         else
         {
@@ -1348,7 +1348,7 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
         if (!toSkip)
         {
             //- Write final
-            fs.writeFileSync(finalOutPath, finalOut);
+            await fsp.writeFile(finalOutPath, finalOut);
         }
     }
 
@@ -1364,7 +1364,7 @@ var gBaserom;
  *
  * @param {string} newRomVer
  */
-function update_rom_version(newRomVer)
+async function update_rom_version(newRomVer)
 {
     //- Get version for ROM you want to work with
     {
@@ -1382,11 +1382,11 @@ function update_rom_version(newRomVer)
         if (!fs.existsSync(baseromPath))
             FATAL(`No baserom for the curr rom version: ${baseromPath}`);
 
-        gBaserom = fs.readFileSync(baseromPath);
+        gBaserom = await fsp.readFile(baseromPath);
     }
 
     //- Initialise the syscall map
-    init_gSyscallIdx_map(gRomVer);
+    await init_gSyscallIdx_map(gRomVer);
 }
 
 /**
@@ -1397,14 +1397,14 @@ async function HELPER_parse_out_dll_linker_symbols()
 {
     const fn_dlls_h = gRootDir + `include/dlls.h`;
 
-    const dlls_h = fs.readFileSync(fn_dlls_h).toString();
+    const dlls_h = (await fsp.readFile(fn_dlls_h)).toString();
 
     for (let romVer of allRomVers)
     {
         if (!(romVer in VERSION_CONSTANTS.DLL_CALL_TBL))
             FATAL(`DLL_CALL_TBL constant missing for romVer: ${romVer}`);
 
-        init_gCallTableOffset_map(romVer);
+        await init_gCallTableOffset_map(romVer);
 
         //# The linker requires it to exist at least, so we ensure it
         let outpath = gRootDir + `ver/${romVer}/syms/DLL.txt`;
@@ -1489,7 +1489,7 @@ async function HELPER_parse_out_dll_linker_symbols()
                 let lengthOfLongestSymbol = symbols.reduce((acc, e) => Math.max(acc, e.symbol.length), 0);
                 let data = symbols.map(e => `${e.symbol.padEnd(lengthOfLongestSymbol + 2, " ")} = 0x${e.addr.toString(16).toUpperCase()};`)
 
-                fs.writeFileSync(outpath, data.join("\n"));
+                await fsp.writeFile(outpath, data.join("\n"));
             }
         }
     }
@@ -1526,7 +1526,15 @@ function _order_colours(str)
             if (!countPercentChars)
                 countPercentChars = 0;
 
-            return 100 - countPercentChars;
+            let countOKs = str.match(/OK/g)?.length;
+            if (!countOKs)
+                countOKs = 0;
+
+            /**
+             * [countOKs * (allRomVers.length + 1)]: If any romver gives an OK, make it appear
+             * any red DLLs that do not have a single OK.
+             */
+            return 1000 - countPercentChars - (countOKs * (allRomVers.length + 1));
         }
         default:
             return 0;
@@ -1551,6 +1559,14 @@ function _order_dll_result_strings_by_status(rArr)
     });
 }
 
+/**
+ * Store the last build hash of a DLL file, to check
+ * if the output has changed.
+ * 
+ * Record<dllName, Record<romVer, hash>>
+ */
+var gDllHashMap = {};
+
 async function dll_full_build_multi(dllNames)
 {
     await HELPER_parse_out_dll_linker_symbols();
@@ -1561,6 +1577,13 @@ async function dll_full_build_multi(dllNames)
     let results_cmp = [];
 
     /**
+     * 
+     * Record<dllName, oooo_type_string>
+     * @type {Record<string, string>}
+    */
+    let hashdiffs = {};
+
+    /**
      * If even one version of a DLL is not skipped, we want
      * to remember that.
      */
@@ -1568,10 +1591,18 @@ async function dll_full_build_multi(dllNames)
 
     for (let [rvIdx, romVer] of allRomVers.entries())
     {
-        update_rom_version(romVer);
+        await update_rom_version(romVer);
 
         for (let [idx, dllName] of dllNames.entries())
         {
+            if (!(dllName in gDllHashMap))
+                gDllHashMap[dllName] = {};
+
+            if (!(romVer in gDllHashMap[dllName]))
+                gDllHashMap[dllName][romVer] = "";
+
+            let lastHash = gDllHashMap[dllName][romVer];
+
             const CELL_PADDING = 17;
 
             const CELL_PREPAD = rvIdx === 0 ? 0 : 3;
@@ -1592,7 +1623,7 @@ async function dll_full_build_multi(dllNames)
                     results_raw[idx] = "";
 
 
-                if (!fs.existsSync(fn_c) || fs.statSync(fn_c).size === 0)
+                if (!fs.existsSync(fn_c) || (await fsp.stat(fn_c)).size === 0)
                 {
                     //= Placeholder DLL, don't waste time processing it
                     results_raw[idx] += "".padStart(CELL_PADDING, " ");
@@ -1654,10 +1685,25 @@ async function dll_full_build_multi(dllNames)
                 }
 
                 results_raw[idx] += resultToAppend;
+
+                //= Hash check
+                {
+                    let hash = get_hash(file_cmp);
+
+                    if (!(dllName in hashdiffs))
+                        hashdiffs[dllName] = "";
+
+                    hashdiffs[dllName] += hash !== lastHash
+                        ? gct("o", "cyan")
+                        : gct("-", "black");
+
+                    gDllHashMap[dllName][romVer] = hash;
+                }
             }
             catch (err)
             {
-                console.error(err);
+                if (err)
+                    console.error(err);
 
                 //# Append empty space
                 results_raw[idx] += "".padStart(CELL_PADDING, " ");
@@ -1719,7 +1765,7 @@ async function dll_full_build_multi(dllNames)
             {
                 ///- Show compact log line for single DLL
 
-                log(`  ${results_raw[0]}`);
+                log(`  ${results_raw[0]} ${hashdiffs[dllNames[0]]}`);
             }
             else
             {
@@ -1744,7 +1790,7 @@ async function dll_full_build_multi(dllNames)
                 let remainingDllCount;
                 {
                     //= The build with the most DLLs is "usa"
-                    init_gSyscallIdx_map("usa");
+                    await init_gSyscallIdx_map("usa");
 
                     remainingDllCount = Object.keys(gSyscallIdxMap).length - dllNames.length;
                 }

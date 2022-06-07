@@ -68,7 +68,12 @@
     - This can work really well with the .c modification autodetection.
         - Keep an in-memory offset list of FUNCTIONS for every DLL for every ROMVER, and remember the scroll position for every single one. So as long as the diff window is open, it will be able to restore all your scroll positions automatically, even when switching between different functions and DLLs.
         - Naturally, this will also keep your CURRENT offset after you simply update the current function, even if not "Unchanged"
-
+- Press a key ('h'?) to disable all diff colouring, and switch to the standard MIPS syntax highlighting colour scheme that I'm used to. It would help a lot with making sense of chunks of the code quickly.
+- Add nested branch lines like in PJ64. Makes it very quick and easy to identify branches and their destination.
+    - The only real issue might be lack of horizontal space, since the branch lines need to go to the left of the instructions. All three columns must have branch lines also, so we may need to reserve an entire fucking monitor purely for diffing; this is probably worth it though btw.
+    - It also makes it easier to spot matching lines, because we'll get rid of the coloured arrows in the middle of all the instructions.
+    - We will be able to reclaim 3 characters worth of width for each column when we remove arrows though, so that's enough space for three nested branches.
+    - We will need some sort of fallback in the case where there are way too many nested branches. Or will we just say fuck it and deal with a WideHardo diff window?
 
 
 

@@ -9,7 +9,10 @@
 # DLL repo source:
 
 - Make it so that referencing a DLL call from inside the same DLL does not result in a reference to the call table.
-
+    - Modify the [dll.ld] linker script?
+        - Maybe doable?
+    - Make separate copies of [DLL.txt] for every DLL?
+        - Seems unreasonable and silly..
 
 
 
@@ -56,7 +59,7 @@
     - Vanilla functions should be enumerated with the MIPS analyser. 
     - Custom functions should be enumerated with the public symbol dump. We can't trust an analyser on it, even if it can identify static functions.
         - Actually maybe try the analyser on it, and line up the _pubfndump.txt offsets with the analyser output to provide names for the ones we know, and some placeholder name like [fn_priv_00] for static ones
-    - If there's a mismatch between the function counts, we can show the user an error, telling us to add any missing function declarations, and to temporarily remove the [static] keyword from unreferenced static functions. Once a static function is referenced from some included function, it won't be optimised away, and the [static] keyword can be added again. But just for convenience, only add the [static] keyword when you've OK-d most of the DLL. Keep the keyword commented out like [/*static*/] so you remember to remove it at the end.
+    - If there's a mismatch between the function counts, we can show the user an error, telling us to add any missing function declarations, and to temporarily remove the [static] keyword from unreferenced static functions. Once a static function is referenced from some included function, it won't be optimised away, and the [static] keyword can be added again. But just for convenience, only add the [static] keyword when you've OK-d most of the DLL. Keep the keyword commented out like [/*static*/] so you remember to undo it at the end.
 - Keep some kind of memory on the state of a .c file, and when it is modified, try and autodetect the first function inside which the modification occurred. Then you can use function offsets to automatically go to that function.
     - The benefits of this are potentially enormous. It'll let you seamlessly jump from function to function, even across entire DLLs, with instant diffs every time. No more fiddling with passing args, calculating offsets, etc. The machine will automatically find what you wanted to diff. Dayum.
     - Get [dllmgr] to do any heavy lifting needed for this

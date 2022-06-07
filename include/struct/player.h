@@ -432,7 +432,15 @@ typedef struct B_TransformObj
 } B_TransformObj;
 
 /**
- * Bo: Banjo Object (formerly <PlayerObj *p>)
+ * Bo: Banjo object (formerly <PlayerObj *p>)
+ * 
+ * A pointer to an object that has all sorts of variables
+ * related to the proper functioning of a player.
+ * 
+ * Every player has a separate instance; BK has one, Solo B and
+ * Solo K have two separate ones when split up, talon torpedo
+ * has two (when leaving Banjo behind), Mumbo has one, Golden
+ * Goliath has one, etc etc.
  * 
  * Often appears as the first arg of player-related functions.
  * Signatures should specify it as <Bo *b>.
@@ -445,8 +453,6 @@ typedef struct B_TransformObj
  * psize: (hex) size padded to the next word
  *  size: (hex) real size
  */
-// psize: (hex) size padded to the next word
-//  size: (hex) real size
 typedef struct Bo
 {
 /* off | psize  size     FILE      */

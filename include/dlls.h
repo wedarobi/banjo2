@@ -81,10 +81,10 @@
 /* $ badialog */
 /* $ badrone */
 /* $ badronemem */
-/*@oooo*/ void DLL_badronemem_00(PlayerObj *b, u32 size);
-/*@oooo*/ void DLL_badronemem_01(PlayerObj *b);
+/*@oooo*/ void DLL_badronemem_00(Bo *b, u32 size);
+/*@oooo*/ void DLL_badronemem_01(Bo *b);
 /*@oooo*/ void DLL_badronemem_02(u32);
-/*@oooo*/ void DLL_badronemem_03(PlayerObj *b);
+/*@oooo*/ void DLL_badronemem_03(Bo *b);
 /* $ baduo */
 /* $ badust */
 /* $ baeggaim */
@@ -106,7 +106,7 @@
 /*@oooo*/ u32  DLL_bamoveledge_00(void);
 /*@oooo*/ void DLL_bamoveledge_01(u32);
 /*@oooo*/ void DLL_bamoveledge_02(u32);
-/*@oooo*/ void DLL_bamoveledge_03(PlayerObj *b);
+/*@oooo*/ void DLL_bamoveledge_03(Bo *b);
 /* $ bamovespline */
 /* $ bamovethrust */
 /* $ bamum */
@@ -122,10 +122,10 @@
 /* $ baspin */
 /* $ basquash */
 /* $ bastatemem */
-/*@oooo*/ void DLL_bastatemem_00(PlayerObj *b, u32 size);
-/*@oooo*/ void DLL_bastatemem_01(PlayerObj *b);
+/*@oooo*/ void DLL_bastatemem_00(Bo *b, u32 size);
+/*@oooo*/ void DLL_bastatemem_01(Bo *b);
 /*@oooo*/ void DLL_bastatemem_02(u32);
-/*@oooo*/ void DLL_bastatemem_03(PlayerObj *b);
+/*@oooo*/ void DLL_bastatemem_03(Bo *b);
 /* $ basub */
 /* $ basudie */
 /* $ baswim */

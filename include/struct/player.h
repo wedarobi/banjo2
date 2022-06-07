@@ -15,7 +15,8 @@
 //! We don't even need this animation shit so why am i filling it in?
 //! Fill it in elsewhere, not in snooie you dumbass
 //! Copy it in here when you know you might actually need it
-typedef struct PO_Remote_AnimationObj {
+typedef struct Remote_AnimObj
+{
     /* 0x00 */ f32 animTimer;
     /* 0x04 >>> */ BYTE PAD_0x04[0x4];
     /* 0x08 >>> */ f32  UNK_0x08;
@@ -30,10 +31,11 @@ typedef struct PO_Remote_AnimationObj {
     /* 0x30 >>> */ f32  UNK_0x30;
     /* 0x34 */ u16 animationIdx;
     /* 0x36 */ BYTE PAD2[0x6];
-} PO_Remote_AnimationObj; // 0x3C
+} Remote_AnimObj; // 0x3C
 
-typedef struct Player_AnimationObj {
-    /* 0x00 */ PO_Remote_AnimationObj* Remote_AnimationObj;
+typedef struct B_AnimationObj
+{
+    /* 0x00 */ Remote_AnimObj *Remote_AnimObj;
     /* 0x04 >>> */ WORD PAD_0x04;
     /* 0x08 */ u32     playerAnimating; //? undone on button input
     /* 0x0C */ u8      UNK_0x0C;
@@ -50,9 +52,10 @@ typedef struct Player_AnimationObj {
     /* 0x3A >>> */ u8 PAD_0x3A;
     /* 0x3B >>> */ u8 PAD_0x3B;
     /* 0x3C*/  u32     UNK_0x3C;
-} Player_AnimationObj; // 0x40
+} B_AnimationObj; // 0x40
 
-typedef struct Player_ZoomBtnObj {
+typedef struct B_ZoomBtnObj
+{
     /* 0x00 */ u8 unk_0x00;
     /* 0x01 */ u8 unk_0x01;
                // zoom level with C-DOWN
@@ -63,13 +66,15 @@ typedef struct Player_ZoomBtnObj {
                // 0x02 when normal, 0x09 when in FPV?
     /* 0x06 */ u8 unk_0x06;
     /* 0x07 */ u8 unk_0x07;
-} Player_ZoomBtnObj;
+} B_ZoomBtnObj;
 
-typedef struct Player_LockStateObj {
+typedef struct B_LockStateObj
+{
     /* 0x00 */ WORD  unk_0x00;
     /* 0x04 */ BYTE* unk_0x04;
     /* 0x08 */ WORD  unk_0x08;
-    /* 0x0C */ union PACKED {
+    /* 0x0C */ union PACKED
+    {
         MODEL modelIdx : 16; u16 modelIdx_;
     };
     /* 0x0E */ HALF  unk_0x0C;
@@ -86,9 +91,10 @@ typedef struct Player_LockStateObj {
     /* 0x1A */ BYTE  unk_0x1A;
     /* 0x1B */ BYTE  unk_0x1B;
     /* 0x1C */ f32   unk_0x1C;
-} Player_LockStateObj; // len 0x20 (actually 0x118)
+} B_LockStateObj; // len 0x20 (actually 0x118)
 
-typedef struct MiscFlags_SplitFlags {
+typedef struct MiscFlags_SplitFlags
+{
     // 1: BK, 2: splitInProgress, 3: split B/K, 4: joinInProgress
     // save/load checks this to try and not allow save/load during split/join
     // it doesnt seem to work on join when controlling a secondary character, but it doesnt seem to have any bad side effects anyhow
@@ -98,19 +104,22 @@ typedef struct MiscFlags_SplitFlags {
 } MiscFlags_SplitFlags;
 
 // Holds selected egg type, egg drawer animation state, etc
-typedef struct Player_EggDrawerObj {
+typedef struct B_EggDrawerObj
+{
     /* 0x00 */ u8 currEggSetType;
                // currently selected egg index (0-4)
     /* 0x01 */ u8 eggIdx;
     /* 0x02 */ u8 Bitfield;
                // 0 for not shown, 1 for entering, 2 for open, 3 for closing?
     /* 0x03 */ u8 eggDrawerAnimStateIdx;
-} Player_EggDrawerObj;
+} B_EggDrawerObj;
 
-typedef struct Player_FpvReticleObj {
+typedef struct B_FpvReticleObj
+{
     /* 0x00 */ f32 x;
     /* 0x04 */ f32 y;
-    /* 0x08 */ struct {
+    /* 0x08 */ struct
+    {
         // 0: nil, 1: exited, 2: entered, 3: entering, 4: exiting
         u8 transitionState;
         u8 active;
@@ -118,7 +127,8 @@ typedef struct Player_FpvReticleObj {
         u8 : 8;
     };
     /* 0x0C */ f32 transitionTimer;
-    /* 0x10 */ struct {
+    /* 0x10 */ struct
+    {
         u8 : 8;
         u8 : 8;
         BYTE : 8;
@@ -126,9 +136,10 @@ typedef struct Player_FpvReticleObj {
     };
     /* 0x14 */ u32 opacity;
     /* 0x18 */ f32 scale;
-} Player_FpvReticleObj; // 0x1C
+} B_FpvReticleObj; // 0x1C
 
-typedef struct MiscFlags {
+typedef struct MiscFlags
+{
     /* 0x00 */ u8 : 8;
     /* 0x01 */ u8 onFlightPad;
     /* 0x02 */ u8 onShockSpringPad;
@@ -153,7 +164,8 @@ typedef struct MiscFlags {
     /* 0x29 */ u8 usingRoll;
 } MiscFlags;
 
-typedef struct Player_FPInfoObj {
+typedef struct B_FPInfoObj
+{
     /* 0x00 */ u32  bitfield_0x00;
     /* 0x04 >>> */ BYTE UNK_0x04;
     /* 0x05 >>> */ BYTE UNK_0x05;
@@ -183,19 +195,23 @@ typedef struct Player_FPInfoObj {
     /* 0x17 >>> */ BYTE UNK_0x17;
     //# amaze-o-gaze goggle zoom level (4.0f - 40.0f (range 36.0f), increments of 1.5f)
     /* 0x18 */ f32  zoomLevel;
-} Player_FPInfoObj; // 0x1C
+} B_FPInfoObj; // 0x1C
 
-typedef struct Player_FloorObj {
+typedef struct B_FloorObj
+{
     /* 0x00 >>> */ BYTE PAD[0x70];
     /* 0x70 */ f32 offsetY;
-} Player_FloorObj;
+} B_FloorObj;
 
-typedef struct Player_SlopeObj {
+typedef struct B_SlopeObj
+{
     /* 0x00 >>> */ BYTE PAD_0x00[0x28];
-    /* 0x28 */ union PACKED {
+    /* 0x28 */ union PACKED
+    {
         FORM transformingInfo : 8; u8 transformingInfo_;
     };
-    /* 0x29 */ union PACKED {
+    /* 0x29 */ union PACKED
+    {
         FORM currentTrans : 8; u8 currentTrans_;
     };
     /* 0x2A >>> */ BYTE PAD_0x2A[0xE];
@@ -207,9 +223,10 @@ typedef struct Player_SlopeObj {
     /* 0x40 >>> */ BYTE PAD_0x40[0x10];
     /* 0x50 */ BYTE UNK_0x50;
     /* 0x51 >>> */ BYTE PAD_0x51[0xF];
-} Player_SlopeObj;
+} B_SlopeObj;
 
-typedef struct Player_VelocityObj {
+typedef struct B_VelocityObj
+{
     /* 0x00 >>> */ BYTE PAD_0x00[0x10];
     /* 0x10 */ Vec3f velocity;
     /* 0x1C >>> */ BYTE PAD_0x1C[0x18];
@@ -221,62 +238,74 @@ typedef struct Player_VelocityObj {
     /* 0x55 */ u8 unk_0x55;
     /* 0x56 */ u8 unk_0x56;
     /* 0x57 */ u8 unk_0x57;
-} Player_VelocityObj;
+} B_VelocityObj;
 
-typedef struct Player_RotXObj {
+typedef struct B_RotXObj
+{
     /* 0x00 */ f32 curr;
     /* 0x04 */ f32 target;
-} Player_RotXObj;
+} B_RotXObj;
 
-typedef struct Player_PositionObj {
-    /* 0x00 */ union {
+typedef struct B_PositionObj
+{
+    /* 0x00 */ union
+    {
         Vec3f     position1;
         tuple_u32 position1_u32;
     };
-    /* 0x0C */ union {
+    /* 0x0C */ union
+    {
         Vec3f     position2;
         tuple_u32 position2_u32;
     };
-    /* 0x18 */ union {
+    /* 0x18 */ union
+    {
         Vec3f     position3;
         tuple_u32 position3_u32;
     };
-} Player_PositionObj;
+} B_PositionObj;
 
-typedef struct Player_RotZObj {
+typedef struct B_RotZObj
+{
     /* 0x00 */ f32 curr;
     /* 0x04 */ f32 target;
-} Player_RotZObj;
+} B_RotZObj;
 
-typedef struct Player_RotYObj {
-    /* 0x00 */  union {
+typedef struct B_RotYObj
+{
+    /* 0x00 */  union
+    {
         f32 facingAngle; // a.k.a. curr
         u32 facingAngle_u32;
     };
-    /* 0x04 */ union {
+    /* 0x04 */ union
+    {
         f32 movingAngle; // a.k.a. target
         u32 movingAngle_u32;
     };
-} Player_RotYObj;
+} B_RotYObj;
 
-typedef struct Player_MovementStateObj {
+typedef struct B_MovementStateObj
+{
     /* 0x00 */ MS prev;
     /* 0x04 */ MS curr;
     /* 0x08 */ WORD unk_0x08;
     /* 0x0C */ u16  lastCollisionIdx; // used in the collision switch @ 0x80099B94 USA
     /* 0x0E */ u16  unk_0x0E;
     /* 0x10 */ WORD pad_0x10;
-} Player_MovementStateObj; // 0x14
+} B_MovementStateObj; // 0x14
 
-typedef struct Player_GroundedObj {
+typedef struct B_GroundedObj
+{
     /* 0x00 */ bool isInWater;
     // touched water but haven't touched land yet
     /* 0x01 */ bool isWet;
     /* 0x02 */ bool isGrounded;
     /* 0x03 */ BYTE UNK_0x03;
-} Player_GroundedObj;
+} B_GroundedObj;
 
-typedef struct Player_ShoeInfoObj {
+typedef struct B_ShoeInfoObj
+{
     /* 0x00 */ f32  shoeTimerBase;
     /* 0x04 */ u8   activeShoeType;
     /* 0x05 */ BYTE UNK_0x05;
@@ -286,7 +315,7 @@ typedef struct Player_ShoeInfoObj {
     /* 0x0C */ WORD UNK_0x0C;
     /* 0x10 */ WORD UNK_0x10;
     /* 0x14 */ WORD UNK_0x14;
-} Player_ShoeInfoObj;
+} B_ShoeInfoObj;
 
 /**
  * Dynamic size based on circumstance: this is a union
@@ -296,11 +325,13 @@ typedef struct Player_ShoeInfoObj {
  * van         : 0x14
  * dronevanish : 0x1C
  */
-typedef union Player_DynMsObj {
+typedef union B_DynMsObj
+{
     BYTE PAD_0x00; //! placeholder
-} Player_DynMsObj;
+} B_DynMsObj;
 
-typedef struct Player_TransformObj {
+typedef struct B_TransformObj
+{
     u8 field_0x0;
     u8 field_0x1;
     u8 field_0x2;
@@ -398,14 +429,29 @@ typedef struct Player_TransformObj {
     BYTE field_0x6d;
     BYTE field_0x6e;
     BYTE field_0x6f;
-} Player_TransformObj;
+} B_TransformObj;
 
+/**
+ * Bo: Banjo Object (formerly <PlayerObj *p>)
+ * 
+ * Often appears as the first arg of player-related functions.
+ * Signatures should specify it as <Bo *b>.
+ * 
+ * This name change also reduces conflicts with the common
+ * name "p" when referring to any general pointer.
+ * 
+ * --------------------------------------------
+ * 
+ * psize: (hex) size padded to the next word
+ *  size: (hex) real size
+ */
 // psize: (hex) size padded to the next word
 //  size: (hex) real size
-typedef struct PlayerObj {
+typedef struct Bo
+{
 /* off | psize  size     FILE      */
 /*  00 |   4      2 baalarm        */ void *UNK_0x000;
-/*  04 |  40     40                */ Player_AnimationObj     *AnimationObj;
+/*  04 |  40     40                */ B_AnimationObj     *AnimationObj;
 /*  08 |   8      8 baattach       */ void *UNK_0x008;
 /*  0C |  1C     1C                */ void *UNK_0x00C;
 /*  10 |   8      8 bababykaz      */ void *UNK_0x010;
@@ -418,19 +464,19 @@ typedef struct PlayerObj {
 /*  2C |  1C     1C                */ void *UNK_0x02C;
 /*  30 |  18     18                */ void *UNK_0x030;
 /*  34 |  18     18 babuzz         */ void *UNK_0x034;
-/*  38 |  40     40                */ Player_ZoomBtnObj       *ZoomBtnObj;
+/*  38 |  40     40                */ B_ZoomBtnObj       *ZoomBtnObj;
 /*  3C |  78     78                */ void *UNK_0x03C;
 /*  40 |  28     28                */ void *UNK_0x040;
 /*  44 |   8      8 bacough        */ void *UNK_0x044;
 /*  48 |   4      4                */ void *UNK_0x048;
 /*  4C |   4      1                */ void *UNK_0x04C;
-/*  50 | 118    118                */ Player_LockStateObj     *LockStateObj;
+/*  50 | 118    118                */ B_LockStateObj     *LockStateObj;
 /*  54 |  4C     4C badrone        */ void *UNK_0x054;
 /*  58 |  14     14                */ MiscFlags_SplitFlags    *SplitFlags;
 /*  5C |   C      C badust         */ void *UNK_0x05C;
 /*  60 |   4      4 baeggaim       */ void *UNK_0x060;
-/*  64 |   4      4                */ Player_EggDrawerObj     *EggDrawerObj;
-/*  68 |  1C     1C baeggcursor    */ Player_FpvReticleObj    *FpvReticleObj;
+/*  64 |   4      4                */ B_EggDrawerObj     *EggDrawerObj;
+/*  68 |  1C     1C baeggcursor    */ B_FpvReticleObj    *FpvReticleObj;
 /*  6C |  14     14 baeggfire      */ void *UNK_0x06C;
 /*  70 |  28     28 baeggsetup     */ void *UNK_0x070;
 /*  74 |  1C     1C                */ void *UNK_0x074;
@@ -440,11 +486,11 @@ typedef struct PlayerObj {
 /*  84 |  28     28 baflameline    */ void *UNK_0x084;
 /*  88 |  10     10 baflamethrower */ void *UNK_0x088;
 /*  8C |  10     10 bafly          */ void *UNK_0x08C;
-/*  90 |  1C     1C bafpctrl       */ Player_FPInfoObj        *FirstPersonInfoObj;
-/*  94 |  AC     AC                */ Player_FloorObj        **FloorObjPtr;
+/*  90 |  1C     1C bafpctrl       */ B_FPInfoObj        *FirstPersonInfoObj;
+/*  94 |  AC     AC                */ B_FloorObj        **FloorObjPtr;
 /*  98 |  28     28                */ void *UNK_0x098;
 /*  9C |  10     10 bahold         */ void *UNK_0x09C;
-/*  A0 |  58     58                */ Player_SlopeObj         *SlopeObj;
+/*  A0 |  58     58                */ B_SlopeObj         *SlopeObj;
 /*  A4 |   C      C                */ void *UNK_0x0A4;
 /*  A8 |  7C     7C bainvisible    */ void *UNK_0x0A8;
 /*  AC |  30     30                */ void *UNK_0x0AC;
@@ -454,29 +500,29 @@ typedef struct PlayerObj {
 /*  BC |  1C     1C                */ void *UNK_0x0BC;
 /*  C0 |  F0     F0                */ void *UNK_0x0C0;
 /*  C4 |  10      F                */ void *UNK_0x0C4;
-/*  C8 |  C4     C4                */ Player_VelocityObj      *VelocityObj;
+/*  C8 |  C4     C4                */ B_VelocityObj      *VelocityObj;
 /*  CC |   4      4 bamoveledge    */ void *UNK_0x0CC;
 /*  D0 |   8      8 bamum          */ void *UNK_0x0D0;
 /*  D4 |   4      1                */ void *UNK_0x0D4;
 /*  D8 |  20     20 bapackctrl     */ void *UNK_0x0D8;
-/*  DC |  10     10                */ Player_RotXObj          *RotXObj;
+/*  DC |  10     10                */ B_RotXObj          *RotXObj;
 /*  E0 |  34     34                */ void *UNK_0x0E0;
-/*  E4 |  30     30                */ Player_PositionObj      *PositionObj;
+/*  E4 |  30     30                */ B_PositionObj      *PositionObj;
 /*  E8 |   C      C bapulse        */ void *UNK_0x0E8;
 /*  EC |   4      4 bareact        */ void *UNK_0x0EC;
 /*  F0 |  84     84                */ void *UNK_0x0F0;
-/*  F4 |  10     10                */ Player_RotZObj          *RotZObj;
-/*  F8 |  1C     1C                */ Player_RotYObj          *RotYObj;
+/*  F4 |  10     10                */ B_RotZObj          *RotZObj;
+/*  F8 |  1C     1C                */ B_RotYObj          *RotYObj;
 /*  FC |   8      8                */ void *UNK_0x0FC;
 /* 100 |   4      4 basetup        */ void *ShadowQ; //? shadow bool u8 @ 0x4C?
 /* 104 |  20     20                */ void *UNK_0x104;
 /* 108 |  10     10                */ void *UNK_0x108;
-/* 10C |  18     18 bashoes        */ Player_ShoeInfoObj      *ShoeInfoObj;
+/* 10C |  18     18 bashoes        */ B_ShoeInfoObj      *ShoeInfoObj;
 /* 110 |  30     30 basnowball     */ void *UNK_0x110;
 /* 114 |  F4     F4                */ void *UNK_0x114;
 /* 118 |   8      8 baspin         */ void *UNK_0x118;
 /* 11C |   C      C basquash       */ void *UNK_0x11C;
-/* 120 |  14     14                */ Player_MovementStateObj *MovementStateObj;
+/* 120 |  14     14                */ B_MovementStateObj *MovementStateObj;
 /* 124 |   C      C                */ void *UNK_0x124;
 /* 128 |  68     68                */ void *UNK_0x128;
 /* 12C |   4      4                */ void *UNK_0x12C;
@@ -488,7 +534,7 @@ typedef struct PlayerObj {
 /* 144 |  18     18 bavan          */ void *UNK_0x144;
 /* 148 |  14     14 bawandglow     */ void *UNK_0x148;
 /* 14C |  34     34 bawasher       */ void *UNK_0x14C;
-/* 150 |  14     14                */ Player_GroundedObj      *GroundedObj;
+/* 150 |  14     14                */ B_GroundedObj      *GroundedObj;
 /* 154 | ???     20 bawobble       */ void *UNK_0x154;
 
 //- end pointer array, start initial player data
@@ -499,19 +545,19 @@ typedef struct PlayerObj {
 /* 160 */ u32 UNK_0x160;
 /* 164 */ u32 UNK_0x164;
 /* 168 */ u32 UNK_0x168;
-/* 16C */ f32 UNK_0x16C; //? [bswalk       @ 0x314] [lwc1 $f4, 0x16C($t6=>PlayerObj*)] read on walk
-/* 170 */ f32 UNK_0x170; //? [bsbbilldrill @ 0x6B0] [lwc1 $f6, 0x170($a0=>PlayerObj*)] read on beak bust
+/* 16C */ f32 UNK_0x16C; //? [bswalk       @ 0x314] [lwc1 $f4, 0x16C($t6=>Bo*)] read on walk
+/* 170 */ f32 UNK_0x170; //? [bsbbilldrill @ 0x6B0] [lwc1 $f6, 0x170($a0=>Bo*)] read on beak bust
 /* 174 */ BYTE PAD_0x174[0x8];
 /* 17C */ u32 playerVisible;
 /* 180 */ u32 playerFrozen;
             // Index of this player object. Solo K's is usually 1
 /* 184 */ u32 currPlayerIdx;
-/* 188 */ Player_DynMsObj *dynMsObj;
-/* 18C */ Player_TransformObj *TransformObj;
+/* 188 */ B_DynMsObj *dynMsObj;
+/* 18C */ B_TransformObj *TransformObj;
 /* 190 */ BYTE PAD_0x190[0x0C];
 /* 19C END */
-// ^ this is the address that the first Player_ ptr points to, so we assume it's the end of the main struct
-} PlayerObj;
+// ^ this is the address that the first B_ ptr points to, so we assume it's the end of the main struct
+} Bo;
 
 
 

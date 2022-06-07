@@ -18,12 +18,12 @@ u32   func_800B2344(u32);
 void *func_800B27A0(void *);
 void  fn_memcpy_fast(void *, void *, u32);
 
-void func_8009BC08       (PlayerObj *, Vec3f *);
-void fn_player_vel_cpy   (PlayerObj *, Vec3f *);
+void func_8009BC08       (Bo *, Vec3f *);
+void fn_player_vel_cpy   (Bo *, Vec3f *);
 f32  fn_gamespeed_get    (void);
 void fn_vec_scale        (Vec3f *, f32);
 void fn_vec_add_direct   (Vec3f *, Vec3f *);
-void func_8009B98C       (PlayerObj *, Vec3f *);
+void func_8009B98C       (Bo *, Vec3f *);
 
 
 /* ref from -> fxkern */

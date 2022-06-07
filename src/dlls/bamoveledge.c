@@ -22,7 +22,7 @@ void DLL_bamoveledge_02(u32 a0)
 
 }
 
-void DLL_bamoveledge_03(PlayerObj *b)
+void DLL_bamoveledge_03(Bo *b)
 {
     Vec3f v1;
     Vec3f v2;

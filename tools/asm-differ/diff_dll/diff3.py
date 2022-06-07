@@ -601,6 +601,18 @@ def dump_objfile() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
         (objdump_flags + maybe_get_objdump_source_flags(), objfile, args.start),
     )
 
+gVars = {
+    "names": {
+        "romVer":       "",
+        "dllName":      "",
+        "functionName": "",
+        "functionIdx":  "",
+        "functionCnt":  "",
+    },
+    #- The number of functions before/after the current one to go to
+    "custFunctionIdx": 0,
+}
+
 
 def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
 
@@ -630,7 +642,7 @@ def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
         myPubFnDump = f.read()
 
     #- Split the dump into lines
-    myPubFnDump = re.split(r"\r?\n", myPubFnDump)
+    myPubFnDump = re.split(r"\r?\n", myPubFnDump.strip())
 
     #- arg should be a hex string
     if not args.BASE_START:
@@ -646,20 +658,59 @@ def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
 
     found = False
 
-    #- Parse in lines from the _pubfndump.txt
+    funcIdx = 0
+    numFuncs = len(myPubFnDump)
+
+    #- Parse in lines from the _pubfndump.txt and find the right funcIdx
     for line in myPubFnDump:
         words = re.split(r"\s+", line)
 
         if args.NAME_OF_FUNCTION == words[0]:
-            start_my = words[1]
-            end_my   = int(words[1], 0) + int(words[2], 0)
-            found    = True
-
+            found = True
             break
+
+        funcIdx += 1
+
 
     if not found:
         print(f"FATAL: Public function not found! Make sure it's non-static!")
         sys.exit(1)
+
+
+    #= Clamp [custFunctionIdx]
+    while funcIdx + gVars["custFunctionIdx"] < 0:
+        gVars["custFunctionIdx"] += 1
+    while funcIdx + gVars["custFunctionIdx"] >= numFuncs:
+        gVars["custFunctionIdx"] -= 1
+
+    realFuncIdx = funcIdx + gVars["custFunctionIdx"]
+
+    found = False
+
+    funcName = ""
+
+    #- Add custFunctionIdx to find the one we really want
+    for i in range(numFuncs):
+        if i == realFuncIdx:
+            words = re.split(r"\s+", myPubFnDump[i])
+
+            funcName = words[0]
+            start_my = words[1]
+            end_my   = int(words[1], 0) + int(words[2], 0)
+            found    = True
+
+
+    if not found:
+        print(f"FATAL: (custom) public function not found! Make sure it's non-static!")
+        sys.exit(1)
+
+
+    gVars["names"]["romVer"]  = args.NAME_OF_ROMVER
+    gVars["names"]["dllName"] = args.NAME_OF_DLL
+    gVars["names"]["functionName"] = funcName
+    gVars["names"]["functionIdx"]  = f"{realFuncIdx+1}"
+    gVars["names"]["functionCnt"]  = f"{numFuncs}"
+
 
     objdump_flags = ['-Dz', '-bbinary', '-mmips', '-EB']
     flags1 = [f"--start-address={start_base}", f"--stop-address={end_base}"]
@@ -1380,6 +1431,29 @@ def chunk_diff(diff: List[OutputLine]) -> List[Union[List[OutputLine], OutputLin
     return chunks
 
 
+def gct(msg, colour, underline=False):
+    COLOUR_CODES = {
+        "black":  "30",
+        "red":    "31",
+        "green":  "32",
+        "yellow": "33",
+        "blue":   "34",
+        "pink":   "35",
+        "cyan":   "36",
+        "white":  "37",
+    }
+
+    ul = "4m" if underline else "1m"
+    # standard bright white (force no underline)
+    reset = "\x1b[97;0;1m"
+
+    # default special colour is pink
+    code = COLOUR_CODES[colour] if colour in COLOUR_CODES else COLOUR_CODES["pink"]
+
+    return f"\x1b[{code};{ul}{msg}{reset}"
+
+
+
 def format_diff(
     old_diff: List[OutputLine], new_diff: List[OutputLine]
 ) -> Tuple[str, List[str]]:
@@ -1416,8 +1490,17 @@ def format_diff(
 
     # TODO: status line, with e.g. approximate permuter score?
     width = args.column_width
+
+    header_line = "------------------------>\n"
+    header_line += f" {gct('> -d', 'black')} {gct(gVars['names']['dllName'], 'cyan')}"
+    header_line += f" {gct(  '-r', 'black')} {gct(gVars['names']['romVer'], 'blue')}"
+    header_line += f" {gct(  '-f', 'black')} {gct(gVars['names']['functionName'], 'yellow')}"
+    header_line += f"\n"
+    header_line += gct(' (function ', 'black') + gct('#' + gVars['names']['functionIdx'], 'yellow') + gct(' of ' + gVars['names']['functionCnt'] + ')\n', 'black')
+    header_line += f"\n"
+
     if args.threeway:
-        header_line = "TARGET".ljust(width) + "  CURRENT".ljust(width) + "  PREVIOUS"
+        header_line += "TARGET".ljust(width) + "  CURRENT".ljust(width) + "  PREVIOUS"
         diff_lines = [
             ansi_ljust(base, width)
             + ansi_ljust(new.fmt2, width)
@@ -1425,12 +1508,13 @@ def format_diff(
             for (base, old, new) in output
         ]
     else:
-        header_line = ""
+        header_line += ""
         diff_lines = [
             ansi_ljust(base, width) + new.fmt2
             for (base, old, new) in output
             if base or new.key2 is not None
         ]
+
     return header_line, diff_lines
 
 

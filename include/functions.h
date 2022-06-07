@@ -60,7 +60,7 @@ void *func_800BEB28(s32);
 void *func_800B2720(void *);
 s32   func_800AAD80(void *);
 
-
+void func_80015778(void);
 
 
 

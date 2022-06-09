@@ -1405,10 +1405,21 @@ async function dll_process(dll, objFilePath, toSkip=false)
         //- We only look at relocations that are in sections that interest us
         //# This avoids looking at e.g. external function calls that the linker can handle
         let validSectionIds = [];
-        if (symbols?._text?.shndx)   validSectionIds.push(symbols._text.shndx);
-        if (symbols?._rodata?.shndx) validSectionIds.push(symbols._rodata.shndx);
-        if (symbols?._data?.shndx)   validSectionIds.push(symbols._data.shndx);
-        if (symbols?._bss?.shndx)    validSectionIds.push(symbols._bss.shndx);
+        {
+            if (symbols?._text?.shndx)   validSectionIds.push(symbols._text.shndx);
+            if (symbols?._rodata?.shndx) validSectionIds.push(symbols._rodata.shndx);
+            if (symbols?._data?.shndx)   validSectionIds.push(symbols._data.shndx);
+            if (symbols?._bss?.shndx)    validSectionIds.push(symbols._bss.shndx);
+
+            //- We also need to process internal relocations for any pub funcs for this DLL
+            {
+                let names   = pubFns.map(e => e.name);
+                let symbols = elf_get_syms(elf, names);
+
+                for (let name of names)
+                    validSectionIds.push(symbols[name].shndx);
+            }
+        }
 
         //- Needed to calculate the offset after [objcopy]
         let runningSectionSize = 0;
@@ -1595,12 +1606,13 @@ async function dll_process(dll, objFilePath, toSkip=false)
             //= Write pub func dump - used by diff script to find functions without a .map file
             //# We can do this now because we can calculate the full header size
             {
-                if (!toSkip)
-                {
-                    await fsp.writeFile(pubFnDumpPath,
-                        pubFns.map(p => `${p.name} 0x${(p.loc + size_05_fullheader).hex()} 0x${p.size.hex()}`).join("\n")
-                    );
-                }
+                //# Deprecated by the MIPS analyser and C source parser
+                // if (!toSkip)
+                // {
+                //     await fsp.writeFile(pubFnDumpPath,
+                //         pubFns.map(p => `${p.name} 0x${(p.loc + size_05_fullheader).hex()} 0x${p.size.hex()}`).join("\n")
+                //     );
+                // }
             }
         }
 

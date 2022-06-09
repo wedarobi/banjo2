@@ -109,10 +109,8 @@ function get_hash(buf)
     return crypto.createHash("sha256").update(buf).digest("hex").toUpperCase();
 }
 
-Number.prototype.hex = function()
-{
-    return this.toString(16).toUpperCase();
-}
+Number.prototype.hex  = function() { return        this.toString(16).toUpperCase(); }
+Number.prototype.hexp = function() { return "0x" + this.toString(16).toUpperCase(); }
 
 function sleep(ms)
 {
@@ -385,9 +383,10 @@ async function init_gCallTableOffset_map(romVer)
  *
  * @param {string} dllName
  * @param {Buffer} newDllFile the encrypted header, along with the decompressed file contents
+ * @param {string}
  * @param {boolean} compressed if true, compare compressed version instead
  */
-async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=false)
+async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, compressed=false, toSkip=false)
 {
     let syscallIdx = gSyscallIdxMap[dllName];
 
@@ -399,8 +398,8 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=
         aus: 0x1E18A80,
     };
 
-    let dllOffsetStart = gBaserom.readUint32BE(dllTableStart[gRomVer] + ((syscallIdx - 1) * 4));
-    let dllOffsetEnd   = gBaserom.readUint32BE(dllTableStart[gRomVer] + ((syscallIdx    ) * 4));
+    let dllOffsetStart = gBaserom.readUint32BE(dllTableStart[romVer] + ((syscallIdx - 1) * 4));
+    let dllOffsetEnd   = gBaserom.readUint32BE(dllTableStart[romVer] + ((syscallIdx    ) * 4));
 
     // console.log(dllOffsetStart.hex())
     // console.log(dllOffsetEnd.hex())
@@ -416,13 +415,13 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=
     //- Grab file from baserom
 
     let preheader = gBaserom.slice(
-        dllTableStart[gRomVer] + dllOffsetStart,
-        dllTableStart[gRomVer] + dllOffsetStart + 0x10,
+        dllTableStart[romVer] + dllOffsetStart,
+        dllTableStart[romVer] + dllOffsetStart + 0x10,
     );
 
     let dllCompressed = gBaserom.slice(
-        dllTableStart[gRomVer] + dllOffsetStart + 0x10,
-        dllTableStart[gRomVer] + dllOffsetEnd,
+        dllTableStart[romVer] + dllOffsetStart + 0x10,
+        dllTableStart[romVer] + dllOffsetEnd,
     );
 
     let buf_vani;
@@ -447,10 +446,10 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=
             // FATAL("./tmp.vani.bin");
 
             ensureDir(gRootDir + `expected`);
-            ensureDir(gRootDir + `expected/${gRomVer}`);
-            ensureDir(gRootDir + `expected/${gRomVer}/dlls`);
+            ensureDir(gRootDir + `expected/${romVer}`);
+            ensureDir(gRootDir + `expected/${romVer}/dlls`);
 
-            await fsp.writeFile(gRootDir + `expected/${gRomVer}/dlls/${dllName}.raw`, buf_vani);
+            await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.raw`, buf_vani);
         }
     }
     else
@@ -458,8 +457,8 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=
         //= Both preheader and compressed body combined
 
         buf_vani = gBaserom.slice(
-            dllTableStart[gRomVer] + dllOffsetStart,
-            dllTableStart[gRomVer] + dllOffsetEnd,
+            dllTableStart[romVer] + dllOffsetStart,
+            dllTableStart[romVer] + dllOffsetEnd,
         );
 
         //= Copy to [expected] folder
@@ -469,13 +468,27 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=
             // FATAL("./tmp.vani.bin");
 
             ensureDir(gRootDir + `expected`);
-            ensureDir(gRootDir + `expected/${gRomVer}`);
-            ensureDir(gRootDir + `expected/${gRomVer}/dlls`);
+            ensureDir(gRootDir + `expected/${romVer}`);
+            ensureDir(gRootDir + `expected/${romVer}/dlls`);
 
-            await fsp.writeFile(gRootDir + `expected/${gRomVer}/dlls/${dllName}.dll`, buf_vani);
+            await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.dll`, buf_vani);
         }
     }
 
+    //= Make fndump
+    if (!toSkip)
+    {
+        //# Vanilla functions
+        await dll_analysis_text_dump(
+            await dll_analyse_text(buf_vani),
+            gRootDir + `expected/${romVer}/dlls`
+        );
+        //# Custom functions
+        await dll_analysis_text_dump(
+            await dll_analyse_text(buf_cust),
+            gRootDir + `build/${romVer}/dlls`
+        );
+    }
 
     //- Execute compare
     let similarity = stringSimilarity.compareTwoStrings(
@@ -485,6 +498,21 @@ async function get_similarity_dll(dllName, newDllFile, compressed=false, toSkip=
 
     return { found: true, similarity, };
 }
+
+function buf_cstr_to_str(inBuf)
+{
+    let str = [];
+
+    for (let i = 0; i < inBuf.byteLength && inBuf.readUint8(i) !== 0; i++)
+        str.push(String.fromCharCode(inBuf.readUint8(i)));
+
+    return str.join("");
+}
+
+// function buf_str_to_cstr(str, outBuf)
+// {
+
+// }
 
 /**
  * symbolRef type pseudo enum
@@ -1174,6 +1202,25 @@ async function dll_process(dll, objFilePath, toSkip=false)
     return [binFilePath, finalBinary];
 }
 
+function dll_get_checksum(buffer)
+{
+    let checksum = [0, 0];
+    {
+        for (let i = 0; i < buffer.byteLength; i++)
+        {
+            let byte = buffer.readUint8(i);
+            // checksum[0] += byte;
+            // checksum[1] ^= byte << (checksum[0] & 0x17);
+
+            //= Safeguard against JS f64 inaccuracies
+            checksum[0] = ((checksum[0] + byte) & 0xFFFFFFFF) >>> 0;
+            checksum[1] ^= byte << (checksum[0] & 0x17);
+        }
+    }
+
+    return checksum;
+}
+
 async function dll_preheader_encrypt(rawFilePath, rawFile=null)
 {
     if (!rawFile)
@@ -1183,21 +1230,7 @@ async function dll_preheader_encrypt(rawFilePath, rawFile=null)
         FATAL(`Cannot package DLL: missing preheader!`);
 
     //- Calculate checksum
-    let checksum = [0, 0];
-    {
-        let start = 0x10;
-
-        for (let i = start; i < rawFile.byteLength; i++)
-        {
-            let byte = rawFile.readUint8(i);
-            // checksum[0] += byte;
-            // checksum[1] ^= byte << (checksum[0] & 0x17);
-
-            //= Safeguard against JS f64 inaccuracies
-            checksum[0] = ((checksum[0] + byte) & 0xFFFFFFFF) >>> 0;
-            checksum[1] ^= byte << (checksum[0] & 0x17);
-        }
-    }
+    let checksum = dll_get_checksum(rawFile.slice(0x10));
 
     rawFile.writeUInt32BE(rawFile.readUint32BE(0x0) ^ checksum[0], 0x0);
     rawFile.writeUInt32BE(rawFile.readUint32BE(0x8) ^ checksum[1], 0x8);
@@ -1655,6 +1688,23 @@ async function dll_full_build_multi(dllNames)
                 await dll_preheader_encrypt(fn_raw, file_raw);
 
 
+                //!!!!!!!!!!!
+                {
+                    // let dllInfo = await dll_analyse_text(file_raw);
+                    // await dll_analysis_text_dump(dllInfo, ``);
+
+                    // if (romVer === "usa")
+                    //     console.log(dllInfo)
+
+
+
+
+
+
+
+                }
+
+
                 //# Outputs compressed files
                 let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw, toSkip);
 
@@ -1672,13 +1722,13 @@ async function dll_full_build_multi(dllNames)
                 {
                     let file = USE_COMPRESSION ? file_cmp : file_raw;
 
-                    if (file === undefined)
-                    {
-                        log(dllName)
-                        log(USE_COMPRESSION)
-                    }
+                    // if (file === undefined)
+                    // {
+                    //     log(dllName)
+                    //     log(USE_COMPRESSION)
+                    // }
 
-                    let similarity = await get_similarity_dll(dllName, file, USE_COMPRESSION, toSkip);
+                    let similarity = await dll_get_similarity_and_make_fndumps(dllName, file, romVer, USE_COMPRESSION, toSkip);
                     let endPad = 10;
 
                     if (!USE_COMPRESSION && similarity.found && similarity.similarity === 1)
@@ -1850,6 +1900,363 @@ async function dll_full_build_multi(dllNames)
             }
         }
     }
+}
+
+const OPCODE =
+{
+    nop:      0,
+    beq:      1,
+    beql:     2,
+    bgez:     3,
+    bgezal:   4,
+    bgezall:  5,
+    bgezl:    6,
+    bltz:     7,
+    bltzal:   8,
+    bltzall:  9,
+    bltzl:   10,
+    bgtz:    11,
+    bgtzl:   12,
+    blez:    13,
+    blezl:   14,
+    bne:     15,
+    bnel:    16,
+    jr_ra:   17,
+};
+
+function MIPS_instruction_parse(instr)
+{
+    let opcode1   = (instr >>> (32 - 6)) & 0b111111;
+    let opcode2_b = (instr >>> 16) & 0b11111;
+
+    let opcode = "";
+
+    let type_branch = true;
+
+    //= Switch on opcode
+    switch (opcode1)
+    {
+        case 0b000100: opcode = OPCODE.beq;  break;
+        case 0b010100: opcode = OPCODE.beql; break;
+        case 0b000001:
+        {
+            switch (opcode2_b)
+            {
+                case 0b00001: opcode = OPCODE.bgez;    break;
+                case 0b10001: opcode = OPCODE.bgezal;  break;
+                case 0b10011: opcode = OPCODE.bgezall; break;
+                case 0b00011: opcode = OPCODE.bgezl;   break;
+                case 0b00000: opcode = OPCODE.bltz;    break;
+                case 0b10000: opcode = OPCODE.bltzal;  break;
+                case 0b10010: opcode = OPCODE.bltzall; break;
+                case 0b00010: opcode = OPCODE.bltzl;   break;
+                default:
+                {
+                    type_branch = false;
+                    break;
+                }
+            }
+            break;
+        }
+        case 0b000111: opcode = OPCODE.bgtz;  break;
+        case 0b010111: opcode = OPCODE.bgtzl; break;
+        case 0b000110: opcode = OPCODE.blez;  break;
+        case 0b010110: opcode = OPCODE.blezl; break;
+        case 0b000101: opcode = OPCODE.bne;   break;
+        case 0b010101: opcode = OPCODE.bnel;  break;
+        default:
+        {
+            type_branch = false;
+            break;
+        }
+    }
+
+    //= Switch on complete instruction
+    switch (instr)
+    {
+        case 0x03E00008: opcode = OPCODE.jr_ra; break;
+    }
+
+    //- Prep results
+
+    let res = {};
+
+    res.opcode = opcode;
+
+    //# [branches] Calculate branch target
+    if (type_branch)
+    {
+        let target = instr & 0xFFFF;
+
+        if (target >= 0x8000)
+            target -= 0x10000;
+
+        target += 1; //# branch imm is offset by one instruction
+        target *= 4; //# branch imm counts every four bytes
+
+        res.branch_target = target;
+    }
+
+    return res;
+}
+
+/**
+ * Use analysis of MIPS instructions in a DLL file and detect the offsets
+ * and sizes of all functions.
+ * 
+ * @param {string|Buffer} dllFile Either a path to a DLL file, or a buffer for its contents. MUST contain a preheader. Preheader must be encrypted.
+ * @returns {Promise<Array<Record<string, boolean|string|number>>} information about all functions found in .text
+ */
+function dll_analyse_text(dllFile)
+{
+    return new Promise(async (resolve, reject) =>
+    {
+        //= Checks
+        {
+            if (typeof dllFile === "string")
+                //# A path was passed, load the file
+                dllFile = await fsp.readFile(dllFile); //# throwable
+
+            if (!Buffer.isBuffer(dllFile) || dllFile.byteLength < 0x20)
+                return reject(`Invalid DLL file: not a Buffer.`);
+
+            if (dllFile.readUint8(0x0F) !== 0x82)
+                return reject(`Invalid DLL file: missing preheader!`);
+        }
+
+        //- Make a working copy of the incoming buffer
+        {
+            let buf = Buffer.alloc(dllFile.byteLength);
+            dllFile.copy(buf);
+            dllFile = buf;
+        }
+
+        //- Decompress if compressed
+        {
+            let isCompressed = dllFile.readUInt32BE(0x10) !== 0;
+            if (isCompressed)
+            {
+                let gz = zlib.inflateRawSync(dllFile.slice(0x12));
+
+                //# Splice new buffer together
+                let buf = Buffer.alloc(0x10 + gz.byteLength);
+                dllFile.copy(buf, 0, 0, 0x10);
+                gz.copy(buf, 0x10);
+
+                //# Reassign
+                dllFile = buf;
+            }
+        }
+
+        //- Decrypt the preheader
+        {
+            let checksum = dll_get_checksum(dllFile.slice(0x10));
+
+            dllFile.writeUInt32BE(dllFile.readUint32BE(0x0) ^ checksum[0], 0x0);
+            dllFile.writeUInt32BE(dllFile.readUint32BE(0x8) ^ checksum[1], 0x8);
+        }
+
+        //- Calculate the offset of the start of .text
+        let text_offset;
+        let dllName;
+        {
+            let size_preheader = 0x10;
+            let size_header    = 0x24;
+            let size_funcptrs  = (dllFile.readUint16BE(0x08) + 1) * 4;
+            let size_symrefs   = dllFile.readUInt16BE(0x0A) * 2;
+            let size_dllname   = dllFile.readUInt8(0x0E);
+
+            text_offset = size_preheader
+                        + size_header
+                        + size_funcptrs
+                        + ALIGN(size_dllname, 4)
+                        + size_symrefs;
+
+            text_offset = ALIGN(text_offset, 0x10);
+
+            //# Read DLL name
+            {
+                let start = size_preheader + size_header + size_funcptrs;
+                dllName = buf_cstr_to_str(dllFile.slice(start, start + size_dllname));
+            }
+        }
+
+        //- Calculate the offsets of all pub fns
+        let pubFnOffsets = [];
+        {
+            let num_funcptrs = dllFile.readUint16BE(0x08);
+            let offset       = 0x10 + 0x24 + 0x04;
+
+            for (let i = 0; i < num_funcptrs; i++)
+                pubFnOffsets.push(text_offset + dllFile.readUint32BE(offset + (i * 4)));
+        }
+
+        let text_size  = dllFile.readUint16BE(0x00) * 0x10;
+        let text_start = text_offset;
+        let text_end   = text_start + text_size;
+
+        // log(`=============================`)
+        // log(`dllName: ${dllName}`)
+        // log(`pubFnOffsets: ${pubFnOffsets.map(x => x.hex()).join(" ")}`)
+        // log(`text_start.hex(): ${text_start.hex()}`)
+        // log(`text_size.hex(): ${text_size.hex()}`)
+        // log(`-----------------------------`)
+
+        //- Process the .text segment
+        let functions = [];
+        {
+            let insideFunction = false;
+
+            //# indices
+            let curr_func_pub_idx    = -1;
+            let curr_func_prv_idx    = -1;
+
+            //# attributes
+            let curr_func_name       = "";
+            let curr_func_start      = 0;
+            let curr_func_end        = 0;
+            let curr_func_is_public  = false;
+
+            //# temp vars
+            let curr_func_max_offset = 0;
+
+            for (let i = text_start; i < text_end; i += 4)
+            {
+                let pc = i;
+
+                let instr = dllFile.readUint32BE(pc);
+
+                if (!insideFunction)
+                {
+                    if (instr === 0)
+                        //# Ignore NOPs
+                        continue;
+
+                    //- Not a NOP, assume as start of a new function
+
+                    insideFunction = true;
+                    curr_func_start = pc;
+
+                    //# Set name of the new func
+                    {
+                        if (pubFnOffsets.includes(curr_func_start))
+                        {
+                            curr_func_is_public = true;
+
+                            curr_func_pub_idx++;
+                            curr_func_name = `pub_${curr_func_pub_idx.toString().padStart(3, "0")}`;
+                        }
+                        else
+                        {
+                            curr_func_is_public = false;
+
+                            curr_func_prv_idx++;
+                            curr_func_name = `prv_${curr_func_prv_idx.toString().padStart(3, "0")}`;
+                        }
+                    }
+                }
+
+                //- Inside a function now
+
+                //# Set max to curr offset
+                if (pc > curr_func_max_offset)
+                    curr_func_max_offset = pc;
+
+                //# Parse the instruction
+                {
+                    let instr_o = MIPS_instruction_parse(instr);
+
+                    let branch = false;
+                    let jr_ra  = false;
+
+                    //# Check if branch or [jr $ra]
+                    switch (instr_o.opcode)
+                    {
+                        case OPCODE.beq:
+                        case OPCODE.beql:
+                        case OPCODE.bgez:
+                        case OPCODE.bgezal:
+                        case OPCODE.bgezall:
+                        case OPCODE.bgezl:
+                        case OPCODE.bltz:
+                        case OPCODE.bltzal:
+                        case OPCODE.bltzall:
+                        case OPCODE.bltzl:
+                        case OPCODE.bgtz:
+                        case OPCODE.bgtzl:
+                        case OPCODE.blez:
+                        case OPCODE.blezl:
+                        case OPCODE.bne:
+                        case OPCODE.bnel:
+                            branch = true;
+                            break;
+
+                        case OPCODE.jr_ra:
+                            jr_ra = true;
+                            break;
+
+                        case OPCODE.nop:
+                        default:
+                            break;
+                    }
+
+                    if (branch)
+                    {
+                        let target = pc + instr_o.branch_target;
+
+                        //# Update function max size
+                        if (target > curr_func_max_offset)
+                            curr_func_max_offset = target;
+                    }
+
+                    if (jr_ra)
+                    {
+                        if (curr_func_max_offset > pc)
+                            //= The function goes on, don't get out yet, go to next instruction
+                            continue;
+
+                        //- The function is over. Prepare for next
+                        {
+                            curr_func_end = i + 8;
+
+                            //# Account for delay slot; the loop iterator will account for incrementing pc
+                            pc += 4;
+                            i  += 4;
+
+                            insideFunction = false;
+
+                            functions.push({
+                                public: curr_func_is_public,
+                                name:   curr_func_name,
+                                offset: curr_func_start,
+                                size:   curr_func_end - curr_func_start,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        //# Return found functions
+        return resolve({
+            dllName,
+            functions,
+        });
+    });
+}
+
+/**
+ * Take the output of [dll_analyse_text()] and dump it to disk
+ * in a specially formatted text file
+ * 
+ * @param {Record<string, string|Array<Record<string, boolean|string|number>>} dllInfo 
+ * @param {string} outputPath
+ */
+async function dll_analysis_text_dump(dllInfo, outputPath)
+{
+    let res = dllInfo.functions.map(d => `${d.name} ${d.offset.hexp()} ${d.size.hexp()}`);
+
+    await fsp.writeFile(outputPath.replace(/\/+$/g) + `/${dllInfo.dllName}_fndump.txt`, res.join("\r\n"));
 }
 
 const argv = process.argv.slice(2);

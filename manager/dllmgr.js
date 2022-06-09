@@ -833,6 +833,7 @@ async function dll_source_edit_location_dump(dllName, romVer)
 
         //- If found function changed, dump
         //# If not found, we don't dump. This is fine; it won't update the diff either.
+        const dumppath = gCurrDir + `watches/_curr_dll_fn_${romVer}.txt`;
         if (found)
         {
             //- Read previously calculated function dumps
@@ -870,10 +871,15 @@ async function dll_source_edit_location_dump(dllName, romVer)
             }
 
             //- Dump it
-            await fsp.writeFile(gCurrDir + `watches/_curr_dll_fn_${romVer}.txt`, res);
+            await fsp.writeFile(dumppath, res);
         }
         else
         {
+            //- Touch the file, but don't modify it
+
+            let now = new Date();
+            await fsp.utimes(dumppath, now, now);
+
             // log(`[DBG]: Changed function not found!`);
             // log(`diffIdx: ${diffIdx}`);
             // log(`info.fns: ${JSON.stringify(info.fns, null, 2)}`);

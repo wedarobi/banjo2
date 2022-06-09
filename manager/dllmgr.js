@@ -729,6 +729,16 @@ async function dll_src_extract_function_offsets(src, dllName, romVer)
 
 
 var gDllSourceCache = {};
+/**
+ * Needed to preserve the autodiff in some cases where
+ * a simple touch won't work since the offsets need
+ * to be updated (e.g. when editing .data)
+ */
+var gDllCacheLastInfo = {
+    dll:   "",
+    fname: "",
+    fidx:  "",
+};
 
 async function dll_cache_source_update_locations(dllName, romVer)
 {
@@ -826,15 +836,20 @@ async function dll_source_edit_location_dump(dllName, romVer)
                 //- Found!
                 found = true;
 
-                fidx  = idx;
-                fname = f.name;
+                //# Update cached values
+                gDllCacheLastInfo.dll   = dllName;
+                gDllCacheLastInfo.fidx  = idx;
+                gDllCacheLastInfo.fname = f.name;
             }
         }
+
+        fidx  = gDllCacheLastInfo.fidx;
+        fname = gDllCacheLastInfo.fname;
 
         //- If found function changed, dump
         //# If not found, we don't dump. This is fine; it won't update the diff either.
         const dumppath = gCurrDir + `watches/_curr_dll_fn_${romVer}.txt`;
-        if (found)
+        if (found || fname !== "")
         {
             //- Read previously calculated function dumps
             //# Read binary offset info
@@ -876,6 +891,15 @@ async function dll_source_edit_location_dump(dllName, romVer)
         else
         {
             //- Touch the file, but don't modify it
+
+            /**
+             * TODO: Actually find the range of the LAST USED function, and update
+             * This is needed if we change data, and shift the offset of a function
+             * currently shown in the diff window.
+             * The touch will update it, but the offsets won't be updated in the file,
+             * so we will see a bunch of diffs in the window until we go into a function
+             * and trigger a watch change from there.
+             */
 
             let now = new Date();
             await fsp.utimes(dumppath, now, now);

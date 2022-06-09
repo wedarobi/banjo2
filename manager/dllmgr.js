@@ -617,9 +617,36 @@ async function dll_src_extract_function_offsets(src, dllName, romVer)
 
                 if (rem && rem.length === 1)
                 {
+                    let start = rem.index;
+
+                    {
+                        /**
+                         * # Move function start to the start of the line.
+                         * 
+                         * ! Yes, this is an ugly hack
+                         *   and it WON'T WORK as intended (it won't respond to
+                         *   editing the return type) if the return type is
+                         *   on a separate line to the function name token.
+                         * 
+                         * But im not sure how to identify return types
+                         * without using pycparser or some other slow "full
+                         * C code parser"
+                         */
+
+                        for (let i = start - 1; i >= 0; i--)
+                        {
+                            if (src[i] === "\n")
+                            {
+                                //# Found start of line, treat as start of function
+                                start = i + 1;
+                                break;
+                            }
+                        }
+                    }
+
                     functionInfoObjs.push({
                         name:  fn,
-                        start: rem.index,
+                        start,
                         //= This needs to be calculated properly later
                         end:   0,
                     });

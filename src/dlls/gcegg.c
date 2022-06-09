@@ -15,7 +15,7 @@ static struct
     u8  UNK_08;
     u8  UNK_09;
     /* enum ABILITY */
-    u8  moveIdx;
+    u8  abilityIdx;
     u8  UNK_0B;
     u8  UNK_0C;
     u8  UNK_0D; // unused?
@@ -77,7 +77,7 @@ s32 DLL_gcegg_05(s32 a0)
 
 bool DLL_gcegg_06(s32 a0)
 {
-    return arr00[a0].moveIdx == ABILITY_3C_UNK || fn_ability_has(arr00[a0].moveIdx);
+    return arr00[a0].abilityIdx == ABILITY_3C_UNK || fn_ability_has(arr00[a0].abilityIdx);
 }
 
 s32 DLL_gcegg_07(s32 a0)

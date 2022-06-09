@@ -47,7 +47,7 @@ s32  fn_flag_get_and_increment_multi(FLAG flag, u32 width);
 s32  fn_flag_get_multi_sum(FLAG flag, u32 width);
 bool fn_flag_get_and_set(FLAG flag, bool value);
 
-bool fn_ability_has(s32 moveIdx);
+bool fn_ability_has(s32 abilityIdx);
 
 void fn_flag_set_675_TRUE(void);
 

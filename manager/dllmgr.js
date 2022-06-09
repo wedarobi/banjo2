@@ -1400,7 +1400,14 @@ async function dll_process(dll, objFilePath, toSkip=false)
         //# The order of the sections matter. Rare did it in this order.
         let sectionsWithRelocs = [ "_text", "_rodata", "_data", "_bss" ];
 
-        let symbols = elf_get_syms(elf, sectionsWithRelocs.map(x => x.replace(/^_/g, ".")));
+        let pubFnNames = pubFns.map(e => e.name);
+
+        let symbols = elf_get_syms(elf,
+            [
+                ...sectionsWithRelocs.map(x => x.replace(/^_/g, ".")),
+                ...pubFnNames,
+            ]
+        );
 
         //- We only look at relocations that are in sections that interest us
         //# This avoids looking at e.g. external function calls that the linker can handle
@@ -1411,14 +1418,9 @@ async function dll_process(dll, objFilePath, toSkip=false)
             if (symbols?._data?.shndx)   validSectionIds.push(symbols._data.shndx);
             if (symbols?._bss?.shndx)    validSectionIds.push(symbols._bss.shndx);
 
-            //- We also need to process internal relocations for any pub funcs for this DLL
-            {
-                let names   = pubFns.map(e => e.name);
-                let symbols = elf_get_syms(elf, names);
-
-                for (let name of names)
-                    validSectionIds.push(symbols[name].shndx);
-            }
+            //- We also need to process internal relocations for any pub funcs
+            for (let name of pubFnNames)
+                validSectionIds.push(symbols[name].shndx);
         }
 
         //- Needed to calculate the offset after [objcopy]

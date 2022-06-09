@@ -114,6 +114,11 @@ Number.prototype.hex = function()
     return this.toString(16).toUpperCase();
 }
 
+function sleep(ms)
+{
+    return new Promise(r => setTimeout(r, ms));
+}
+
 const COLOUR_CODES =
 {
     black:  "30",
@@ -286,6 +291,8 @@ function ALIGN(value, pad)
  * Map between <DLL_name, syscallIdx>
  */
 var gSyscallIdxMap;
+var allDllNames = new Set();
+
 /**
  * Map between <DLL_name, callTableOffset>
  *
@@ -318,7 +325,11 @@ async function init_gSyscallIdx_map(romVer)
         let words = line.split(/\s+/g);
         if (words.length === 1 || isUsa) // USA contains all known DLLs
         {
-            o[words[0]] = syscallIdx;
+            let dllName = words[0];
+
+            allDllNames.add(dllName);
+
+            o[dllName] = syscallIdx;
             continue;
         }
 
@@ -1503,6 +1514,8 @@ const MATCH_COLOURS =
     CMP: "yellow",
     //# non-matching
     BAD: "red",
+    //# completely unknown file
+    UNK: "pink",
 };
 
 /**
@@ -1519,6 +1532,8 @@ function _order_colours(str)
     {
         case `\x1b[${COLOUR_CODES[MATCH_COLOURS.OK ]};`: return 10;
         case `\x1b[${COLOUR_CODES[MATCH_COLOURS.CMP]};`: return 20;
+        //# Unknown DLLs should be at the very bottom
+        case `\x1b[${COLOUR_CODES[MATCH_COLOURS.UNK]};`: return 2000;
         case `\x1b[${COLOUR_CODES[MATCH_COLOURS.BAD]};`:
         {
             //# The more % signs, the more builds at least succeeded, so show them higher
@@ -1623,7 +1638,7 @@ async function dll_full_build_multi(dllNames)
                     results_raw[idx] = "";
 
 
-                if (!fs.existsSync(fn_c) || (await fsp.stat(fn_c)).size === 0)
+                if (!fs.existsSync(fn_c) || (await fsp.stat(fn_c)).size === 0 || !allDllNames.has(dllName))
                 {
                     //= Placeholder DLL, don't waste time processing it
                     results_raw[idx] += "".padStart(CELL_PADDING, " ");
@@ -1690,7 +1705,7 @@ async function dll_full_build_multi(dllNames)
                 {
                     let hash = get_hash(file_cmp);
 
-                    if (!(dllName in hashdiffs))
+                    if (!(dllName in hashdiffs) || !hashdiffs[dllName])
                         hashdiffs[dllName] = "";
 
                     hashdiffs[dllName] += hash !== lastHash
@@ -1716,7 +1731,18 @@ async function dll_full_build_multi(dllNames)
 
     for (let [idx, dllName] of dllNames.entries())
         results_raw[idx] =
-            gct(`${dllName.substr(0, 23)}`.padEnd(25, " "), ifDllNotSkipped[idx] ? "cyan" : "black") + results_raw[idx];
+            gct(
+                `${dllName.substr(0, 23)}`.padEnd(25, " "),
+                !allDllNames.has(dllName)
+                    //# Not a known DLL. Wrong filename?
+                    ? MATCH_COLOURS.UNK
+                    : ifDllNotSkipped[idx]
+                        //# A build of the DLL was attempted
+                        ? "cyan"
+                        //# This DLL was not built this time, the results from the previous build were reused
+                        : "black"
+            )
+            + results_raw[idx];
 
     const LEGEND_MARK = "●";
 
@@ -1725,6 +1751,7 @@ async function dll_full_build_multi(dllNames)
         OK:  0,
         CMP: 0,
         BAD: 0,
+        UNK: 0,
     };
 
     //- Postprocess results
@@ -1741,6 +1768,7 @@ async function dll_full_build_multi(dllNames)
                       str_contains_colour(str, MATCH_COLOURS.BAD) ? MATCH_COLOURS.BAD
                     : str_contains_colour(str, MATCH_COLOURS.CMP) ? MATCH_COLOURS.CMP
                     : str_contains_colour(str, MATCH_COLOURS.OK ) ? MATCH_COLOURS.OK
+                    : str_contains_colour(str, MATCH_COLOURS.UNK) ? MATCH_COLOURS.UNK
                     : MATCH_COLOURS.BAD;
 
                 switch (colour)
@@ -1748,6 +1776,7 @@ async function dll_full_build_multi(dllNames)
                     case MATCH_COLOURS.OK:  numDlls.OK++;  break;
                     case MATCH_COLOURS.CMP: numDlls.CMP++; break;
                     case MATCH_COLOURS.BAD: numDlls.BAD++; break;
+                    case MATCH_COLOURS.UNK: numDlls.UNK++; break;
                 }
 
                 results[i] = `${gct(LEGEND_MARK + " ", colour)}` + str;
@@ -1764,8 +1793,12 @@ async function dll_full_build_multi(dllNames)
             if (dllNames.length === 1)
             {
                 ///- Show compact log line for single DLL
+                let _2 = hashdiffs[dllNames[0]]
+                if (!_2)
+                    //# Generate dummy string of "?" with the length of the total number of versions
+                    _2 = allRomVers.map(x => "?").join("");
 
-                log(`  ${results_raw[0]} ${hashdiffs[dllNames[0]]}`);
+                log(`  ${results_raw[0]} ${_2}`);
             }
             else
             {
@@ -1802,6 +1835,11 @@ async function dll_full_build_multi(dllNames)
                 header += gct(" compression   ",    "black");
                 header += gct(numDlls.BAD,          MATCH_COLOURS.BAD);
                 header += gct(" non-matching   ",   "black");
+                if (numDlls.UNK)
+                {
+                    header += gct(numDlls.UNK,     MATCH_COLOURS.UNK);
+                    header += gct(" unknown   ",   "black");
+                }
                 header += gct(remainingDllCount,    "black");
                 header += gct(" unlisted   ",       "black");
     
@@ -1867,12 +1905,37 @@ async function main()
     //- Watch for changes
     if (arg_toWatch)
     {
-        for (let dll of dllNames)
+        let   lastModTime = 0;
+        const delay = 0.5;
+
+        const cb = async (e, fn) =>
         {
-            var lastModTime = 0;
+            let dll = fn.replace(/\.c$/g, "");
+
+            let now = (new Date()).getTime();
+
+            if (now < lastModTime + delay * 1000)
+                //# Too quick, debounce and reject
+                return;
+
+            lastModTime = now;
+
+            if (!fs.existsSync(gRootDir + `src/dlls/${fn}`))
+                //# Callback was called due to deletion, not creation/edit. Ignore.
+                return;
+
+            //# rlog: Allow the next printed line to overwrite it
+            rlog(gct(`  Detected change, rebuilding: ${gct(dll, "yellow")}`, "black"));
+
+            await dll_full_build_multi([dll]);
+        };
+
+        {
+            //# shadowed vars
+            let   lastModTime = 0;
             const delay = 0.5;
 
-            fs.watch(gRootDir + `src/dlls/${dll}.c`, {}, async e =>
+            fs.watch(gRootDir + `src/dlls`, {}, async (e, fn) =>
             {
                 let now = (new Date()).getTime();
 
@@ -1882,11 +1945,17 @@ async function main()
 
                 lastModTime = now;
 
-                //# rlog: Allow the next printed line to overwrite it
-                rlog(gct(`  Detected change, rebuilding: ${gct(dll, "yellow")}`, "black"));
+                await sleep(500);
 
-                await dll_full_build_multi([dll]);
+                if (e === "rename" && fn.endsWith(".c") && fs.existsSync(gRootDir + `src/dlls/${fn}`))
+                    //# New .c file was added
+                    fs.watch(gRootDir + `src/dlls/${fn}`, cb);
             });
+        }
+
+        for (let dll of dllNames)
+        {
+            fs.watch(gRootDir + `src/dlls/${dll}.c`, {}, cb);
         }
 
         log(gct(`  Autobuild enabled, watching for file changes...`, "black"));

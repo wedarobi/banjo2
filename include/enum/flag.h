@@ -319,7 +319,7 @@ typedef enum FLAG {
     /* 0ED 0ED */ FLAG_0ED_ABILITY_BK_BEAK_BARGE,
     /* 0EE 0EE */ FLAG_0EE_ABILITY_BK_BEAK_BOMB,
     /* 0EF 0EF */ FLAG_0EF_ABILITY_BK_BEAK_BUSTER,
-    /* 0F0 0F0 >>>>>>>>>>>> */ FLAG_0F0_UNK, //? Ability: Seen Camera Tutorial? Set on boot
+    /* 0F0 0F0 >>>>>>>>>>>> */ FLAG_0F0_ABILITY_UNK, //? Ability: Seen Camera Tutorial? Set on boot
     /* 0F1 0F1 */ FLAG_0F1_ABILITY_BK_STANDING_PECK,
     /* 0F2 0F2 */ FLAG_0F2_ABILITY_BK_CLIMB_TREES,
     /* 0F3 0F3 */ FLAG_0F3_ABILITY_BK_USE_EGGS,
@@ -335,12 +335,12 @@ typedef enum FLAG {
     /* 0FD 0FD */ FLAG_0FD_ABILITY_BK_TALON_TROT,
     /* 0FE 0FE */ FLAG_0FE_ABILITY_BK_SPEED_SHOES,
     /* 0FF 0FF */ FLAG_0FF_ABILITY_BK_WONDERWING,
-    /* 100 100 >>>>>>>>>>>> */ FLAG_100_UNK, //? FT Note Door Molehill Seen?
+    /* 100 100 >>>>>>>>>>>> */ FLAG_100_ABILITY_UNK, //? FT Note Door Molehill Seen?
     /* 101 101 */ FLAG_101_ABILITY_GRIP_GRAB,
     /* 102 102 */ FLAG_102_ABILITY_BREEGULL_BLASTER,
     /* 103 103 */ FLAG_103_ABILITY_EGG_AIM,
-    /* 104 104 >>>>>>>>>>>> */ FLAG_104_UNK,
-    /* 105 105 >>>>>>>>>>>> */ FLAG_105_UNK, //! jamjars health related
+    /* 104 104 >>>>>>>>>>>> */ FLAG_104_ABILITY_UNK,
+    /* 105 105 >>>>>>>>>>>> */ FLAG_105_ABILITY_UNK, //! jamjars health related
     /* 106 106 */ FLAG_106_ABILITY_BILL_DRILL,
     /* 107 107 */ FLAG_107_ABILITY_BEAK_BAYONET,
     /* 108 108 */ FLAG_108_ABILITY_AIRBORNE_EGG_AIM,

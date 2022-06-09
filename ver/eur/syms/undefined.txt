@@ -44,6 +44,8 @@ fn_flag_get_and_increment_multi  = 0x800E29E4;
 fn_flag_get_multi_sum            = 0x800E2A20;
 fn_flag_get_and_set              = 0x800E2A84;
 
+fn_ability_has = 0x800CF960;
+
 fn_flag_set_675_TRUE = 0x8010413C;
 
 gsWorldGetSection = 0x800F0CEC;
@@ -60,7 +62,7 @@ func_800AAD80 = 0x800B41FC;
 
 func_80015778 = 0x800157A8;
 
-
+func_800D3948 = 0x800DBE5C;
 
 
 

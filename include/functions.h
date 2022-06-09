@@ -47,6 +47,8 @@ s32  fn_flag_get_and_increment_multi(FLAG flag, u32 width);
 s32  fn_flag_get_multi_sum(FLAG flag, u32 width);
 bool fn_flag_get_and_set(FLAG flag, bool value);
 
+bool fn_ability_has(s32 moveIdx);
+
 void fn_flag_set_675_TRUE(void);
 
 MAP gsWorldGetSection(void);
@@ -62,6 +64,7 @@ s32   func_800AAD80(void *);
 
 void func_80015778(void);
 
+bool func_800D3948(void);
 
 
 /* ADDRv(0x8001ACCC, 0x8001A6BC, 0x8001A6EC, 0x8001A6EC) */ void *fn_malloc_temp(u32 size);

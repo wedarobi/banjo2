@@ -490,7 +490,7 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
     }
 
     //= Make fndump
-    if (!toSkip)
+    if (!toSkip && !compressed)
     {
         //# Vanilla functions
         await dll_analysis_text_dump(
@@ -2069,17 +2069,6 @@ async function dll_full_build_multi(dllNames)
 
                 await dll_preheader_encrypt(fn_raw, file_raw);
 
-                //- Diff script helpers (live update)
-                {
-                    // TODO: Verify this order later
-
-                    if (gDllSourceCache?.[dllName]?.[romVer])
-                        //# Old source exists, can compare and dump
-                        await dll_source_edit_location_dump(dllName, romVer);
-
-                    await dll_cache_source_update_locations(dllName, romVer);
-                }
-
                 //# Outputs compressed files
                 let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw, toSkip);
 
@@ -2105,6 +2094,18 @@ async function dll_full_build_multi(dllNames)
 
                     let similarity = await dll_get_similarity_and_make_fndumps(dllName, file, romVer, USE_COMPRESSION, toSkip);
                     let endPad = 10;
+
+                    //- Diff script helpers (live update)
+                    if (!USE_COMPRESSION)
+                    {
+                        // TODO: Verify this order later
+
+                        if (gDllSourceCache?.[dllName]?.[romVer])
+                            //# Old source exists, can compare and dump
+                            await dll_source_edit_location_dump(dllName, romVer);
+
+                        await dll_cache_source_update_locations(dllName, romVer);
+                    }
 
                     if (!USE_COMPRESSION && similarity.found && similarity.similarity === 1)
                     {

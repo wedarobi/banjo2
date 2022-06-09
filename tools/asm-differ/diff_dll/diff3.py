@@ -273,6 +273,13 @@ parser.add_argument(
     default="",
     help="",
 )
+parser.add_argument(
+    "-a",
+    dest="AUTODETECT",
+    action="store_true",
+    # default=False,
+    help="Auto-detect the current function to diff, with help from dllMgr.",
+)
 #=============================
 
 # Project-specific flags, e.g. different versions/make arguments.
@@ -715,6 +722,55 @@ def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
     objdump_flags = ['-Dz', '-bbinary', '-mmips', '-EB']
     flags1 = [f"--start-address={start_base}", f"--stop-address={end_base}"]
     flags2 = [f"--start-address={start_my}",   f"--stop-address={end_my}"]
+    return (
+        myimg,
+        (objdump_flags + flags1, baseimg, None),
+        (objdump_flags + flags2, myimg,   None)
+    )
+
+
+def dump_binary_autodetect() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
+    if not args.NAME_OF_ROMVER:
+        print(f"Pass the name of the rom version to use with -r")
+        sys.exit(1)
+
+    romver = args.NAME_OF_ROMVER
+
+    path_currDllInfo = f"../../../manager/watches/_curr_dll_fn_{romver}.txt"
+
+    lines_currDllInfo = []
+
+    with open(path_currDllInfo, "r") as f:
+        lines_currDllInfo = re.split(r"\r?\n", f.read().strip())
+
+    if len(lines_currDllInfo) != 5:
+        print(f"[ERR]: Invalid number of lines in watch file!")
+        sys.exit(1)
+
+    dll_name = lines_currDllInfo[0].strip()
+    funcName = lines_currDllInfo[1].strip()
+
+    vani_info = re.split(r"\s+", lines_currDllInfo[2].strip())
+    cust_info = re.split(r"\s+", lines_currDllInfo[3].strip())
+    fidx_info = re.split(r"\s+", lines_currDllInfo[4].strip()) # function index and length
+
+    vani_start = int(vani_info[2], 0)
+    vani_end   = vani_start + int(vani_info[3], 0)
+    cust_start = int(cust_info[2], 0)
+    cust_end   = cust_start + int(cust_info[3], 0)
+
+    baseimg = f"../../../expected/{romver}/dlls/{dll_name}.raw"
+    myimg   = f"../../../build/{   romver}/dlls/{dll_name}.bin"
+
+    gVars["names"]["romVer"]       = romver
+    gVars["names"]["dllName"]      = dll_name
+    gVars["names"]["functionName"] = funcName
+    gVars["names"]["functionIdx"]  = f"{fidx_info[0]}"
+    gVars["names"]["functionCnt"]  = f"{fidx_info[1]}"
+
+    objdump_flags = ['-Dz', '-bbinary', '-mmips', '-EB']
+    flags1 = [f"--start-address={vani_start}", f"--stop-address={vani_end}"]
+    flags2 = [f"--start-address={cust_start}", f"--stop-address={cust_end}"]
     return (
         myimg,
         (objdump_flags + flags1, baseimg, None),
@@ -1602,6 +1658,11 @@ class Display:
     watch_queue: "queue.Queue[Optional[float]]"
     less_proc: "Optional[subprocess.Popen[bytes]]"
 
+    ## FORCE UPDATE
+    last_romver   = ""
+    last_dllname  = ""
+    last_funcname = ""
+
     def __init__(self, basedump: str, mydump: str) -> None:
         self.basedump = basedump
         self.mydump = mydump
@@ -1692,6 +1753,27 @@ class Display:
         self.less_proc.kill()
         self.ready_queue.get()
 
+    def force_update_all(self, new_basedump: str, new_mydump: str, error: bool) -> None:
+
+        curr_romver   = gVars["names"]["romVer"]
+        curr_dllname  = gVars["names"]["dllName"]
+        curr_funcname = gVars["names"]["functionName"]
+
+        if self.last_romver != curr_romver or self.last_dllname != curr_dllname or self.last_funcname != curr_funcname:
+            ## Changed to a new file, reset three-way diff
+            self.last_diff_output = ""
+
+        self.last_romver   = curr_romver
+        self.last_dllname  = curr_dllname
+        self.last_funcname = curr_funcname
+
+        self.basedump = new_basedump
+        self.pending_update = (new_mydump, error)
+        if not self.less_proc:
+            return
+        self.less_proc.kill()
+        self.ready_queue.get()
+
     def terminate(self) -> None:
         if not self.less_proc:
             return
@@ -1726,7 +1808,11 @@ def main() -> None:
 
     # mydump = run_objdump(mycmd)
 
-    make_target, basecmd, mycmd = dump_binary()
+
+    if args.AUTODETECT:
+        make_target, basecmd, mycmd = dump_binary_autodetect()
+    else:
+        make_target, basecmd, mycmd = dump_binary()
 
     mydump   = run_objdump(mycmd)
     basedump = run_objdump(basecmd)
@@ -1743,18 +1829,24 @@ def main() -> None:
         #     )
         #     if yn.lower() == "n":
         #         return
-        if args.make:
-            watch_sources = None
-            watch_sources_for_target_fn = getattr(
-                diff_settings, "watch_sources_for_target", None
-            )
-            if watch_sources_for_target_fn:
-                watch_sources = watch_sources_for_target_fn(make_target)
-            watch_sources = watch_sources or source_directories
-            if not watch_sources:
-                fail("Missing source_directories config, don't know what to watch.")
-        else:
-            watch_sources = [make_target]
+        # if args.make:
+        #     watch_sources = None
+        #     watch_sources_for_target_fn = getattr(
+        #         diff_settings, "watch_sources_for_target", None
+        #     )
+        #     if watch_sources_for_target_fn:
+        #         watch_sources = watch_sources_for_target_fn(make_target)
+        #     watch_sources = watch_sources or source_directories
+        #     if not watch_sources:
+        #         fail("Missing source_directories config, don't know what to watch.")
+        # else:
+        #     watch_sources = [make_target]
+
+
+        watch_sources = [f"../../../manager/watches/_curr_dll_fn_{args.NAME_OF_ROMVER}.txt"]
+
+
+
         q: "queue.Queue[Optional[float]]" = queue.Queue()
         debounced_fs_watch(watch_sources, q, DEBOUNCE_DELAY)
         display.run_async(q)
@@ -1767,22 +1859,28 @@ def main() -> None:
                 if t < last_build:
                     continue
                 last_build = time.time()
-                if args.make:
-                    display.progress("Building...")
-                    ret = run_make_capture_output(make_target)
-                    if ret.returncode != 0:
-                        display.update(
-                            ret.stderr.decode("utf-8-sig", "replace")
-                            or ret.stdout.decode("utf-8-sig", "replace"),
-                            error=True,
-                        )
-                        continue
+                # if args.make:
+                #     display.progress("Building...")
+                #     ret = run_make_capture_output(make_target)
+                #     if ret.returncode != 0:
+                #         display.update(
+                #             ret.stderr.decode("utf-8-sig", "replace")
+                #             or ret.stdout.decode("utf-8-sig", "replace"),
+                #             error=True,
+                #         )
+                #         continue
 
                 #- Re-dump binary to update the pubfndump offsets
-                _, _, mycmd = dump_binary()
-                mydump      = run_objdump(mycmd)
+                if args.AUTODETECT:
+                    make_target, basecmd, mycmd = dump_binary_autodetect()
+                    basedump = run_objdump(basecmd)
+                    mydump   = run_objdump(mycmd)
+                    display.force_update_all(basedump, mydump, error=False)
+                else:
+                    make_target, basecmd, mycmd = dump_binary()
+                    mydump = run_objdump(mycmd)
+                    display.update(mydump, error=False)
 
-                display.update(mydump, error=False)
 
         except KeyboardInterrupt:
             display.terminate()

@@ -6,6 +6,8 @@ const path   = require("path");
 const zlib   = require("node:zlib");
 
 const stringSimilarity = require("string-similarity");
+// const cparser          = require("node-c-parser");
+// const c_ast            = require("c-ast");
 
 
 
@@ -58,7 +60,7 @@ function DEBUG_LOG(msg)
         console.log(msg);
 }
 
-function spawn(command)
+function spawn(command, directPrint=true)
 {
     return new Promise((res, rej) =>
     {
@@ -77,22 +79,36 @@ function spawn(command)
 
         proc.stdout.on("data", data =>
         {
-            // stdout += data;
-            process.stdout.write(data);
+            if (directPrint)
+                process.stdout.write(data);
+            else
+                stdout += data;
         });
 
         proc.stderr.on("data", data =>
         {
-            // stderr += data;
-            process.stderr.write(data);
+            if (directPrint)
+                process.stderr.write(data);
+            else
+                stderr += data;
         });
 
         proc.on("close", code =>
         {
-            if (code)
-                return rej();
-
-            return res();
+            if (!directPrint)
+            {
+                if (code)
+                    return rej(stderr);
+    
+                return res(stdout);
+            }
+            else
+            {
+                if (code)
+                    return rej();
+    
+                return res();
+            }
         });
 
         proc.on("error", err =>
@@ -407,10 +423,8 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
     let size = dllOffsetEnd - dllOffsetStart;
 
     if (!size)
-    {
-        // dll missing
-        return { found: false, similarity: 0, };
-    }
+        //# dll missing
+        return { found: false, similarity: 0 };
 
     //- Grab file from baserom
 
@@ -493,10 +507,351 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
     //- Execute compare
     let similarity = stringSimilarity.compareTwoStrings(
         buf_vani.toString(),
-        buf_cust.toString()
+        buf_cust.toString(),
     );
 
     return { found: true, similarity, };
+}
+
+function remove_c_comments_from_src(src)
+{
+    //# Multiline
+    src = src.replace(/\/\*.+\*\//gm, "");
+
+    //# Single line
+    src = src.replace(/\/\/.+(\r?\n)/gm, "$1");
+
+    return src;
+}
+
+/**
+ * Get a list of functions from a C source file and
+ * also give their start and end offsets.
+ * 
+ * We do this manually instead of with e.g. pycparser
+ * mainly for performance; it's much, much faster this way.
+ * 
+ * -> remove all comments
+ * -> run through the C preprocessor
+ * -> parse function names and match their start and end squiggly brackets
+ * @param {string} src
+ * @param {string} dllName
+ * @param {string} romVer
+ */
+async function dll_src_extract_function_offsets(src, dllName, romVer)
+{
+    //- Remove comments
+    src = remove_c_comments_from_src(src);
+
+    //- Scan
+    let functionInfoObjs = [];
+    {
+        //- Run through the preprocessor
+        let pp_output;
+        {
+            let defines  = `-D_LANGUAGE_C -DF3DEX2_GBI -DVERSION_${romVer.toUpperCase()}=1`;
+            let includes = "";
+            includes += " -I/home/user/n64/decomp/bt";
+            includes += " -I/home/user/n64/decomp/bt/include";
+            includes += " -I/home/user/n64/decomp/bt/include/2.0L";
+            try
+            {
+                pp_output = await spawn(`gcc -E ${defines} ${includes} src/dlls/${dllName}.c`, false);
+            }
+            catch (err)
+            {
+                //! Handle errors?
+
+                throw err;
+            }
+        }
+
+        //- Process and filter the output of the preprocessor
+        let functionsNames;
+        {
+            let re = new RegExp(`^# \\d+ "src\/dlls\/${dllName}\.c" \\d+$`, "g");
+
+            //- Get the contents of the preprocessor output that excludes all other included files
+            //# We mostly wanted to get rid of #if/#ifdef/#ifndef stuff so we're ready
+            //# We don't care about defs
+            let filtered = "";
+            {
+                let lines = pp_output.split(/\r?\n/g);
+                let arr = [];
+
+                for (let i = lines.length - 1; i >= 0; i--)
+                {
+                    let line = lines[i];
+
+                    if (re.test(line))
+                        //# Found the final relevant preprocessor line, get out
+                        break;
+
+                    arr.push(line);
+                }
+
+                filtered = arr.reverse().join("\n");
+            }
+
+            //- Look through the preprocessor output for things that look like top-level function definitions
+            {
+                let re = /\b[A-Za-z0-9_]+(?<!\bwhile|\bfor|\bif|\bswitch|\bcase)\s*?\([^\(\);]+\)\s*?{/gm;
+
+                let m = filtered.match(re);
+                if (!m)
+                    m = [];
+
+                functionsNames = m.map(e => e.split(/[\s\(]+?/g)?.[0]).filter(x => x);
+            }
+        }
+
+        // TODO: Validate length of functionsNames against expected number of functions from parsed DLL file
+
+        //- Calculate function start offsets
+        //# (with regex)
+        {
+            for (let fn of functionsNames)
+            {
+                let re  = new RegExp(`\\b${fn}\\s*?\\([^\(\);]+\\)\\s*?{`, "g");
+                let rem = re.exec(src);
+
+                if (rem && rem.length === 1)
+                {
+                    functionInfoObjs.push({
+                        name:  fn,
+                        start: rem.index,
+                        //= This needs to be calculated properly later
+                        end:   0,
+                    });
+                }
+            }
+        }
+
+        //- Calculate function end offsets
+        //# (with string iteration and by processing nested bracket pairs)
+        {
+            for (let i = 0; i < functionInfoObjs.length; i++)
+            {
+                let o = functionInfoObjs[i];
+
+                let start = o.start;
+
+                let brackets =
+                {
+                    //# ()
+                    round:
+                    {
+                        done: false,
+                        nest: 0,
+                    },
+                    //# {}
+                    squiggly:{
+                        done: false,
+                        nest: 0,
+                    },
+                };
+
+                for (let j = start; j < src.length; j++)
+                {
+                    let c = src[j];
+
+                    if (!brackets.round.done)
+                    {
+                        if (c === "(")
+                        {
+                            brackets.round.nest++;
+                        }
+                        else if (c === ")")
+                        {
+                            if (--brackets.round.nest === 0)
+                                brackets.round.done = true;
+                        }
+
+                        continue;
+                    }
+
+                    if (!brackets.squiggly.done)
+                    {
+                        if (c === "{")
+                        {
+                            brackets.squiggly.nest++;
+                        }
+                        else if (c === "}")
+                        {
+                            if (--brackets.squiggly.nest === 0)
+                            {
+                                brackets.squiggly.done = true;
+
+                                //- Save end offset
+                                functionInfoObjs[i].end = j + 1;
+
+                                //= We've found the bounds of this function, cease!
+                                break;
+                            }
+                        }
+
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    return functionInfoObjs;
+}
+
+
+var gDllSourceCache = {};
+
+async function dll_cache_source_update_locations(dllName, romVer)
+{
+    let filename = gRootDir + `src/dlls/${dllName}.c`;
+
+    //- Update new src
+    {
+        let src = (await fsp.readFile(filename)).toString();
+        let fns;
+        try
+        {
+            fns = await dll_src_extract_function_offsets(src, dllName, romVer);
+        }
+        catch (err)
+        {
+            console.log(`[ERR]: CPP quit early, not updating src cache for: ${dllName}`);
+            console.error(err);
+            return;
+        }
+
+        //- No errors, proceed
+
+        //# Init
+        {
+            if (!(dllName in gDllSourceCache))
+                gDllSourceCache[dllName] = {};
+
+            if (!(romVer in gDllSourceCache[dllName]))
+            {
+                gDllSourceCache[dllName][romVer] = {
+                    src: "",
+                    fns: [],
+                }
+            };
+        }
+
+        //# Commit
+        gDllSourceCache[dllName][romVer].src = remove_c_comments_from_src(src);
+        gDllSourceCache[dllName][romVer].fns = fns;
+    }
+}
+
+
+/**
+ * Compare the contents of two DLL source .c files:
+ * -> detect the location of the difference
+ * -> see which function it was made inside of
+ * == if it wasn't made inside a function, make no change
+ * == otherwise, make a dump with [string fnname, int fnidx, bool prv/pub] for the diff tool
+ */
+async function dll_source_edit_location_dump(dllName, romVer)
+{
+    if (!(dllName in gDllSourceCache))
+        FATAL(`DLL source cache does not contain an entry for: ${dllName}!`);
+
+    let filename = gRootDir + `src/dlls/${dllName}.c`;
+    let newSrc = (await fsp.readFile(filename)).toString();
+
+    newSrc = remove_c_comments_from_src(newSrc);
+
+    let info = gDllSourceCache[dllName][romVer];
+
+    let diffIdx;
+    {
+        let o_len = info.src.length;
+        let n_len = newSrc.length;
+
+        let len = Math.min(o_len, n_len);
+
+        let i = 0;
+        for (; i < len; i++)
+        {
+            let o_c = info.src[i];
+            let n_c = newSrc[i];
+
+            if (o_c !== n_c)
+                //# Break on first difference
+                break;
+        }
+
+        diffIdx = i;
+    }
+
+    //- Find which function the difference occurred in, if any
+    {
+        let found = false;
+
+        let fidx  = -1;
+        let fname = "";
+
+        for (let [idx, f] of info.fns.entries())
+        {
+            if (diffIdx >= f.start && diffIdx <= f.end)
+            {
+                //- Found!
+                found = true;
+
+                fidx  = idx;
+                fname = f.name;
+            }
+        }
+
+        //- If found function changed, dump
+        //# If not found, we don't dump. This is fine; it won't update the diff either.
+        if (found)
+        {
+            //- Read previously calculated function dumps
+            //# Read binary offset info
+            let res = "";
+            {
+                res += `${dllName}`
+                res += `\n${fname}`;
+
+                let vani_info_fn = gRootDir + `expected/${romVer}/dlls/${dllName}_fndump.txt`;
+                let cust_info_fn = gRootDir +    `build/${romVer}/dlls/${dllName}_fndump.txt`;
+
+                //= Neither of these should happen, we can just quit cause it makes no sense
+                //= for these to be missing after the user triggers a build of this dll
+                if (!fs.existsSync(vani_info_fn) || !fs.existsSync(cust_info_fn))
+                {
+                    log(`[ERR]: The necessary fndump files are missing for: ${dllName}!`);
+                    return;
+                }
+
+                let vani_info = (await fsp.readFile(vani_info_fn)).toString().trim().split(/\r?\n/g);
+                let cust_info = (await fsp.readFile(cust_info_fn)).toString().trim().split(/\r?\n/g);
+
+                if (vani_info.length !== cust_info.length || vani_info.length !== info.fns.length)
+                {
+                    //- We have a length mismatch! We cannot continue!
+                    log(`[ERR]: #fns mismatch between dumps for: ${dllName}! Aborting info dump!`);
+
+                    return;
+                }
+
+                res += `\nvani: ${vani_info[fidx]}`;
+                res += `\ncust: ${cust_info[fidx]}`;
+                res += `\n${fidx+1} ${info.fns.length}`;
+            }
+
+            //- Dump it
+            await fsp.writeFile(gCurrDir + `watches/_curr_dll_fn_${romVer}.txt`, res);
+        }
+        else
+        {
+            // log(`[DBG]: Changed function not found!`);
+            // log(`diffIdx: ${diffIdx}`);
+            // log(`info.fns: ${JSON.stringify(info.fns, null, 2)}`);
+        }
+    }
 }
 
 function buf_cstr_to_str(inBuf)
@@ -1687,23 +2042,16 @@ async function dll_full_build_multi(dllNames)
 
                 await dll_preheader_encrypt(fn_raw, file_raw);
 
-
-                //!!!!!!!!!!!
+                //- Diff script helpers (live update)
                 {
-                    // let dllInfo = await dll_analyse_text(file_raw);
-                    // await dll_analysis_text_dump(dllInfo, ``);
+                    // TODO: Verify this order later
 
-                    // if (romVer === "usa")
-                    //     console.log(dllInfo)
+                    if (gDllSourceCache?.[dllName]?.[romVer])
+                        //# Old source exists, can compare and dump
+                        await dll_source_edit_location_dump(dllName, romVer);
 
-
-
-
-
-
-
+                    await dll_cache_source_update_locations(dllName, romVer);
                 }
-
 
                 //# Outputs compressed files
                 let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw, toSkip);
@@ -2374,4 +2722,7 @@ async function main()
 }
 
 main();
+
+
+
 

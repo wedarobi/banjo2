@@ -307,7 +307,7 @@ themeOverrides[] =
 s32 DLL_cothemedll_00(MAP a0)
 {
     s32 i;
-    s32 map = a0; //# Yep
+    s32 map = a0; //? Yep
 
     //- Check for music overrides
     for (i = 0; themeOverrides[i].map1; i++)

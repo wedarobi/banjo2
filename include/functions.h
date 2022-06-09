@@ -48,6 +48,7 @@ s32  fn_flag_get_multi_sum(FLAG flag, u32 width);
 bool fn_flag_get_and_set(FLAG flag, bool value);
 
 bool fn_ability_has(s32 abilityIdx);
+void func_800D517C(void);
 
 void fn_flag_set_675_TRUE(void);
 

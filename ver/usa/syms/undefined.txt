@@ -46,6 +46,7 @@ fn_flag_get_multi_sum            = 0x800DA980;
 fn_flag_get_and_set              = 0x800DA9E4;
 
 fn_ability_has = 0x800C6E38;
+func_800D517C = 0x800D517C;
 
 fn_flag_set_675_TRUE = 0x800FE870;
 

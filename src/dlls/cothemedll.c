@@ -19,7 +19,7 @@
 
 
 
-struct
+static struct
 {
     /* enum MAP */
     s16 map;
@@ -304,12 +304,10 @@ themeOverrides[] =
 };
 
 
-s32 DLL_cothemedll_00(MAP map)
+s32 DLL_cothemedll_00(MAP a0)
 {
     s32 i;
-
-    // TODO:
-    // map = *(MAP *)&map;
+    s32 map = a0; //# Yep
 
     //- Check for music overrides
     for (i = 0; themeOverrides[i].map1; i++)

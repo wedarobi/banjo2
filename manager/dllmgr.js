@@ -414,8 +414,8 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
         aus: 0x1E18A80,
     };
 
-    let dllOffsetStart = gBaserom.readUint32BE(dllTableStart[romVer] + ((syscallIdx - 1) * 4));
-    let dllOffsetEnd   = gBaserom.readUint32BE(dllTableStart[romVer] + ((syscallIdx    ) * 4));
+    let dllOffsetStart = gBaseroms[romVer].readUint32BE(dllTableStart[romVer] + ((syscallIdx - 1) * 4));
+    let dllOffsetEnd   = gBaseroms[romVer].readUint32BE(dllTableStart[romVer] + ((syscallIdx    ) * 4));
 
     // console.log(dllOffsetStart.hex())
     // console.log(dllOffsetEnd.hex())
@@ -428,12 +428,12 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
 
     //- Grab file from baserom
 
-    let preheader = gBaserom.slice(
+    let preheader = gBaseroms[romVer].slice(
         dllTableStart[romVer] + dllOffsetStart,
         dllTableStart[romVer] + dllOffsetStart + 0x10,
     );
 
-    let dllCompressed = gBaserom.slice(
+    let dllCompressed = gBaseroms[romVer].slice(
         dllTableStart[romVer] + dllOffsetStart + 0x10,
         dllTableStart[romVer] + dllOffsetEnd,
     );
@@ -470,7 +470,7 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
     {
         //= Both preheader and compressed body combined
 
-        buf_vani = gBaserom.slice(
+        buf_vani = gBaseroms[romVer].slice(
             dllTableStart[romVer] + dllOffsetStart,
             dllTableStart[romVer] + dllOffsetEnd,
         );
@@ -1284,7 +1284,7 @@ async function dll_process(dll, objFilePath, romVer,toSkip=false)
     let syscallIdx = gSyscallIdxMap[dll];
 
     //- Fetch the encryption key needed to encrypt symbolRefs with bootcode
-    let encryptionKey = gBaserom.readUint16BE(0x40 + (syscallIdx * 4) + 2);
+    let encryptionKey = gBaseroms[romVer].readUint16BE(0x40 + (syscallIdx * 4) + 2);
     // console.log(encryptionKey.hex())
 
     //- Prepare to read from the ELF .o file
@@ -1507,35 +1507,35 @@ async function dll_process(dll, objFilePath, romVer,toSkip=false)
         let out = `build/${romVer}/dlls/${dll}.out`;
 
         {
-            let path_dllSyms = `ver/${romVer}/syms/DLL.txt`;
-
-            let LINKER_INCLUDES = "";
-            LINKER_INCLUDES += ` -T misc/linkerscript/dll.ld`;
-            LINKER_INCLUDES += ` -T ver/${romVer}/syms/undefined.txt`;
-
-            /**
-             * A very hacky way of excluding call table symbols from the
-             * DLLs to which they belong.
-             * This, or some other solution like writing out a file that
-             * excludes its own symbols, is required for matching.
-             */
-            // LINKER_INCLUDES += ` -T ${path_dllSyms}`;
-            LINKER_INCLUDES += " " + (await fsp.readFile(path_dllSyms))
-                .toString()
-                .trim()
-                .split(/\r?\n/)
-                .filter(line => !line.startsWith(`DLL_${dll}_`))
-                .map(line => {
-                    let s = line.split(/\s+/g);
-                    return `--defsym=${s[0]}=${s[2].substr(0, 10)}`;
-                })
-                .join(" ");
-
-            let FILE_OBJECT = `build/${romVer}/dlls/${dll}.o`;
-            let FILE_LINKED = `build/${romVer}/dlls/${dll}.lpo`;
-
             if (!toSkip)
             {
+                let path_dllSyms = `ver/${romVer}/syms/DLL.txt`;
+
+                let LINKER_INCLUDES = "";
+                LINKER_INCLUDES += ` -T misc/linkerscript/dll.ld`;
+                LINKER_INCLUDES += ` -T ver/${romVer}/syms/undefined.txt`;
+    
+                /**
+                 * A very hacky way of excluding call table symbols from the
+                 * DLLs to which they belong.
+                 * This, or some other solution like writing out a file that
+                 * excludes its own symbols, is required for matching.
+                 */
+                LINKER_INCLUDES += " " + (await fsp.readFile(path_dllSyms))
+                    .toString()
+                    .trim()
+                    .split(/\r?\n/)
+                    .filter(line => !line.startsWith(`DLL_${dll}_`))
+                    .map(line => {
+                        let s = line.split(/\s+/g);
+                        return `--defsym=${s[0]}=${s[2].substr(0, 10)}`;
+                    })
+                    .join(" ");
+                // LINKER_INCLUDES += ` -T ${path_dllSyms}`;
+    
+                let FILE_OBJECT = `build/${romVer}/dlls/${dll}.o`;
+                let FILE_LINKED = `build/${romVer}/dlls/${dll}.lpo`;
+
                 await spawn(`mips-linux-gnu-ld ${LINKER_INCLUDES} ${FILE_OBJECT} -o ${FILE_LINKED}`);
                 await spawn(`mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary ${FILE_LINKED} ${out}`);
             }
@@ -1846,8 +1846,8 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
 
 
 var gRomVer;
-/** @type {Buffer} */
-var gBaserom;
+/** @type {Record<string, Buffer>} */
+var gBaseroms = {};
 
 /**
  *
@@ -1865,13 +1865,14 @@ async function update_rom_version(newRomVer)
     }
 
     //- Load the baserom
+    if (!gBaseroms[gRomVer])
     {
         let baseromPath = gRootDir + `ver/${gRomVer}/baserom.z64`;
 
         if (!fs.existsSync(baseromPath))
             FATAL(`No baserom for the curr rom version: ${baseromPath}`);
 
-        gBaserom = await fsp.readFile(baseromPath);
+        gBaseroms[gRomVer] = await fsp.readFile(baseromPath);
     }
 
     //- Initialise the syscall map

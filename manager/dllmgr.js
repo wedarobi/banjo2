@@ -2150,12 +2150,6 @@ async function dll_full_build_multi(dllNames)
                 {
                     let file = USE_COMPRESSION ? file_cmp : file_raw;
 
-                    // if (file === undefined)
-                    // {
-                    //     log(dllName)
-                    //     log(USE_COMPRESSION)
-                    // }
-
                     let similarity = await dll_get_similarity_and_make_fndumps(dllName, file, romVer, USE_COMPRESSION, toSkip);
                     let endPad = 10;
 

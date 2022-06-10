@@ -99,14 +99,14 @@ function spawn(command, directPrint=true)
             {
                 if (code)
                     return rej(stderr);
-    
+
                 return res(stdout);
             }
             else
             {
                 if (code)
                     return rej();
-    
+
                 return res();
             }
         });
@@ -527,10 +527,10 @@ function remove_c_comments_from_src(src)
 /**
  * Get a list of functions from a C source file and
  * also give their start and end offsets.
- * 
+ *
  * We do this manually instead of with e.g. pycparser
  * mainly for performance; it's much, much faster this way.
- * 
+ *
  * -> remove all comments
  * -> run through the C preprocessor
  * -> parse function names and match their start and end squiggly brackets
@@ -622,12 +622,12 @@ async function dll_src_extract_function_offsets(src, dllName, romVer)
                     {
                         /**
                          * # Move function start to the start of the line.
-                         * 
+                         *
                          * ! Yes, this is an ugly hack
                          *   and it WON'T WORK as intended (it won't respond to
                          *   editing the return type) if the return type is
                          *   on a separate line to the function name token.
-                         * 
+                         *
                          * But im not sure how to identify return types
                          * without using pycparser or some other slow "full
                          * C code parser"
@@ -1517,7 +1517,7 @@ async function dll_process(dll, objFilePath, romVer,toSkip=false)
                 let LINKER_INCLUDES = "";
                 LINKER_INCLUDES += ` -T misc/linkerscript/dll.ld`;
                 LINKER_INCLUDES += ` -T ver/${romVer}/syms/undefined.txt`;
-    
+
                 /**
                  * A very hacky way of excluding call table symbols from the
                  * DLLs to which they belong.
@@ -1535,7 +1535,7 @@ async function dll_process(dll, objFilePath, romVer,toSkip=false)
                     })
                     .join(" ");
                 // LINKER_INCLUDES += ` -T ${path_dllSyms}`;
-    
+
                 let FILE_OBJECT = `build/${romVer}/dlls/${dll}.o`;
                 let FILE_LINKED = `build/${romVer}/dlls/${dll}.lpo`;
 
@@ -1992,11 +1992,11 @@ async function HELPER_parse_out_dll_linker_symbols()
  * Parse the [include/functions.h] and [include/variables.h]
  * files and parse out magic comments and declarations into
  * linker symbols.
- * 
+ *
  * Also use version recognition and try and automatically
  * generate equivalent symbols for other versions through
  * baserom analysis.
- * 
+ *
  * This only needs to be repeated if one of the headers
  * is detected to have been modified since the last
  * time this was run.
@@ -2020,11 +2020,11 @@ const MATCH_COLOURS =
 
 /**
  * Order log result strings by the colour of the initial dot etc.
- * 
+ *
  * The higher the number, the lower it'll be on the list.
- * 
- * @param {string} str 
- * @returns 
+ *
+ * @param {string} str
+ * @returns
  */
 function _order_colours(str)
 {
@@ -2057,9 +2057,9 @@ function _order_colours(str)
 }
 
 /**
- * 
- * @param {string[]} rArr 
- * @returns 
+ *
+ * @param {string[]} rArr
+ * @returns
  */
 function _order_dll_result_strings_by_status(rArr)
 {
@@ -2077,7 +2077,7 @@ function _order_dll_result_strings_by_status(rArr)
 /**
  * Store the last build hash of a DLL file, to check
  * if the output has changed.
- * 
+ *
  * Record<dllName, Record<romVer, hash>>
  */
 var gDllHashMap = {};
@@ -2092,7 +2092,7 @@ async function dll_full_build_multi(dllNames)
     let results_cmp = [];
 
     /**
-     * 
+     *
      * Record<dllName, oooo_type_string>
      * @type {Record<string, string>}
     */
@@ -2132,7 +2132,7 @@ async function dll_full_build_multi(dllNames)
                     ifDllNotSkipped[idx] = 0;
 
                 ifDllNotSkipped[idx] |= !toSkip;
-                
+
                 //# Init results strings
                 if (!results_raw[idx])
                     results_raw[idx] = "";
@@ -2160,7 +2160,7 @@ async function dll_full_build_multi(dllNames)
                 /**
                  * Used to know whether to override the raw status with
                  * the compressed status.
-                 * 
+                 *
                  * If true, uses compression's status instead.
                  */
                 let rawIsMatching = false;
@@ -2355,7 +2355,7 @@ async function dll_full_build_multi(dllNames)
                 }
                 header += gct(remainingDllCount,    "black");
                 header += gct(" unlisted   ",       "black");
-    
+
                 strs.push(header);
                 strs.push(..._order_dll_result_strings_by_status(results_raw.filter(x => x)));
 
@@ -2466,7 +2466,7 @@ function MIPS_instruction_parse(instr)
 /**
  * Use analysis of MIPS instructions in a DLL file and detect the offsets
  * and sizes of all functions.
- * 
+ *
  * @param {string|Buffer} dllFile Either a path to a DLL file, or a buffer for its contents. MUST contain a preheader. Preheader must be encrypted.
  * @returns {Promise<Array<Record<string, boolean|string|number>>} information about all functions found in .text
  */
@@ -2711,8 +2711,8 @@ function dll_analyse_text(dllFile)
 /**
  * Take the output of [dll_analyse_text()] and dump it to disk
  * in a specially formatted text file
- * 
- * @param {Record<string, string|Array<Record<string, boolean|string|number>>} dllInfo 
+ *
+ * @param {Record<string, string|Array<Record<string, boolean|string|number>>} dllInfo
  * @param {string} outputPath
  */
 async function dll_analysis_text_dump(dllInfo, outputPath)

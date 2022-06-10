@@ -239,14 +239,14 @@ const CMD =
     include:   "-I . -I include -I include/2.0L -I include/2.0L/PR",
 };
 
-async function dll_get_if_to_skip_build(dll)
+async function dll_get_if_to_skip_build(dll, romVer)
 {
     ensureDir("build");
-    ensureDir(`build/${gRomVer}`);
-    ensureDir(`build/${gRomVer}/dlls`);
+    ensureDir(`build/${romVer}`);
+    ensureDir(`build/${romVer}/dlls`);
 
     const file_in  = gRootDir + `src/dlls/${dll}.c`;
-    const file_out = gRootDir + `build/${gRomVer}/dlls/${dll}.lpo`;
+    const file_out = gRootDir + `build/${romVer}/dlls/${dll}.lpo`;
 
     return fs.existsSync(file_in)
         && fs.existsSync(file_out)
@@ -258,12 +258,12 @@ async function dll_get_if_to_skip_build(dll)
  *
  * @param {string} dll name of dll, as a string. e.g. "cosection"
  */
-async function dll_build(dll, toSkip=false)
+async function dll_build(dll, romVer, toSkip=false)
 {
     //- Exec
 
     const file_in  = gRootDir + `src/dlls/${dll}.c`;
-    const file_out = gRootDir + `build/${gRomVer}/dlls/${dll}.o`;
+    const file_out = gRootDir + `build/${romVer}/dlls/${dll}.o`;
 
     if (!toSkip)
     {
@@ -282,7 +282,7 @@ async function dll_build(dll, toSkip=false)
         let env = "";
         {
             //- Pass "VERSION_USA" etc macros
-            env += `-DVERSION_${gRomVer.toUpperCase()}=1`;
+            env += `-DVERSION_${romVer.toUpperCase()}=1`;
         }
 
         await spawn(`${CMD.cc} ${cmd} ${env}`);
@@ -1271,7 +1271,7 @@ function elf_get_syms(elf, symNameArr)
  * @param {string} dll         name of dll, as a string. e.g. "cosection"
  * @param {string} objFilePath the path to the .o file to use as input
  */
-async function dll_process(dll, objFilePath, toSkip=false)
+async function dll_process(dll, objFilePath, romVer,toSkip=false)
 {
     // output path
     const binFilePath = objFilePath.replace(/\.o$/, ".bin");
@@ -1279,7 +1279,7 @@ async function dll_process(dll, objFilePath, toSkip=false)
     const pubFnDumpPath = objFilePath.replace(/\.o$/, "_pubfndump.txt");
 
     if (!(dll in gSyscallIdxMap))
-        FATAL(`DLL [${dll}] not in curr rom version [${gRomVer}]`);
+        FATAL(`DLL [${dll}] not in curr rom version [${romVer}]`);
 
     let syscallIdx = gSyscallIdxMap[dll];
 
@@ -1504,16 +1504,35 @@ async function dll_process(dll, objFilePath, toSkip=false)
     {
         //- Run elf through the linker, objcopy it, then read the result
 
-        let out = `build/${gRomVer}/dlls/${dll}.out`;
+        let out = `build/${romVer}/dlls/${dll}.out`;
 
         {
+            let path_dllSyms = `ver/${romVer}/syms/DLL.txt`;
+
             let LINKER_INCLUDES = "";
             LINKER_INCLUDES += ` -T misc/linkerscript/dll.ld`;
-            LINKER_INCLUDES += ` -T ver/${gRomVer}/syms/undefined.txt`;
-            LINKER_INCLUDES += ` -T ver/${gRomVer}/syms/DLL.txt`;
+            LINKER_INCLUDES += ` -T ver/${romVer}/syms/undefined.txt`;
 
-            let FILE_OBJECT = `build/${gRomVer}/dlls/${dll}.o`;
-            let FILE_LINKED = `build/${gRomVer}/dlls/${dll}.lpo`;
+            /**
+             * A very hacky way of excluding call table symbols from the
+             * DLLs to which they belong.
+             * This, or some other solution like writing out a file that
+             * excludes its own symbols, is required for matching.
+             */
+            // LINKER_INCLUDES += ` -T ${path_dllSyms}`;
+            LINKER_INCLUDES += " " + (await fsp.readFile(path_dllSyms))
+                .toString()
+                .trim()
+                .split(/\r?\n/)
+                .filter(line => !line.startsWith(`DLL_${dll}_`))
+                .map(line => {
+                    let s = line.split(/\s+/g);
+                    return `--defsym=${s[0]}=${s[2].substr(0, 10)}`;
+                })
+                .join(" ");
+
+            let FILE_OBJECT = `build/${romVer}/dlls/${dll}.o`;
+            let FILE_LINKED = `build/${romVer}/dlls/${dll}.lpo`;
 
             if (!toSkip)
             {
@@ -2085,7 +2104,7 @@ async function dll_full_build_multi(dllNames)
             {
                 let fn_c = gRootDir + `src/dlls/${dllName}.c`;
 
-                let toSkip = !arg_forceCompileAll && await dll_get_if_to_skip_build(dllName);
+                let toSkip = !arg_forceCompileAll && await dll_get_if_to_skip_build(dllName, romVer);
 
                 if (!ifDllNotSkipped[idx])
                     ifDllNotSkipped[idx] = 0;
@@ -2107,9 +2126,9 @@ async function dll_full_build_multi(dllNames)
                 }
 
 
-                let fn_o = await dll_build(dllName, toSkip);
+                let fn_o = await dll_build(dllName, romVer, toSkip);
 
-                let [fn_raw, file_raw] = await dll_process(dllName, fn_o, toSkip);
+                let [fn_raw, file_raw] = await dll_process(dllName, fn_o, romVer, toSkip);
 
                 await dll_preheader_encrypt(fn_raw, file_raw);
 
@@ -2161,7 +2180,7 @@ async function dll_full_build_multi(dllNames)
 
                     if (!USE_COMPRESSION || rawIsMatching)
                     {
-                        resultToAppend = gct(`${gRomVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black").padStart(CELL_PREPAD, " ") + " ";
+                        resultToAppend = gct(`${romVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black").padStart(CELL_PREPAD, " ") + " ";
 
                         resultToAppend += similarity.found && similarity.similarity === 1
                             ? gct(`OK`.padEnd(endPad, " "), MATCH_COLOURS.OK)

@@ -1156,8 +1156,11 @@ def process(lines: List[str]) -> List[Line]:
         branch_target = None
         if mnemonic in branch_instructions:
             target = int(row_parts[1].strip().split(",")[-1], 16)
-            if mnemonic in branch_likely_instructions:
-                target -= 4
+
+            #- [w] Commented out: seems to fuck shit up
+            # if mnemonic in branch_likely_instructions:
+            #     target -= 4
+
             branch_target = hex(target)[2:]
 
         output.append(
@@ -1419,21 +1422,26 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
             out2 += f" {line2.comment}"
 
         def format_part(
-            out: str,
-            line: Optional[Line],
+            out:        str,
+            line:       Optional[Line],
             line_color: str,
-            btset: Set[str],
-            sc: SymbolColorer,
+            btset:      Set[str],
+            sc:         SymbolColorer,
         ) -> Optional[str]:
             if line is None:
                 return None
             in_arrow = "  "
             out_arrow = ""
+
             if args.show_branches:
+                #- Check if there is a branch coming INTO this line
                 if line.line_num in btset:
                     in_arrow = sc.color_symbol(line.line_num, "~>") + line_color
+
+                #- Check if this instruction branches OUT to another line
                 if line.branch_target is not None:
                     out_arrow = " " + sc.color_symbol(line.branch_target + ":", "~>")
+
             out = pad_mnemonic(out)
             return f"{line_color}{line.line_num} {in_arrow} {out}{Style.RESET_ALL}{out_arrow}"
 
@@ -1548,8 +1556,8 @@ def format_diff(
     width = args.column_width
 
     header_line = "------------------------>\n"
-    header_line += f" {gct('> -d', 'black')} {gct(gVars['names']['dllName'], 'cyan')}"
     header_line += f" {gct(  '-r', 'black')} {gct(gVars['names']['romVer'], 'blue')}"
+    header_line += f" {gct('> -d', 'black')} {gct(gVars['names']['dllName'], 'cyan')}"
     header_line += f" {gct(  '-f', 'black')} {gct(gVars['names']['functionName'], 'yellow')}"
     header_line += f"\n"
     header_line += gct(' (function ', 'black') + gct('#' + gVars['names']['functionIdx'], 'yellow') + gct(' of ' + gVars['names']['functionCnt'] + ')\n', 'black')

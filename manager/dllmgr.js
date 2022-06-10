@@ -843,8 +843,11 @@ async function dll_source_edit_location_dump(dllName, romVer)
             }
         }
 
-        fidx  = gDllCacheLastInfo.fidx;
-        fname = gDllCacheLastInfo.fname;
+        if (dllName === gDllCacheLastInfo.dll)
+        {
+            fidx  = gDllCacheLastInfo.fidx;
+            fname = gDllCacheLastInfo.fname;
+        }
 
         //- If found function changed, dump
         //# If not found, we don't dump. This is fine; it won't update the diff either.
@@ -1985,6 +1988,24 @@ async function HELPER_parse_out_dll_linker_symbols()
     }
 }
 
+/**
+ * Parse the [include/functions.h] and [include/variables.h]
+ * files and parse out magic comments and declarations into
+ * linker symbols.
+ * 
+ * Also use version recognition and try and automatically
+ * generate equivalent symbols for other versions through
+ * baserom analysis.
+ * 
+ * This only needs to be repeated if one of the headers
+ * is detected to have been modified since the last
+ * time this was run.
+ */
+async function HELPER_parse_out_static_linker_symbols()
+{
+    // TODO
+}
+
 const MATCH_COLOURS =
 {
     //# matching
@@ -2214,9 +2235,16 @@ async function dll_full_build_multi(dllNames)
 
 
     for (let [idx, dllName] of dllNames.entries())
+    {
+        const pad = 25;
+
+        let dllNameShort = dllName.length >= pad
+            ? dllName.substr(0, pad - 3) + ".."
+            : dllName;
+
         results_raw[idx] =
             gct(
-                `${dllName.substr(0, 23)}`.padEnd(25, " "),
+                `${dllNameShort}`.padEnd(pad, " "),
                 !allDllNames.has(dllName)
                     //# Not a known DLL. Wrong filename?
                     ? MATCH_COLOURS.UNK
@@ -2227,6 +2255,7 @@ async function dll_full_build_multi(dllNames)
                         : "black"
             )
             + results_raw[idx];
+    }
 
     const LEGEND_MARK = "●";
 

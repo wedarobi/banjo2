@@ -94,11 +94,12 @@ function line_to_obj(linearr)
              * Calculated later, used to store how far the arrow goes
              * out from the instruction, visually
              */
-            level: 0,
+            nestedLevel: 0,
 
             branch_colour: "white",
 
             grouped: false,
+            groupId: -1,
 
 
         },
@@ -159,7 +160,7 @@ function _split_cb(line)
 async function main()
 {
 
-    let full_dump = (await fsp.readFile("./output_dump_02.txt"))
+    let full_dump = (await fsp.readFile("./output_dump_01.txt"))
         .toString()
         .trim()
         .split(/\r?\n/g);
@@ -181,8 +182,8 @@ async function main()
     // console.log(lines_current.map(x => line_to_obj(x)))
 
 
-    let out1 = process_lines(lines_target)
-    // let out2 = process_lines(lines_current)
+    // let out1 = process_lines(lines_target)
+    let out2 = process_lines(lines_current)
 
 
 
@@ -358,8 +359,59 @@ function process_lines(inputLines)
 
     //- Merge branches that share the same branch target
     {
+        let targetOffsetMap = {};
+
+        for (let branch of branches)
+        {
+            //# Init
+            if (!(branch.attr.branch_target in targetOffsetMap))
+                targetOffsetMap[branch.attr.branch_target] = [];
+
+            //# Push self to map
+            targetOffsetMap[branch.attr.branch_target].push(branch);
+        }
+
+        let groupId = 0;
+        for (let offset in targetOffsetMap)
+        {
+            //- Process single group
+
+            groupId++;
+
+            let arr = targetOffsetMap[offset];
+
+            let minOffset = Infinity;
+            let maxOffset = -1;
+
+            //# Find the min and max bounds of all the combined branches
+            for (let branch of arr)
+            {
+                let offset = branch.attr.lineno_int;
+                minOffset = Math.min(minOffset, offset);
+                maxOffset = Math.max(maxOffset, offset);
+
+                let target = offset + (branch.attr.branch_offset < 0
+                    ? -branch.attr.branch_distance
+                    :  branch.attr.branch_distance);
+                minOffset = Math.min(minOffset, target);
+                maxOffset = Math.max(maxOffset, target);
+            }
+
+            //# Found the bounds. Now update all with the same values
+            let distance = maxOffset - minOffset;
+            for (let branch of arr)
+            {
+                branch.attr.grouped         = true;
+                branch.attr.groupId         = groupId;
+                branch.attr.branch_distance = distance;
+            }
 
 
+
+
+
+
+        }
 
 
 
@@ -493,6 +545,31 @@ function process_lines(inputLines)
 
                 let nestedLevel = maxLevel + 1;
 
+                branch.attr.nestedLevel = nestedLevel;
+
+                let showArrow = true;
+
+                //- Merge groups
+                {
+                    for (let i = 0; i < 2; i++)
+                    {
+                        let node = board[endIdx][i];
+
+                        if (node?.nodeType === NODETYPE.ARROWHEAD
+                         && node.ref.attr.groupId === branch.attr.groupId)
+                        {
+                            //- Found an arrowhead from the same group, synchronise!
+
+                            branch.attr.branch_colour = node.ref.attr.branch_colour;
+                            branch.attr.nestedLevel   = node.ref.attr.nestedLevel;
+
+                            nestedLevel = branch.attr.nestedLevel;
+
+                            //# No need to show an arrow, another branch in the same group showed one
+                            showArrow = false;
+                        }
+                    }
+                }
 
                 //- Set nodes along the path
                 {
@@ -521,7 +598,8 @@ function process_lines(inputLines)
                             }
                         }
 
-                        board[endIdx][baseLevel] = get_node(NODETYPE.ARROWHEAD, branch);
+                        if (showArrow)
+                            board[endIdx][baseLevel] = get_node(NODETYPE.ARROWHEAD, branch);
 
                         for (let i = baseLevel + 1; i < nestedLevel; i++)
                             board[endIdx][i] = get_node(NODETYPE.OUTGOING_NORMAL_H, branch);
@@ -529,9 +607,26 @@ function process_lines(inputLines)
                         board[endIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_DOWN : NODETYPE.OUTGOING_CORNER_UP, branch);
                     }
 
+                    // if (branchIdx > 3) continue; //!!!!!!
+
                     //# Set nodes in the middle
                     for (let i = startIdx + increment; i != endIdx; i += increment)
                     {
+                        //# Check for a node by a group member
+                        {
+                            let node = board[i][nestedLevel];
+                            if (node
+                                && node.ref.attr.groupId === branch.attr.groupId
+                                && [NODETYPE.OUTGOING_CORNER_UP, NODETYPE.OUTGOING_CORNER_DOWN].includes(node.nodeType))
+                            {
+                                //- Found!
+                                board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_CORNER_BOTH, branch);
+
+                                //# Don't do anything else
+                                continue;
+                            }
+                        }
+
                         board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_NORMAL_V, branch);
                     }
                 }
@@ -645,13 +740,15 @@ function DEBUG_view_board(board, info)
 
         //# instruction data
         {
-            let opcode = info[idx].prim.opcode;
+            let prefix   = info[idx].prim.prefix;
+            let opcode   = info[idx].prim.opcode;
             let operands = info[idx].prim.operands;
 
+            if (!prefix)   prefix   = "";
             if (!opcode)   opcode   = "";
             if (!operands) operands = "";
 
-            res += ` ${opcode} ${operands.trim()}`.padEnd(28, " ");
+            res += ` ${prefix}${opcode} ${operands.trim()}`.padEnd(28, " ");
         }
 
         res += "\r\n";

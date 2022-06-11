@@ -20,6 +20,8 @@ import random
 import math
 from termcolor import colored as coloured
 
+from numpy import random as rand
+
 
 class LO_Prim():
     prefix:   str
@@ -260,28 +262,9 @@ def ensure_board(board, size):
 
 
 
-COLOUR_CODES = {
-    "black":  "30",
-    "red":    "31",
-    "green":  "32",
-    "yellow": "33",
-    "blue":   "34",
-    "pink":   "35",
-    "cyan":   "36",
-    "white":  "37",
-}
-
 BRANCH_COLOURS = [
-    "red", "green", "yellow", "blue", "cyan",
+    "red", "green", "yellow", "blue", "magenta", "cyan",
 ]
-
-# def gct(msg: str, colour: str, underline: bool = False):
-#     ul    = "4m" if underline else "1m"
-#     reset = r"\x1b[97;0;0m"
-
-#     code = COLOUR_CODES[colour] if colour in COLOUR_CODES else COLOUR_CODES["white"]
-
-#     return r"\x1b[" + code + ";" + ul + msg + reset
 
 def gct(msg: str, colour: str):
     return coloured(msg, colour)
@@ -295,9 +278,17 @@ def process_lines(info: List[LineObj]):
         if o.attr.is_branch:
             branches.append(o)
 
-    #- Set random branch colours
-    for i in range(len(branches)):
-        branches[i].attr.branch_colour = BRANCH_COLOURS[math.floor(random.random() * len(BRANCH_COLOURS))]
+    #- Set branch colours
+    if True:
+        #- Set branch colours randomly
+        # for i in range(len(branches)):
+        #     branches[i].attr.branch_colour = BRANCH_COLOURS[math.floor(random.random() * len(BRANCH_COLOURS))]
+
+        #- Set branch colours semi-deterministically
+        seed  = 0xDEADB00B
+        state = rand.RandomState(rand.MT19937(rand.SeedSequence(seed)))
+        for i in range(len(branches)):
+            branches[i].attr.branch_colour = BRANCH_COLOURS[math.floor(state.random() * len(BRANCH_COLOURS))]
 
     #- Group branches together that share the same branch target
     if True:

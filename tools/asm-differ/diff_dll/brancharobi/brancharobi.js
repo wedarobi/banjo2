@@ -156,7 +156,7 @@ function _split_cb(line)
 async function main()
 {
 
-    let full_dump = (await fsp.readFile("./output_dump.txt"))
+    let full_dump = (await fsp.readFile("./output_dump_01.txt"))
         .toString()
         .trim()
         .split(/\r?\n/g);
@@ -167,12 +167,25 @@ async function main()
     let lines_current = full_dump.map(_split_cb);
 
 
-    // let out1 = process_lines(lines_target)
-    let out2 = process_lines(lines_current)
+    // let out1 = process_lines(lines_target.map((line, i) =>
+    // {
+    //     let o = line_to_obj(line);
+    //     //# Set line index here, since we know it
+    //     o.attr.lineIdx = i;
+    //     return o;
+    // }));
 
+    let out2 = process_lines(
+        lines_current.map((line, i) =>
+        {
+            let o = line_to_obj(line);
+            //# Set line index here, since we know it
+            o.attr.lineIdx = i;
+            return o;
+        })
+    );
 
 }
-
 
 
 
@@ -302,16 +315,8 @@ function gct(msg, colour, underline=false)
     return `\x1b[${code};${ul}${msg}${reset}`;
 }
 
-function process_lines(inputLines)
+function process_lines(info)
 {
-    let info = inputLines.map((line, i) =>
-    {
-        let o = line_to_obj(line);
-        //# Set line index here, since we know it
-        o.attr.lineIdx = i;
-        return o;
-    });
-
     /**
      * An array of arrays, represents the "board" of lines we want to fill
      */
@@ -326,7 +331,7 @@ function process_lines(inputLines)
     for (let i = 0; i < branches.length; i++)
         branches[i].attr.branch_colour = BRANCH_COLOURS[~~(Math.random() * BRANCH_COLOURS.length)];
 
-    //- Merge branches that share the same branch target
+    //- Group branches together that share the same branch target
     {
         let targetOffsetMap = {};
 
@@ -415,12 +420,6 @@ function process_lines(inputLines)
      */
     const MAX_NESTED_LEVEL = 40;
 
-    /**
-     * We process the branch information as if it were flipped horizontally.
-     * Extending the nested layers to the right (pushing) is easier than
-     * working to the left.
-     */
-
     for (let branch of branches)
     {
         let startIdx = branch.attr.lineIdx;
@@ -443,8 +442,8 @@ function process_lines(inputLines)
         let endIdx    = startIdx + branch.attr.branch_offset + 1;
         let increment = startIdx < endIdx ? 1 : -1;
 
-
         //- Fix the ending indices by accounting for the line gaps
+        //# Ending indices use branch imm, which doesn't account for gaps made during the diff
         {
             for (let i = startIdx; i !== endIdx + increment; i += increment)
                 if (info[i].attr.empty)
@@ -534,14 +533,12 @@ function process_lines(inputLines)
                 {
                     let baseLevel = 1;
 
+                    for (let i = 0; i < board[endIdx].length; i++)
                     {
-                        for (let i = 0; i < board[endIdx].length; i++)
+                        if (![NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER, NODETYPE.ARROWHEAD].includes(board[endIdx][i]?.nodeType))
                         {
-                            if (![NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER, NODETYPE.ARROWHEAD].includes(board[endIdx][i]?.nodeType))
-                            {
-                                baseLevel = i;
-                                break;
-                            }
+                            baseLevel = i;
+                            break;
                         }
                     }
 

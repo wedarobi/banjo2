@@ -85,19 +85,19 @@ function line_to_obj(linearr)
              * The position of this line in the overall line array.
              * Set in another place
              */
-            lineIdx: 0,
+            line_idx: 0,
 
             /**
              * Branch nesting level.
              * Calculated later, used to store how far the arrow goes
              * out from the instruction, visually
              */
-            nestedLevel: 0,
+            nested_level: 0,
 
             branch_colour: "white",
 
             grouped: false,
-            groupId: -1,
+            group_id: -1,
 
 
         },
@@ -156,7 +156,7 @@ function _split_cb(line)
 async function main()
 {
 
-    let full_dump = (await fsp.readFile("./output_dump_02.txt"))
+    let full_dump = (await fsp.readFile("./output_dump_01.txt"))
         .toString()
         .trim()
         .split(/\r?\n/g);
@@ -167,23 +167,25 @@ async function main()
     let lines_current = full_dump.map(_split_cb);
 
 
-    // let out1 = process_lines(lines_target.map((line, i) =>
-    // {
-    //     let o = line_to_obj(line);
-    //     //# Set line index here, since we know it
-    //     o.attr.lineIdx = i;
-    //     return o;
-    // }));
-
-    let out2 = process_lines(
-        lines_current.map((line, i) =>
+    let out1 = process_lines(
+        lines_target.map((line, i) =>
         {
             let o = line_to_obj(line);
             //# Set line index here, since we know it
-            o.attr.lineIdx = i;
+            o.attr.line_idx = i;
             return o;
-        })
-    );
+        }
+    ));
+
+    // let out2 = process_lines(
+    //     lines_current.map((line, i) =>
+    //     {
+    //         let o = line_to_obj(line);
+    //         //# Set line index here, since we know it
+    //         o.attr.line_idx = i;
+    //         return o;
+    //     })
+    // );
 
 }
 
@@ -325,8 +327,7 @@ function process_lines(info)
     for (let i = 0; i < board.length; i++)
         board[i] = [];
 
-
-    let branches     = info.filter(o => o.attr.is_branch);
+    let branches = info.filter(o => o.attr.is_branch);
 
     //- Set random branch colours
     for (let i = 0; i < branches.length; i++)
@@ -346,12 +347,12 @@ function process_lines(info)
             targetOffsetMap[branch.attr.branch_target].push(branch);
         }
 
-        let groupId = 0;
+        let group_id = 0;
         for (let offset in targetOffsetMap)
         {
             //- Process single group
 
-            groupId++;
+            group_id++;
 
             let arr = targetOffsetMap[offset];
 
@@ -366,7 +367,7 @@ function process_lines(info)
             for (let branch of arr)
             {
                 // let offset = ~~(branch.attr.lineno_int / 4);
-                let offset = branch.attr.lineIdx;
+                let offset = branch.attr.line_idx;
 
                 minOffset = Math.min(minOffset, offset);
                 maxOffset = Math.max(maxOffset, offset);
@@ -383,7 +384,7 @@ function process_lines(info)
             for (let branch of arr)
             {
                 branch.attr.grouped         = true;
-                branch.attr.groupId         = groupId;
+                branch.attr.group_id        = group_id;
                 branch.attr.branch_distance = distance;
             }
         }
@@ -423,13 +424,13 @@ function process_lines(info)
 
     for (let branch of branches)
     {
-        let startIdx = branch.attr.lineIdx;
+        let start_idx = branch.attr.line_idx;
 
         //- Set starting node
         {
             ensure_board(board, 1);
 
-            board[startIdx][0] = get_node(branch.attr.infinite_loop ? NODETYPE.INFINITE_LOOP_MARKER : NODETYPE.OUTGOING_FIRST, branch);
+            board[start_idx][0] = get_node(branch.attr.infinite_loop ? NODETYPE.INFINITE_LOOP_MARKER : NODETYPE.OUTGOING_FIRST, branch);
         }
     }
 
@@ -439,16 +440,16 @@ function process_lines(info)
             //# Nothing else to do, we're already done for this branch
             continue;
 
-        let startIdx  = branch.attr.lineIdx;
-        let endIdx    = startIdx + branch.attr.branch_offset + 1;
-        let increment = startIdx < endIdx ? 1 : -1;
+        let start_idx = branch.attr.line_idx;
+        let end_idx   = start_idx + branch.attr.branch_offset + 1;
+        let increment = start_idx < end_idx ? 1 : -1;
 
         //- Fix the ending indices by accounting for the line gaps
         //# Ending indices use branch imm, which doesn't account for gaps made during the diff
         {
-            for (let i = startIdx; i !== endIdx + increment; i += increment)
+            for (let i = start_idx; i !== end_idx + increment; i += increment)
                 if (info[i].attr.empty)
-                    endIdx += increment;
+                    end_idx += increment;
         }
 
         /**
@@ -458,7 +459,7 @@ function process_lines(info)
          * Corresponds to the index of the arrays inside the board.
          * Minimum level is 0: the first level.
          */
-        let maxLevel = 0;
+        let max_level = 0;
 
         /**
          * Starting with the shortest branches (i.e. in current
@@ -467,17 +468,17 @@ function process_lines(info)
          */
         {
             //- Calculate nested level
-            for (let i = startIdx; i !== endIdx + increment; i += increment)
+            for (let i = start_idx; i !== end_idx + increment; i += increment)
             {
                 for (let j = 0; j < MAX_NESTED_LEVEL; j++)
                 {
-                    if (i === endIdx && j === 0 && maxLevel < 1)
+                    if (i === end_idx && j === 0 && max_level < 1)
                     {
                         //- Special case check for base element
                         //# Move the nest up by one if the base element is special
                         if ([NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER].includes(board[i][j]?.nodeType))
                         {
-                            maxLevel++; //# sets to 1
+                            max_level++; //# sets to 1
                             break;
                         }
                     }
@@ -486,34 +487,34 @@ function process_lines(info)
                     ensure_board(board, j + 1);
 
                     if (board[i][j] !== null)
-                        maxLevel = Math.max(maxLevel, j);
+                        max_level = Math.max(max_level, j);
                 }
             }
 
-            let nestedLevel = maxLevel + 1;
+            let nested_level = max_level + 1;
 
-            branch.attr.nestedLevel = nestedLevel;
+            branch.attr.nested_level = nested_level;
 
-            let showArrow = true;
+            let show_arrow = true;
 
             //- Merge groups
             {
                 for (let i = 0; i < 2; i++)
                 {
-                    let node = board[endIdx][i];
+                    let node = board[end_idx][i];
 
                     if (node?.nodeType === NODETYPE.ARROWHEAD
-                     && node.ref.attr.groupId === branch.attr.groupId)
+                    && node.ref.attr.group_id === branch.attr.group_id)
                     {
                         //- Found an arrowhead from the same group, synchronise!
 
                         branch.attr.branch_colour = node.ref.attr.branch_colour;
-                        branch.attr.nestedLevel   = node.ref.attr.nestedLevel;
+                        branch.attr.nested_level  = node.ref.attr.nested_level;
 
-                        nestedLevel = branch.attr.nestedLevel;
+                        nested_level = branch.attr.nested_level;
 
                         //# No need to show an arrow, another branch in the same group showed one
-                        showArrow = false;
+                        show_arrow = false;
                     }
                 }
             }
@@ -523,54 +524,54 @@ function process_lines(info)
                 //# Set nodes at the start line
                 {
                     //# Always start as 1, since we've already set the OUTGOING_FIRST
-                    for (let i = 1; i < nestedLevel; i++)
-                        if (board[startIdx][i] === null)
-                            board[startIdx][i] = get_node(NODETYPE.OUTGOING_NORMAL_H, branch);
+                    for (let i = 1; i < nested_level; i++)
+                        if (board[start_idx][i] === null)
+                            board[start_idx][i] = get_node(NODETYPE.OUTGOING_NORMAL_H, branch);
 
-                    board[startIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_UP : NODETYPE.OUTGOING_CORNER_DOWN, branch);
+                    board[start_idx][nested_level] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_UP : NODETYPE.OUTGOING_CORNER_DOWN, branch);
                 }
 
                 //# Set nodes at the end line
                 {
-                    let baseLevel = 1;
+                    let base_level = 1;
 
-                    for (let i = 0; i < board[endIdx].length; i++)
+                    for (let i = 0; i < board[end_idx].length; i++)
                     {
-                        if (![NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER, NODETYPE.ARROWHEAD].includes(board[endIdx][i]?.nodeType))
+                        if (![NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER, NODETYPE.ARROWHEAD].includes(board[end_idx][i]?.nodeType))
                         {
-                            baseLevel = i;
+                            base_level = i;
                             break;
                         }
                     }
 
-                    if (showArrow)
-                        board[endIdx][baseLevel] = get_node(NODETYPE.ARROWHEAD, branch);
+                    if (show_arrow)
+                        board[end_idx][base_level] = get_node(NODETYPE.ARROWHEAD, branch);
 
-                    for (let i = baseLevel + 1; i < nestedLevel; i++)
-                        board[endIdx][i] = get_node(NODETYPE.INCOMING_NORMAL_H, branch);
+                    for (let i = base_level + 1; i < nested_level; i++)
+                        board[end_idx][i] = get_node(NODETYPE.INCOMING_NORMAL_H, branch);
 
-                    board[endIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_DOWN : NODETYPE.OUTGOING_CORNER_UP, branch);
+                    board[end_idx][nested_level] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_DOWN : NODETYPE.OUTGOING_CORNER_UP, branch);
                 }
 
                 //# Set nodes in the middle
-                for (let i = startIdx + increment; i != endIdx; i += increment)
+                for (let i = start_idx + increment; i != end_idx; i += increment)
                 {
                     //# Check for a node by a group member
                     {
-                        let node = board[i][nestedLevel];
+                        let node = board[i][nested_level];
                         if (node
-                            && node.ref.attr.groupId === branch.attr.groupId
+                            && node.ref.attr.group_id === branch.attr.group_id
                             && [NODETYPE.OUTGOING_CORNER_UP, NODETYPE.OUTGOING_CORNER_DOWN].includes(node.nodeType))
                         {
                             //- Found!
-                            board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_CORNER_BOTH, branch);
+                            board[i][nested_level] = get_node(NODETYPE.OUTGOING_CORNER_BOTH, branch);
 
                             //# Don't do anything else
                             continue;
                         }
                     }
 
-                    board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_NORMAL_V, branch);
+                    board[i][nested_level] = get_node(NODETYPE.OUTGOING_NORMAL_V, branch);
                 }
             }
         }
@@ -637,14 +638,14 @@ function DEBUG_view_board(board, info)
 
 
     //- Find max depth of arrows
-    let maxLevel = 0;
+    let max_level = 0;
     {
         for (let [idx, line] of board.entries())
         {
             for (let [depth, cell] of line.entries())
             {
                 if (cell)
-                    maxLevel = Math.max(maxLevel, depth + 1);
+                    max_level = Math.max(max_level, depth + 1);
             }
         }
     }
@@ -654,8 +655,8 @@ function DEBUG_view_board(board, info)
         //# prepad
         res += "   ";
 
-        // for (let i = 0; i < maxLevel; i++) //= RTL mode
-        for (let i = maxLevel - 1; i >= 0; i--) //= LTR mode
+        // for (let i = 0; i < max_level; i++) //= RTL mode
+        for (let i = max_level - 1; i >= 0; i--) //= LTR mode
         {
             let cell = line[i];
 
@@ -667,7 +668,6 @@ function DEBUG_view_board(board, info)
 
             //# There's a node at this cell
             let node = cell;
-            foundNonemptyCell = true;
 
             res += ASCII_get_for_node(node);
         }

@@ -156,7 +156,7 @@ function _split_cb(line)
 async function main()
 {
 
-    let full_dump = (await fsp.readFile("./output_dump_01.txt"))
+    let full_dump = (await fsp.readFile("./output_dump_02.txt"))
         .toString()
         .trim()
         .split(/\r?\n/g);
@@ -246,6 +246,7 @@ const NODETYPE =
      * Can be overridden
      */
     OUTGOING_NORMAL_H: 5,
+    INCOMING_NORMAL_H: 9,
 
     OUTGOING_CORNER_UP:   6,
     OUTGOING_CORNER_DOWN: 7,
@@ -546,7 +547,7 @@ function process_lines(info)
                         board[endIdx][baseLevel] = get_node(NODETYPE.ARROWHEAD, branch);
 
                     for (let i = baseLevel + 1; i < nestedLevel; i++)
-                        board[endIdx][i] = get_node(NODETYPE.OUTGOING_NORMAL_H, branch);
+                        board[endIdx][i] = get_node(NODETYPE.INCOMING_NORMAL_H, branch);
 
                     board[endIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_DOWN : NODETYPE.OUTGOING_CORNER_UP, branch);
                 }
@@ -590,28 +591,33 @@ function ASCII_get_for_node(node)
 
     const PLACEHOLDER = " ";
 
+    // const C_OUTGOING_LINE_H = "­"; //# lightly dashed
+    const C_OUTGOING_LINE_H = "─";
+
     const LTR = [
     /* 00 */ PLACEHOLDER,
-    /* 01 */ "─",
+    /* 01 */ C_OUTGOING_LINE_H,
     /* 02 */ "│",
     /* 03 */ "→",
     /* 04 */ "◊",
-    /* 05 */ "─",
+    /* 05 */ C_OUTGOING_LINE_H,
     /* 06 */ "└",
     /* 07 */ "┌",
     /* 08 */ "├",
+    /* 09 */ "─",
     ];
 
     const RTL = [
     /* 00 */ PLACEHOLDER,
-    /* 01 */ "─",
+    /* 01 */ C_OUTGOING_LINE_H,
     /* 02 */ "│",
     /* 03 */ "←",
     /* 04 */ "◊",
-    /* 05 */ "─",
+    /* 05 */ C_OUTGOING_LINE_H,
     /* 06 */ "┘",
     /* 07 */ "┐",
     /* 08 */ "┤",
+    /* 09 */ "─",
     ];
 
     return gct((USE_LTR_MODE ? LTR : RTL)[nodeType], colour);

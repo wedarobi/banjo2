@@ -495,7 +495,7 @@ function process_lines(info)
                 }
             }
 
-            //- Calculated nested level for entire branch group, if applicable
+            //- Calculate nested level for entire branch group, if applicable
             if (branch.attr.grouped)
             {
                 for (let i = branch.attr.group_min_offset; i !== branch.attr.group_max_offset; i++)

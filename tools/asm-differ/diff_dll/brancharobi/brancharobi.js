@@ -96,8 +96,9 @@ function line_to_obj(linearr)
              */
             level: 0,
 
-
             branch_colour: "white",
+
+            grouped: false,
 
 
         },
@@ -112,7 +113,7 @@ function line_to_obj(linearr)
     o.attr.is_branch          = _branch_ops.includes(o.prim.opcode.trim());
     o.attr.branch_target      = o.attr.is_branch ? o.prim.operands.match(/0x([0-9a-f]+)/)[1] : "";
     o.attr.branch_offset      = o.attr.is_branch ? ((parseInt(o.attr.branch_target, 16) - parseInt(o.attr.lineno, 16)) / 4) - 1 : "";
-    o.attr.branch_distance    = Math.abs(o.attr.branch_offset);
+    o.attr.branch_distance    = Math.abs(o.attr.branch_offset) + (o.attr.branch_offset < 0 ? -1 : 1);
     o.attr.infinite_loop      = o.attr.branch_offset === -1;
 
 
@@ -158,7 +159,7 @@ function _split_cb(line)
 async function main()
 {
 
-    let full_dump = (await fsp.readFile("./output_dump.txt"))
+    let full_dump = (await fsp.readFile("./output_dump_02.txt"))
         .toString()
         .trim()
         .split(/\r?\n/g);
@@ -355,8 +356,18 @@ function process_lines(inputLines)
         branches[i].attr.branch_colour = BRANCH_COLOURS[~~(Math.random() * BRANCH_COLOURS.length)];
 
 
+    //- Merge branches that share the same branch target
+    {
+
+
+
+
+
+    }
+
     //- Sort branches in order of branch distance
     {
+        // log(branches)
         branches.sort((a, b) =>
         {
             if (false);
@@ -404,7 +415,7 @@ function process_lines(inputLines)
             {
                 ensure_board(board, 1);
 
-                board[startIdx][0] = get_node(NODETYPE.OUTGOING_FIRST, branch);
+                board[startIdx][0] = get_node(branch.attr.infinite_loop ? NODETYPE.INFINITE_LOOP_MARKER : NODETYPE.OUTGOING_FIRST, branch);
             }
         }
     }
@@ -413,9 +424,12 @@ function process_lines(inputLines)
     {
         for (let [branchIdx, branch] of branches.entries())
         {
+            if (branch.attr.infinite_loop)
+                //# Nothing else to do, we're already done for this branch
+                continue;
+
             //!!!!!!!!
-            // if (branchIdx !== 1)
-            //     continue;
+            // if (branchIdx === 1) continue;
 
             let startIdx  = branch.attr.lineIdx;
             let endIdx    = startIdx + branch.attr.branch_offset + 1;
@@ -458,16 +472,18 @@ function process_lines(inputLines)
                 {
                     for (let j = 0; j < MAX_NESTED_LEVEL; j++)
                     {
-                        if (i === endIdx && j === 0 && maxLevel < 2)
+                        if (i === endIdx && j === 0 && maxLevel < 1)
                         {
-                            //# Special case check for base element
+                            //- Special case check for base element
+                            //# Move the nest up by one if the base element is special
                             if ([NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER].includes(board[i][j]?.nodeType))
                             {
-                                maxLevel++;
+                                maxLevel++; //# sets to 1
                                 break;
                             }
                         }
 
+                        //! This runs all the way until the max nested level anyway, should we just init the board fully from the start?
                         ensure_board(board, j + 1);
 
                         if (board[i][j] !== null)
@@ -628,7 +644,15 @@ function DEBUG_view_board(board, info)
 
 
         //# instruction data
-        res += ` ${strip_colour(info[idx].prim.opcode)} ${strip_colour(info[idx].prim.operands).trim()}`.padEnd(28, " ");
+        {
+            let opcode = info[idx].prim.opcode;
+            let operands = info[idx].prim.operands;
+
+            if (!opcode)   opcode   = "";
+            if (!operands) operands = "";
+
+            res += ` ${opcode} ${operands.trim()}`.padEnd(28, " ");
+        }
 
         res += "\r\n";
     }

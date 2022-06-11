@@ -104,7 +104,7 @@ function line_to_obj(linearr)
     };
 
     o.attr.empty              = o.prim.lineno === "";
-    // doesn't have comma
+    //# doesn't have comma
     o.attr.lineno             = o.prim.lineno.replace(/:\s*?$/, "");
     o.attr.lineno_int         = o.attr.lineno ? parseInt(o.attr.lineno, 16) : -1;
 
@@ -144,10 +144,10 @@ function _split_cb(line)
 
     let d = instr.split(/\s+/g)
 
-    // longest opcode string(s): "cvt.s.w"-like?
+    //# longest opcode string(s): "cvt.s.w"-like?
     let opcode = d[0].padEnd(8, " ");
 
-    // "?." for nop lines
+    //# "?." for nop lines
     let operands = d[1]?.replace(/,/g, "  ");
 
     return [prefix, lineno, opcode, operands];
@@ -234,7 +234,7 @@ const NODETYPE =
      */
     OUTGOING_NORMAL_H: 5,
 
-    OUTGOING_CORNER_UP: 6,
+    OUTGOING_CORNER_UP:   6,
     OUTGOING_CORNER_DOWN: 7,
     OUTGOING_CORNER_BOTH: 8,
 
@@ -293,14 +293,11 @@ const BRANCH_COLOURS =
 function gct(msg, colour, underline=false)
 {
     let ul = underline ? "4m" : "1m";
-    //# standard white (force no underline)
-    // let reset = "\x1b[97;0;1m";
     let reset = "\x1b[97;0;0m";
 
     let code = colour in COLOUR_CODES
         ? COLOUR_CODES[colour]
-        //# default special colour is pink
-        : COLOUR_CODES["pink"];
+        : COLOUR_CODES["white"];
 
     return `\x1b[${code};${ul}${msg}${reset}`;
 }
@@ -324,7 +321,6 @@ function process_lines(inputLines)
 
 
     let branches     = info.filter(o => o.attr.is_branch);
-    let num_branches = branches.length;
 
     //- Set random branch colours
     for (let i = 0; i < branches.length; i++)

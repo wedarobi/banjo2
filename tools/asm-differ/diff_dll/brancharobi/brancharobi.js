@@ -244,6 +244,13 @@ const NODETYPE =
     OUTGOING_NORMAL_V: 2,
 
     /**
+     * Used when you have a branch group. If a "T" is placed,
+     * you can put an arrow after it in the direction of the target
+     */
+    GROUP_ARROW_DOWN: 10,
+    GROUP_ARROW_UP:   11,
+
+    /**
      * Part of the outgoing arrow body.
      * (dash: horizontal)
      *
@@ -583,7 +590,12 @@ function process_lines(info)
                             && [NODETYPE.OUTGOING_CORNER_UP, NODETYPE.OUTGOING_CORNER_DOWN].includes(node.nodeType))
                         {
                             //- Found!
-                            board[i][nested_level] = get_node(NODETYPE.OUTGOING_CORNER_BOTH, branch);
+
+                            //# Mark the intersection with a "T"
+                            // board[i][nested_level] = get_node(NODETYPE.OUTGOING_CORNER_BOTH, branch);
+
+                            //# Mark the intersection with a symbol that clearly shows the direction of the target
+                            board[i][nested_level] = get_node(increment < 0 ? NODETYPE.GROUP_ARROW_UP : NODETYPE.GROUP_ARROW_DOWN, branch);
 
                             //# Don't do anything else
                             continue;
@@ -625,6 +637,8 @@ function ASCII_get_for_node(node)
     /* 07 */ "┌",
     /* 08 */ "├",
     /* 09 */ "─",
+    /* 10 */ "┟",
+    /* 11 */ "┞",
     ];
 
     const RTL = [
@@ -638,6 +652,8 @@ function ASCII_get_for_node(node)
     /* 07 */ "┐",
     /* 08 */ "┤",
     /* 09 */ "─",
+    /* 10 */ "┧",
+    /* 11 */ "┦",
     ];
 
     return gct((USE_LTR_MODE ? LTR : RTL)[nodeType], colour);

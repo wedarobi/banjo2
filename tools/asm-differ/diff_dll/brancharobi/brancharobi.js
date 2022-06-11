@@ -98,6 +98,8 @@ function line_to_obj(linearr)
 
             grouped: false,
             group_id: -1,
+            group_min_offset: -1,
+            group_max_offset: -1,
 
 
         },
@@ -383,9 +385,11 @@ function process_lines(info)
             let distance = maxOffset - minOffset;
             for (let branch of arr)
             {
-                branch.attr.grouped         = true;
-                branch.attr.group_id        = group_id;
-                branch.attr.branch_distance = distance;
+                branch.attr.grouped          = true;
+                branch.attr.group_id         = group_id;
+                branch.attr.branch_distance  = distance;
+                branch.attr.group_min_offset = minOffset;
+                branch.attr.group_max_offset = maxOffset;
             }
         }
     }
@@ -488,6 +492,21 @@ function process_lines(info)
 
                     if (board[i][j] !== null)
                         max_level = Math.max(max_level, j);
+                }
+            }
+
+            //- Calculated nested level for entire branch group, if applicable
+            if (branch.attr.grouped)
+            {
+                for (let i = branch.attr.group_min_offset; i !== branch.attr.group_max_offset; i++)
+                {
+                    for (let j = 0; j < MAX_NESTED_LEVEL; j++)
+                    {
+                        ensure_board(board, j + 1);
+
+                        if (board[i][j] !== null)
+                            max_level = Math.max(max_level, j);
+                    }
                 }
             }
 

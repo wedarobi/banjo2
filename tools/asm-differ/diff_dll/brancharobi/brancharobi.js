@@ -178,9 +178,9 @@ async function main()
 
 /**
  * Increase the maximum nest level of the board
- * 
- * @param {Object[][]} board 
- * @param {number} times 
+ *
+ * @param {Object[][]} board
+ * @param {number} times
  */
 function extend_board(board, times)
 {
@@ -192,9 +192,9 @@ function extend_board(board, times)
 }
 
 /**
- * 
- * @param {Object[][]} board 
- * @param {number} size 
+ *
+ * @param {Object[][]} board
+ * @param {number} size
  */
 function ensure_board(board, size)
 {
@@ -211,9 +211,9 @@ const NODETYPE =
     /**
      * It marks the first character of the arrow,
      * shown for branching out of a line.
-     * 
+     *
      * Conflicts with [INFINITE_LOOP_MARKER]
-     * 
+     *
      * Should never be overridden
      */
     OUTGOING_FIRST: 1,
@@ -221,7 +221,7 @@ const NODETYPE =
     /**
      * Part of the outgoing arrow body.
      * (dash: vertical)
-     * 
+     *
      * Can be overridden
      */
     OUTGOING_NORMAL_V: 2,
@@ -229,7 +229,7 @@ const NODETYPE =
     /**
      * Part of the outgoing arrow body.
      * (dash: horizontal)
-     * 
+     *
      * Can be overridden
      */
     OUTGOING_NORMAL_H: 5,
@@ -240,7 +240,7 @@ const NODETYPE =
 
     /**
      * The head of an arrow
-     * 
+     *
      * Should never be overridden
      */
     ARROWHEAD: 3,
@@ -249,9 +249,9 @@ const NODETYPE =
      * Marks the first character of the arrow,
      * shown for an instruction branching out to
      * itself, to show some special icon.
-     * 
+     *
      * Conflicts with [OUTGOING_FIRST]
-     * 
+     *
      * Should never be overridden
      */
     INFINITE_LOOP_MARKER: 4,
@@ -352,7 +352,7 @@ function process_lines(inputLines)
             groupId++;
 
             let arr = targetOffsetMap[offset];
-            
+
             if (arr.length === 1)
                 //# Not a group
                 continue;
@@ -425,162 +425,158 @@ function process_lines(inputLines)
      * working to the left.
      */
 
+    for (let branch of branches)
     {
-        for (let branch of branches)
+        let startIdx = branch.attr.lineIdx;
+
+        //- Set starting node
         {
-            let startIdx = branch.attr.lineIdx;
+            ensure_board(board, 1);
 
-            //- Set starting node
-            {
-                ensure_board(board, 1);
-
-                board[startIdx][0] = get_node(branch.attr.infinite_loop ? NODETYPE.INFINITE_LOOP_MARKER : NODETYPE.OUTGOING_FIRST, branch);
-            }
+            board[startIdx][0] = get_node(branch.attr.infinite_loop ? NODETYPE.INFINITE_LOOP_MARKER : NODETYPE.OUTGOING_FIRST, branch);
         }
     }
 
+    for (let branch of branches)
     {
-        for (let branch of branches)
+        if (branch.attr.infinite_loop)
+            //# Nothing else to do, we're already done for this branch
+            continue;
+
+        let startIdx  = branch.attr.lineIdx;
+        let endIdx    = startIdx + branch.attr.branch_offset + 1;
+        let increment = startIdx < endIdx ? 1 : -1;
+
+
+        //- Fix the ending indices by accounting for the line gaps
         {
-            if (branch.attr.infinite_loop)
-                //# Nothing else to do, we're already done for this branch
-                continue;
+            for (let i = startIdx; i !== endIdx + increment; i += increment)
+                if (info[i].attr.empty)
+                    endIdx += increment;
+        }
 
-            let startIdx  = branch.attr.lineIdx;
-            let endIdx    = startIdx + branch.attr.branch_offset + 1;
-            let increment = startIdx < endIdx ? 1 : -1;
+        /**
+         * Calculate the maximum nested level encountered; we need
+         * to go 1 (or 2) more
+         *
+         * Corresponds to the index of the arrays inside the board.
+         * Minimum level is 0: the first level.
+         */
+        let maxLevel = 0;
 
-
-            //- Fix the ending indices by accounting for the line gaps
+        /**
+         * Starting with the shortest branches (i.e. in current
+         * sort order), calculate the right nested level,
+         * and place nodes all along the track of the arrow
+         */
+        {
+            //- Calculate nested level
+            for (let i = startIdx; i !== endIdx + increment; i += increment)
             {
-                for (let i = startIdx; i !== endIdx + increment; i += increment)
-                    if (info[i].attr.empty)
-                        endIdx += increment;
+                for (let j = 0; j < MAX_NESTED_LEVEL; j++)
+                {
+                    if (i === endIdx && j === 0 && maxLevel < 1)
+                    {
+                        //- Special case check for base element
+                        //# Move the nest up by one if the base element is special
+                        if ([NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER].includes(board[i][j]?.nodeType))
+                        {
+                            maxLevel++; //# sets to 1
+                            break;
+                        }
+                    }
+
+                    //! This runs all the way until the max nested level anyway, should we just init the board fully from the start?
+                    ensure_board(board, j + 1);
+
+                    if (board[i][j] !== null)
+                        maxLevel = Math.max(maxLevel, j);
+                }
             }
 
-            /**
-             * Calculate the maximum nested level encountered; we need
-             * to go 1 (or 2) more
-             * 
-             * Corresponds to the index of the arrays inside the board.
-             * Minimum level is 0: the first level.
-             */
-            let maxLevel = 0;
+            let nestedLevel = maxLevel + 1;
 
-            /**
-             * Starting with the shortest branches (i.e. in current
-             * sort order), calculate the right nested level,
-             * and place nodes all along the track of the arrow
-             */
+            branch.attr.nestedLevel = nestedLevel;
+
+            let showArrow = true;
+
+            //- Merge groups
             {
-                //- Calculate nested level
-                for (let i = startIdx; i !== endIdx + increment; i += increment)
+                for (let i = 0; i < 2; i++)
                 {
-                    for (let j = 0; j < MAX_NESTED_LEVEL; j++)
+                    let node = board[endIdx][i];
+
+                    if (node?.nodeType === NODETYPE.ARROWHEAD
+                     && node.ref.attr.groupId === branch.attr.groupId)
                     {
-                        if (i === endIdx && j === 0 && maxLevel < 1)
+                        //- Found an arrowhead from the same group, synchronise!
+
+                        branch.attr.branch_colour = node.ref.attr.branch_colour;
+                        branch.attr.nestedLevel   = node.ref.attr.nestedLevel;
+
+                        nestedLevel = branch.attr.nestedLevel;
+
+                        //# No need to show an arrow, another branch in the same group showed one
+                        showArrow = false;
+                    }
+                }
+            }
+
+            //- Set nodes along the path
+            {
+                //# Set nodes at the start line
+                {
+                    //# Always start as 1, since we've already set the OUTGOING_FIRST
+                    for (let i = 1; i < nestedLevel; i++)
+                        if (board[startIdx][i] === null)
+                            board[startIdx][i] = get_node(NODETYPE.OUTGOING_NORMAL_H, branch);
+
+                    board[startIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_UP : NODETYPE.OUTGOING_CORNER_DOWN, branch);
+                }
+
+                //# Set nodes at the end line
+                {
+                    let baseLevel = 1;
+
+                    {
+                        for (let i = 0; i < board[endIdx].length; i++)
                         {
-                            //- Special case check for base element
-                            //# Move the nest up by one if the base element is special
-                            if ([NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER].includes(board[i][j]?.nodeType))
+                            if (![NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER, NODETYPE.ARROWHEAD].includes(board[endIdx][i]?.nodeType))
                             {
-                                maxLevel++; //# sets to 1
+                                baseLevel = i;
                                 break;
                             }
                         }
-
-                        //! This runs all the way until the max nested level anyway, should we just init the board fully from the start?
-                        ensure_board(board, j + 1);
-
-                        if (board[i][j] !== null)
-                            maxLevel = Math.max(maxLevel, j);
                     }
+
+                    if (showArrow)
+                        board[endIdx][baseLevel] = get_node(NODETYPE.ARROWHEAD, branch);
+
+                    for (let i = baseLevel + 1; i < nestedLevel; i++)
+                        board[endIdx][i] = get_node(NODETYPE.OUTGOING_NORMAL_H, branch);
+
+                    board[endIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_DOWN : NODETYPE.OUTGOING_CORNER_UP, branch);
                 }
 
-                let nestedLevel = maxLevel + 1;
-
-                branch.attr.nestedLevel = nestedLevel;
-
-                let showArrow = true;
-
-                //- Merge groups
+                //# Set nodes in the middle
+                for (let i = startIdx + increment; i != endIdx; i += increment)
                 {
-                    for (let i = 0; i < 2; i++)
+                    //# Check for a node by a group member
                     {
-                        let node = board[endIdx][i];
-
-                        if (node?.nodeType === NODETYPE.ARROWHEAD
-                         && node.ref.attr.groupId === branch.attr.groupId)
+                        let node = board[i][nestedLevel];
+                        if (node
+                            && node.ref.attr.groupId === branch.attr.groupId
+                            && [NODETYPE.OUTGOING_CORNER_UP, NODETYPE.OUTGOING_CORNER_DOWN].includes(node.nodeType))
                         {
-                            //- Found an arrowhead from the same group, synchronise!
+                            //- Found!
+                            board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_CORNER_BOTH, branch);
 
-                            branch.attr.branch_colour = node.ref.attr.branch_colour;
-                            branch.attr.nestedLevel   = node.ref.attr.nestedLevel;
-
-                            nestedLevel = branch.attr.nestedLevel;
-
-                            //# No need to show an arrow, another branch in the same group showed one
-                            showArrow = false;
+                            //# Don't do anything else
+                            continue;
                         }
                     }
-                }
 
-                //- Set nodes along the path
-                {
-                    //# Set nodes at the start line
-                    {
-                        //# Always start as 1, since we've already set the OUTGOING_FIRST
-                        for (let i = 1; i < nestedLevel; i++)
-                            if (board[startIdx][i] === null)
-                                board[startIdx][i] = get_node(NODETYPE.OUTGOING_NORMAL_H, branch);
-
-                        board[startIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_UP : NODETYPE.OUTGOING_CORNER_DOWN, branch);
-                    }
-
-                    //# Set nodes at the end line
-                    {
-                        let baseLevel = 1;
-
-                        {
-                            for (let i = 0; i < board[endIdx].length; i++)
-                            {
-                                if (![NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER, NODETYPE.ARROWHEAD].includes(board[endIdx][i]?.nodeType))
-                                {
-                                    baseLevel = i;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (showArrow)
-                            board[endIdx][baseLevel] = get_node(NODETYPE.ARROWHEAD, branch);
-
-                        for (let i = baseLevel + 1; i < nestedLevel; i++)
-                            board[endIdx][i] = get_node(NODETYPE.OUTGOING_NORMAL_H, branch);
-
-                        board[endIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_DOWN : NODETYPE.OUTGOING_CORNER_UP, branch);
-                    }
-
-                    //# Set nodes in the middle
-                    for (let i = startIdx + increment; i != endIdx; i += increment)
-                    {
-                        //# Check for a node by a group member
-                        {
-                            let node = board[i][nestedLevel];
-                            if (node
-                                && node.ref.attr.groupId === branch.attr.groupId
-                                && [NODETYPE.OUTGOING_CORNER_UP, NODETYPE.OUTGOING_CORNER_DOWN].includes(node.nodeType))
-                            {
-                                //- Found!
-                                board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_CORNER_BOTH, branch);
-
-                                //# Don't do anything else
-                                continue;
-                            }
-                        }
-
-                        board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_NORMAL_V, branch);
-                    }
+                    board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_NORMAL_V, branch);
                 }
             }
         }
@@ -692,7 +688,7 @@ function DEBUG_view_board(board, info)
 
         res += "\r\n";
     }
-    
+
     process.stdout.write(res);
 }
 

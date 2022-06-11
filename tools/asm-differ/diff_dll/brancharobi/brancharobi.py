@@ -1,6 +1,9 @@
-from email.mime import base
 import sys
 import re
+import random
+import math
+
+from enum import Enum
 from typing import (
     Any,
     Dict,
@@ -15,12 +18,9 @@ from typing import (
     Callable,
     Pattern,
 )
-from enum import Enum
-import random
-import math
-from termcolor import colored as coloured
 
-from numpy import random as rand
+from termcolor import colored as coloured
+from numpy     import random as rand
 
 
 class LO_Prim():
@@ -168,8 +168,6 @@ class Node():
         self.ref      = branchObject
 
 
-
-
 def generate_branching_arrows(input: List):
     def split_cb(line):
         i = 0
@@ -202,49 +200,26 @@ def generate_branching_arrows(input: List):
         return (prefix, lineno, opcode, operands)
 
 
-    # line_sets = map(transform_input, input)
-
-
     lines_target:  List[LineObj] = []
     lines_current: List[LineObj] = []
 
-
     for (i, e) in enumerate(input):
-        lo = LineObj(split_cb(e.base))
+        lo = LineObj(split_cb(e.base if e.base else ""))
         lo.attr.line_idx = i
         lines_target.append(lo)
 
     for (i, e) in enumerate(input):
-        lo = LineObj(split_cb(e.fmt2))
+        lo = LineObj(split_cb(e.fmt2 if e.fmt2 else ""))
         lo.attr.line_idx = i
         lines_current.append(lo)
 
-    lines_target = process_lines(lines_target)
-    # lines_current = process_lines(lines_current)
+    lines_target  = process_lines(lines_target)
+    lines_current = process_lines(lines_current)
 
+    for i in range(len(input)):
+        input[i].base = " " + lines_target[i]
+        input[i].fmt2 = " " + lines_current[i]
 
-
-    #!!!!!!!!!
-    # for line in lines_target:
-    #     print(line)
-
-    # for line in lines_current:
-    #     print(line)
-
-
-
-
-
-
-
-
-
-
-
-
-    sys.exit(1) ##!!!!!!!!!!!!
-
-    # return lines
     return input
 
 
@@ -260,10 +235,8 @@ def ensure_board(board, size):
         extend_board(board, size - length)
 
 
-
-
 BRANCH_COLOURS = [
-    "red", "green", "yellow", "blue", "magenta", "cyan",
+    "red", "green", "yellow", "blue", "magenta", "cyan", "white",
 ]
 
 def gct(msg: str, colour: str):
@@ -285,10 +258,15 @@ def process_lines(info: List[LineObj]):
         #     branches[i].attr.branch_colour = BRANCH_COLOURS[math.floor(random.random() * len(BRANCH_COLOURS))]
 
         #- Set branch colours semi-deterministically
-        seed  = 0xDEADB00B
-        state = rand.RandomState(rand.MT19937(rand.SeedSequence(seed)))
+        # seed  = 0xDEADB00B
+        # state = rand.RandomState(rand.MT19937(rand.SeedSequence(seed)))
+        # for i in range(len(branches)):
+        #     branches[i].attr.branch_colour = BRANCH_COLOURS[math.floor(state.random() * len(BRANCH_COLOURS))]
+
+        #- Set branch colours deterministically, based on target line index (crucially: always shared between target and current)
         for i in range(len(branches)):
-            branches[i].attr.branch_colour = BRANCH_COLOURS[math.floor(state.random() * len(BRANCH_COLOURS))]
+            val = math.floor(rand.RandomState(rand.MT19937(rand.SeedSequence(branches[i].attr.line_idx * 3))).random() * len(BRANCH_COLOURS))
+            branches[i].attr.branch_colour = BRANCH_COLOURS[val]
 
     #- Group branches together that share the same branch target
     if True:
@@ -496,16 +474,7 @@ def process_lines(info: List[LineObj]):
 
                 board[i][nested_level] = Node(NODETYPE.OUTGOING_NORMAL_V, branch)
 
-
-
-
-
-    DEBUG_view_board(board, info)
-
-
-
-
-    pass
+    return render_board(board, info)
 
 
 def ASCII_get_for_node(node: Node):
@@ -555,6 +524,47 @@ def strip_colour(string: str):
         return ""
 
     return re.sub(r"\x1b[^m]+m", "", str, flags="g")
+
+
+def render_board(board: List[List[Node]], info: List[LineObj]) -> List[str]:
+    out = []
+
+    max_level = 0
+    for (idx, line) in enumerate(board):
+        for (depth, cell) in enumerate(line):
+            if cell:
+                max_level = max(max_level, depth + 1)
+
+    for (idx, line) in enumerate(board):
+        res = ""
+
+        for i in range(max_level - 1, -1, -1):
+            cell = line[i]
+
+            if cell is None:
+                res += " "
+                continue
+
+            ## There's a node at this cell
+            node = cell
+
+            res += ASCII_get_for_node(node)
+
+        ## instruction data
+        if True:
+            prefix   = info[idx].prim.prefix
+            opcode   = info[idx].prim.opcode
+            operands = info[idx].prim.operands
+
+            if not prefix:   prefix   = ""
+            if not opcode:   opcode   = ""
+            if not operands: operands = ""
+
+            res += f" {prefix}{opcode} {operands.strip()}".ljust(28, " ")
+        
+        out.append(res)
+
+    return out
 
 
 def DEBUG_view_board(board: List[List[Node]], info: List[LineObj]):

@@ -1479,18 +1479,6 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         fmt2 = mid + " " + (part2 or "")
         output.append(OutputLine(part1, fmt2, key2))
 
-
-    # with open("./brancharobi/output_dump.txt", "w") as f:
-    #     res = ""
-    #     for line in output:
-    #         base = line.base if line.base else ""
-    #         fmt2 = line.fmt2 if line.fmt2 else ""
-
-    #         res += f"{base}====={fmt2}\n"
-
-    #     f.write(res)
-
-
     return generate_branching_arrows(output)
 
 

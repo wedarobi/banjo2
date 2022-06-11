@@ -2,12 +2,10 @@ const fs = require("fs");
 const fsp = require("fs/promises");
 
 
-
 function log(msg)
 {
     console.log(msg);
 }
-
 
 function line_to_obj(linearr)
 {
@@ -105,7 +103,6 @@ function line_to_obj(linearr)
         },
     };
 
-
     o.attr.empty              = o.prim.lineno === "";
     // doesn't have comma
     o.attr.lineno             = o.prim.lineno.replace(/:\s*?$/, "");
@@ -116,7 +113,6 @@ function line_to_obj(linearr)
     o.attr.branch_offset      = o.attr.is_branch ? ((parseInt(o.attr.branch_target, 16) - parseInt(o.attr.lineno, 16)) / 4) - 1 : "";
     o.attr.branch_distance    = Math.abs(o.attr.branch_offset) + (o.attr.branch_offset < 0 ? -1 : 1);
     o.attr.infinite_loop      = o.attr.branch_offset === -1;
-
 
     return o;
 }
@@ -160,7 +156,7 @@ function _split_cb(line)
 async function main()
 {
 
-    let full_dump = (await fsp.readFile("./output_dump_01.txt"))
+    let full_dump = (await fsp.readFile("./output_dump.txt"))
         .toString()
         .trim()
         .split(/\r?\n/g);
@@ -170,23 +166,9 @@ async function main()
     gIdx = 1;
     let lines_current = full_dump.map(_split_cb);
 
-    // console.log(lines_target.map(x => x.join("*****")).join("\n"))
-    // console.log(lines_current.map(x => x.join("*****")).join("\n"))
-
-
-
-    // console.log(JSON.stringify(lines_current, null, 2))
-
-    // console.log(JSON.stringify(lines_current.map(x => line_to_obj(x)), null, 2))
-
-    // console.log(lines_current.map(x => line_to_obj(x)))
-
 
     // let out1 = process_lines(lines_target)
     let out2 = process_lines(lines_current)
-
-
-
 
 
 }
@@ -224,7 +206,8 @@ function ensure_board(board, size)
     return board;
 }
 
-const NODETYPE = {
+const NODETYPE =
+{
     /**
      * It marks the first character of the arrow,
      * shown for branching out of a line.
@@ -254,8 +237,6 @@ const NODETYPE = {
     OUTGOING_CORNER_UP: 6,
     OUTGOING_CORNER_DOWN: 7,
     OUTGOING_CORNER_BOTH: 8,
-
-
 
     /**
      * The head of an arrow
@@ -324,8 +305,6 @@ function gct(msg, colour, underline=false)
     return `\x1b[${code};${ul}${msg}${reset}`;
 }
 
-
-
 function process_lines(inputLines)
 {
     let info = inputLines.map((line, i) =>
@@ -343,19 +322,13 @@ function process_lines(inputLines)
     for (let i = 0; i < board.length; i++)
         board[i] = [];
 
-    // log(board)
-
-
-    // console.log(info)
 
     let branches     = info.filter(o => o.attr.is_branch);
     let num_branches = branches.length;
 
-
     //- Set random branch colours
     for (let i = 0; i < branches.length; i++)
         branches[i].attr.branch_colour = BRANCH_COLOURS[~~(Math.random() * BRANCH_COLOURS.length)];
-
 
     //- Merge branches that share the same branch target
     {
@@ -379,6 +352,10 @@ function process_lines(inputLines)
             groupId++;
 
             let arr = targetOffsetMap[offset];
+            
+            if (arr.length === 1)
+                //# Not a group
+                continue;
 
             let minOffset = Infinity;
             let maxOffset = -1;
@@ -386,7 +363,9 @@ function process_lines(inputLines)
             //# Find the min and max bounds of all the combined branches
             for (let branch of arr)
             {
-                let offset = branch.attr.lineno_int;
+                // let offset = ~~(branch.attr.lineno_int / 4);
+                let offset = branch.attr.lineIdx;
+
                 minOffset = Math.min(minOffset, offset);
                 maxOffset = Math.max(maxOffset, offset);
 
@@ -405,21 +384,11 @@ function process_lines(inputLines)
                 branch.attr.groupId         = groupId;
                 branch.attr.branch_distance = distance;
             }
-
-
-
-
-
-
         }
-
-
-
     }
 
     //- Sort branches in order of branch distance
     {
-        // log(branches)
         branches.sort((a, b) =>
         {
             if (false);
@@ -456,12 +425,10 @@ function process_lines(inputLines)
      * working to the left.
      */
 
-
     {
         for (let branch of branches)
         {
             let startIdx = branch.attr.lineIdx;
-            // let endIdx   = startIdx + branch.attr.branch_offset;
 
             //- Set starting node
             {
@@ -472,16 +439,12 @@ function process_lines(inputLines)
         }
     }
 
-    // if (0)
     {
-        for (let [branchIdx, branch] of branches.entries())
+        for (let branch of branches)
         {
             if (branch.attr.infinite_loop)
                 //# Nothing else to do, we're already done for this branch
                 continue;
-
-            //!!!!!!!!
-            // if (branchIdx === 1) continue;
 
             let startIdx  = branch.attr.lineIdx;
             let endIdx    = startIdx + branch.attr.branch_offset + 1;
@@ -510,15 +473,6 @@ function process_lines(inputLines)
              * and place nodes all along the track of the arrow
              */
             {
-                //- See if a nest already exists with the same target. If so, use the same level and colour
-                {
-                    // TODO
-
-                    // TODO merge level
-                    // TOOD merge colour
-
-                }
-
                 //- Calculate nested level
                 for (let i = startIdx; i !== endIdx + increment; i += increment)
                 {
@@ -607,8 +561,6 @@ function process_lines(inputLines)
                         board[endIdx][nestedLevel] = get_node(increment < 0 ? NODETYPE.OUTGOING_CORNER_DOWN : NODETYPE.OUTGOING_CORNER_UP, branch);
                     }
 
-                    // if (branchIdx > 3) continue; //!!!!!!
-
                     //# Set nodes in the middle
                     for (let i = startIdx + increment; i != endIdx; i += increment)
                     {
@@ -630,19 +582,12 @@ function process_lines(inputLines)
                         board[i][nestedLevel] = get_node(NODETYPE.OUTGOING_NORMAL_V, branch);
                     }
                 }
-
-
-
-
             }
         }
     }
 
+    DEBUG_view_board(board, info);
 
-    // log(branches)
-
-    // log(board)
-    DEBUG_view_board(board, info)
 
 
 }
@@ -709,14 +654,10 @@ function DEBUG_view_board(board, info)
         }
     }
 
-
     for (let [idx, line] of board.entries())
     {
-
-
         //# prepad
         res += "   ";
-
 
         // for (let i = 0; i < maxLevel; i++) //= RTL mode
         for (let i = maxLevel - 1; i >= 0; i--) //= LTR mode
@@ -736,8 +677,6 @@ function DEBUG_view_board(board, info)
             res += ASCII_get_for_node(node);
         }
 
-
-
         //# instruction data
         {
             let prefix   = info[idx].prim.prefix;
@@ -756,8 +695,6 @@ function DEBUG_view_board(board, info)
     
     process.stdout.write(res);
 }
-
-
 
 
 main();

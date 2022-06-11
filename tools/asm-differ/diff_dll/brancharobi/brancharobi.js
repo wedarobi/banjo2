@@ -563,7 +563,7 @@ function process_lines(info)
 
                     for (let i = 0; i < board[end_idx].length; i++)
                     {
-                        if (![NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER, NODETYPE.ARROWHEAD].includes(board[end_idx][i]?.nodeType))
+                        if (!board[end_idx][i] || ![NODETYPE.OUTGOING_FIRST, NODETYPE.INFINITE_LOOP_MARKER, NODETYPE.ARROWHEAD].includes(board[end_idx][i].nodeType))
                         {
                             base_level = i;
                             break;

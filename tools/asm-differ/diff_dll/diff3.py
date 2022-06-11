@@ -18,6 +18,7 @@ from typing import (
     Pattern,
 )
 
+from brancharobi.brancharobi import generate_branching_arrows
 
 def fail(msg: str) -> NoReturn:
     print(msg, file=sys.stderr)
@@ -1430,20 +1431,20 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         ) -> Optional[str]:
             if line is None:
                 return None
-            in_arrow = "  "
-            out_arrow = ""
+            # in_arrow = "  "
+            # out_arrow = ""
 
-            if args.show_branches:
-                #- Check if there is a branch coming INTO this line
-                if line.line_num in btset:
-                    in_arrow = sc.color_symbol(line.line_num, "~>") + line_color
+            # if args.show_branches:
+            #     #- Check if there is a branch coming INTO this line
+            #     if line.line_num in btset:
+            #         in_arrow = sc.color_symbol(line.line_num, "~>") + line_color
 
-                #- Check if this instruction branches OUT to another line
-                if line.branch_target is not None:
-                    out_arrow = " " + sc.color_symbol(line.branch_target + ":", "~>")
+            #     #- Check if this instruction branches OUT to another line
+            #     if line.branch_target is not None:
+            #         out_arrow = " " + sc.color_symbol(line.branch_target + ":", "~>")
 
             out = pad_mnemonic(out)
-            return f"{line_color}{line.line_num} {in_arrow} {out}{Style.RESET_ALL}{out_arrow}"
+            return f"{line_color}{line.line_num}&&&{out}{Style.RESET_ALL}"
 
         part1 = format_part(out1, line1, line_color1, bts1, sc5)
         part2 = format_part(out2, line2, line_color2, bts2, sc6)
@@ -1478,7 +1479,19 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         fmt2 = mid + " " + (part2 or "")
         output.append(OutputLine(part1, fmt2, key2))
 
-    return output
+
+    # with open("./brancharobi/output_dump.txt", "w") as f:
+    #     res = ""
+    #     for line in output:
+    #         base = line.base if line.base else ""
+    #         fmt2 = line.fmt2 if line.fmt2 else ""
+
+    #         res += f"{base}====={fmt2}\n"
+
+    #     f.write(res)
+
+
+    return generate_branching_arrows(output)
 
 
 def chunk_diff(diff: List[OutputLine]) -> List[Union[List[OutputLine], OutputLine]]:
@@ -1556,8 +1569,8 @@ def format_diff(
     width = args.column_width
 
     header_line = "------------------------>\n"
-    header_line += f" {gct(  '-r', 'black')} {gct(gVars['names']['romVer'], 'blue')}"
-    header_line += f" {gct('> -d', 'black')} {gct(gVars['names']['dllName'], 'cyan')}"
+    header_line += f" {gct('> -r', 'black')} {gct(gVars['names']['romVer'], 'blue')}"
+    header_line += f" {gct(  '-d', 'black')} {gct(gVars['names']['dllName'], 'cyan')}"
     header_line += f" {gct(  '-f', 'black')} {gct(gVars['names']['functionName'], 'yellow')}"
     header_line += f"\n"
     header_line += gct(' (function ', 'black') + gct('#' + gVars['names']['functionIdx'], 'yellow') + gct(' of ' + gVars['names']['functionCnt'] + ')\n', 'black')

@@ -225,7 +225,7 @@ def generate_branching_arrows(input: List):
 
 def extend_board(board, times):
     for i in range(len(board)):
-        for j in range(times):
+        for _ in range(times):
             board[i].append(None)
 
 def ensure_board(board, size):
@@ -460,7 +460,12 @@ def process_lines(info: List[LineObj]):
             for i in range(start_idx + increment, end_idx, increment):
                 ## Check for a node by a group member
                 node = board[i][nested_level]
-                if node is not None and node.ref.attr.group_id == branch.attr.group_id and node.nodeType in [NODETYPE.OUTGOING_CORNER_UP, NODETYPE.OUTGOING_CORNER_DOWN]:
+
+                ## Set vertical line node if the space is free
+                if node is None:
+                    board[i][nested_level] = Node(NODETYPE.OUTGOING_NORMAL_V, branch)
+                ## Merge with other branches with the same destination
+                elif node.ref.attr.group_id == branch.attr.group_id and node.nodeType in [NODETYPE.OUTGOING_CORNER_UP, NODETYPE.OUTGOING_CORNER_DOWN]:
                     #- Found!
 
                     ## Mark the intersection with a "T"
@@ -468,11 +473,6 @@ def process_lines(info: List[LineObj]):
 
                     ## Mark the intersection with a symbol that clearly shows the direction of the target
                     board[i][nested_level] = Node(NODETYPE.GROUP_ARROW_UP if increment < 0 else NODETYPE.GROUP_ARROW_DOWN, branch)
-
-                    ## Don't do anything else
-                    continue
-
-                board[i][nested_level] = Node(NODETYPE.OUTGOING_NORMAL_V, branch)
 
     return render_board(board, info)
 
@@ -553,14 +553,16 @@ def render_board(board: List[List[Node]], info: List[LineObj]) -> List[str]:
         ## instruction data
         if True:
             prefix   = info[idx].prim.prefix
+            lineno   = info[idx].prim.lineno
             opcode   = info[idx].prim.opcode
             operands = info[idx].prim.operands
 
             if not prefix:   prefix   = ""
+            if not lineno:   lineno   = ""
             if not opcode:   opcode   = ""
             if not operands: operands = ""
 
-            res += f" {prefix}{opcode} {operands.strip()}".ljust(28, " ")
+            res += f" {prefix}{lineno} {opcode} {operands.strip()}".ljust(28, " ")
         
         out.append(res)
 
@@ -595,10 +597,12 @@ def DEBUG_view_board(board: List[List[Node]], info: List[LineObj]):
         ## instruction data
         if True:
             prefix   = info[idx].prim.prefix
+            lineno   = info[idx].prim.lineno
             opcode   = info[idx].prim.opcode
             operands = info[idx].prim.operands
 
             if not prefix:   prefix   = ""
+            if not lineno:   lineno   = ""
             if not opcode:   opcode   = ""
             if not operands: operands = ""
 

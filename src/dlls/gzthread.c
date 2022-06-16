@@ -22,13 +22,13 @@ static char *threadNames[] =
 /* 9 */ "CRASH",
 };
 
-void DLL_gzthread_00_thread_name_get(OSId threadIdx, u8 *dst)
+void DLL_gzthread_00_thread_name_get(OSId threadIdx, char *dst)
 {
     // WARN: cleanup, it's just a simple string copy
 
-    u8 *s = (u8 *)threadNames[threadIdx];
+    char *s = threadNames[threadIdx];
 
-    u8 c = *s++;
+    char c = *s++;
 
     *dst++ = c;
 

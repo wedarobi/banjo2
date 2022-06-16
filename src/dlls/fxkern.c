@@ -7,11 +7,11 @@
 static struct
 {
     // match with curr letter
-    u8 char1;
+    char char1;
     // match with next letter
-    u8 char2;
-    s8 offsetMultiplyFactor1;
-    s8 offsetMultiplyFactor2;
+    char char2;
+    s8   offsetMultiplyFactor1;
+    s8   offsetMultiplyFactor2;
 }
 spacings[] =
 {
@@ -46,7 +46,7 @@ spacings[] =
 };
 
 #if !VERSION_JPN
-static void get_spacing_correction_offsets(u8 nextLetter, u8 currLetter, s32 *omf1, s32 *omf2)
+static void get_spacing_correction_offsets(char nextLetter, char currLetter, s32 *omf1, s32 *omf2)
 {
     s32 i;
 
@@ -81,7 +81,7 @@ static struct
     f32 offsetY;
 } letterOffsets[64];
 
-static s32 calculate_incremental_letter_offsets(u8 *str)
+static s32 calculate_incremental_letter_offsets(char *str)
 {
     s32 i;
 
@@ -120,7 +120,7 @@ static s32 calculate_incremental_letter_offsets(u8 *str)
     return i - 1;
 }
 
-static void print(Gfx **dl, s32 x, s32 y, u8 *str, s32 lastIdx)
+static void print(Gfx **dl, s32 x, s32 y, char *str, s32 lastIdx)
 {
     fn_currFont_set(FontType_TOTALS);
     fn_gfx_head_printing(dl);
@@ -139,14 +139,14 @@ static void print(Gfx **dl, s32 x, s32 y, u8 *str, s32 lastIdx)
 }
 
 #if VERSION_USA
-void DLL_fxkern_00_totalsfont_print(Gfx **dl, s32 x, s32 y, u8 *str)
+void DLL_fxkern_00_totalsfont_print(Gfx **dl, s32 x, s32 y, char *str)
 {
     s32 lastIdx = calculate_incremental_letter_offsets(str);
     print(dl, x, y, str, lastIdx);
 }
 #endif
 
-void DLL_fxkern_01_totalsfont_print_centred(Gfx **dl, s32 y, u8 *str)
+void DLL_fxkern_01_totalsfont_print_centred(Gfx **dl, s32 y, char *str)
 {
     s32 lastIdx = calculate_incremental_letter_offsets(str);
     print(dl, (FRAMEBUFFER_WIDTH - letterOffsets[lastIdx].offsetX) / 2, y, str, lastIdx);

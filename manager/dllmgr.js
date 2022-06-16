@@ -268,7 +268,7 @@ async function dll_build(dll, romVer, toSkip=false)
     if (!toSkip)
     {
         let cmd = "";
-        cmd += ` -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm -signed`;
+        cmd += ` -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm`;
         /**
          * 649: "Missing member name in struct/union"
          * 807: ?

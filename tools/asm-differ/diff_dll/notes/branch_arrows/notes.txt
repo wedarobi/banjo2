@@ -1,0 +1,124 @@
+// Plan design for the branch arrows in different scenarios
+
+
+standard arrows, with custom arrow tails:
+┌─ ┌‹ ┌« ┌~
+│  │  │  │ 
+└→ └→ └→ └→
+┌→ ┌→ ┌→ ┌→
+│  │  │  │ 
+└─ └‹ └« └~
+
+overlapping branches (out), diff directions:
+ ┌→
+┌│─
+│└─
+│
+│
+└─→
+
+overlapping branches (in), diff directions:
+┌──
+│
+│
+│┌→
+└─→
+ │
+ └─
+
+same incoming branch target, same direction:
+┌──
+│┌─
+││
+└→→
+
+same incoming branch target, diff directions, diff lengths:
+┌──
+│
+│
+└→→
+ │
+ └─
+
+same incoming branch target, diff directions, same length
+  (they must be on different levels to show the arrow properly)
+┌──
+│
+│
+└→→
+ │
+ │
+ └─
+
+branching out while branching in (variants):
+┌──── ┌───
+│     │   
+│     │   
+└→→┌─ └→→─
+ │ │   ││ 
+ │ └→  │└→
+ └───  └──
+┌─── 
+│    
+│    
+└─→→─
+ ││  
+ │└──
+ └──→
+ ┌───  ┌──‹  ┌──«  ┌──~
+ │     │     │     │   
+ │     │     │     │   
+┌└→→─ ┌└→→‹ ┌└→→« ┌└→→~
+│ │   │ │   │ │   │ │  
+│ └── │ └─‹ │ └─« │ └─~
+│     │     │     │    
+└───→ └───→ └───→ └───→
+
+infinite loop:
+● ∞ 8 • ◊ ¤
+ₓ ᵡ
+
+infinite loop, and branching in to it:
+┌─── ┌─── ┌─── ┌─── ┌─── ┌───
+│    │    │    │    │    │   
+│    │    │    │    │    │   
+└→→● └→→∞ └→→8 └→→• └→→◊ └→→¤
+ │    │    │    │    │    │  
+ └──  └──  └──  └──  └──  └──
+
+infinite loop, branching in to it, with unrelated arrow crossing through:
+(good) (bad) Unrelated arrows can be seen after they pass through, so they
+  ↓      ↓   should be overwritten by the arrows incoming on that line.
+┌──── ┌────
+│┌──→ │┌──→
+││    ││   
+└─→→◊ └│→→◊
+ ││    ││  
+ │└──  │└──
+ │     │   
+ └───  └───
+
+combine branches with same destination:
+┌── ┌─‹ ┌─«
+│┌→ │┌→ │┌→
+││  ││  ││ 
+├── ├─‹ ├─«
+││  ││  ││ 
+│└─ │└‹ │└«
+│   │   │  
+├─→ ├─→ ├─→
+│   │   │  
+└── └─‹ └─«
+
+same as above, but with incoming:
+┌┌→─
+││ 
+├───
+││ 
+│└──
+│  
+├──→
+│  
+└───
+
+

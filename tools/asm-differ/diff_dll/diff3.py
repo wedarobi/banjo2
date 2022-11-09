@@ -3,6 +3,7 @@
 import argparse
 import sys
 import re
+import json
 from typing import (
     Any,
     Dict,
@@ -1324,6 +1325,12 @@ class OutputLine:
     def __hash__(self) -> int:
         return hash(self.key2)
 
+    def __str__(self) -> str:
+        return f"base: {self.base}, fmt2: {self.fmt2}, key2: {self.key2}"
+
+    def __repr__(self) -> str:
+        return f"\n<OutputLine base: {self.base}, fmt2: {self.fmt2}, key2: {self.key2}>"
+
 
 def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
     output: List[OutputLine] = []
@@ -1355,6 +1362,10 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         line_color1 = line_color2 = sym_color = Fore.RESET
         line_prefix = " "
         if line1 and line2 and line1.diff_row == line2.diff_row:
+
+            #! dbg: write
+            with open("./live_dump.txt", "a") as f: f.write("1\n")
+
             if line1.normalized_original == line2.normalized_original:
                 out1 = line1.original
                 out2 = line2.original
@@ -1402,6 +1413,10 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
                         line_color1 = line_color2 = sym_color = Fore.YELLOW
                         line_prefix = "r"
         elif line1 and line2:
+
+            #! dbg: write
+            with open("./live_dump.txt", "a") as f: f.write("2\n")
+
             line_prefix = "|"
             line_color1 = Fore.LIGHTBLUE_EX
             line_color2 = Fore.LIGHTBLUE_EX
@@ -1409,17 +1424,29 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
             out1 = line1.original
             out2 = line2.original
         elif line1:
+
+            #! dbg: write
+            with open("./live_dump.txt", "a") as f: f.write("3\n")
+
             line_prefix = "<"
             line_color1 = sym_color = Fore.RED
             out1 = line1.original
             out2 = ""
         elif line2:
+
+            #! dbg: write
+            with open("./live_dump.txt", "a") as f: f.write("4\n")
+
             line_prefix = ">"
             line_color2 = sym_color = Fore.GREEN
             out1 = ""
             out2 = line2.original
 
         if args.source and line2 and line2.comment:
+
+            #! dbg: write
+            with open("./live_dump.txt", "a") as f: f.write("5\n")
+
             out2 += f" {line2.comment}"
 
         def format_part(
@@ -1453,6 +1480,10 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         mid = f"{sym_color}{line_prefix}"
 
         if line2:
+
+            #! dbg: write
+            with open("./live_dump.txt", "a") as f: f.write("6\n")
+
             for source_line in line2.source_lines:
                 color = Style.DIM
                 # File names and function names
@@ -1479,7 +1510,7 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         fmt2 = mid + " " + (part2 or "")
         output.append(OutputLine(part1, fmt2, key2))
 
-    return generate_branching_arrows(output)
+    return output
 
 
 def chunk_diff(diff: List[OutputLine]) -> List[Union[List[OutputLine], OutputLine]]:
@@ -1525,8 +1556,26 @@ def format_diff(
     old_chunks = chunk_diff(old_diff)
     new_chunks = chunk_diff(new_diff)
     output: List[Tuple[str, OutputLine, OutputLine]] = []
-    assert len(old_chunks) == len(new_chunks), "same target"
+
+
+    # print()
+
+    # with open("./log_old.txt", "w") as f:
+    #     f.write(f"{old_chunks}")
+    #     # f.write(f"#oc: {len(old_chunks)} #nc: {len(new_chunks)}\n")
+    # with open("./log_new.txt", "w") as f:
+    #     f.write(f"{new_chunks}")
+
+    # assert len(old_chunks) == len(new_chunks), "same target"
+
+
+    if len(old_chunks) != len(new_chunks):
+        old_chunks = new_chunks
+
+
+
     empty = OutputLine("", "", None)
+
     for old_chunk, new_chunk in zip(old_chunks, new_chunks):
         if isinstance(old_chunk, list):
             assert isinstance(new_chunk, list)
@@ -1552,6 +1601,36 @@ def format_diff(
             # both diffs are based on the same target, but they might
             # differ in color. Use the new version.
             output.append((new_chunk.base, old_chunk, new_chunk))
+
+    # output = generate_branching_arrows(output)
+
+    if True:
+        arr_0 = []
+        arr_1 = []
+        arr_2 = []
+
+        for o in output:
+            arr_0.append(o[0])
+            arr_1.append(o[1])
+            arr_2.append(o[2])
+
+        # arr_0 = generate_branching_arrows(arr_0)
+        arr_1 = generate_branching_arrows(arr_1)
+        arr_2 = generate_branching_arrows(arr_2)
+
+        # for i in range(len(arr_0)):
+        #     output[i] = (arr_0[i], output[i][1], output[i][2])
+
+
+        for i in range(len(arr_2)):
+            output[i] = (output[i][2].base, output[i][1], output[i][2])
+
+        for i in range(len(arr_1)):
+            output[i] = (output[i][0], arr_1[i], output[i][2])
+
+        for i in range(len(arr_2)):
+            output[i] = (output[i][0], output[i][1], arr_2[i])
+
 
     # TODO: status line, with e.g. approximate permuter score?
     width = args.column_width

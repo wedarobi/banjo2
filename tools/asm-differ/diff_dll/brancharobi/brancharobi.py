@@ -99,6 +99,9 @@ class LineObj():
     ]
 
     def __init__(self, linearr) -> None:
+
+
+
         self.prim = LO_Prim(linearr)
         self.attr = LO_Attr()
 
@@ -108,7 +111,17 @@ class LineObj():
         self.attr.lineno_int = int("0x" + self.attr.lineno, 0) if self.attr.lineno else -1
 
         self.attr.is_branch       = self.prim.opcode.strip() in LineObj.BRANCH_OPS
-        self.attr.branch_target   = re.search(r"0x([0-9a-f]+)", self.prim.operands)[1] if self.attr.is_branch else ""
+
+        try:
+            self.attr.branch_target   = re.search(r"0x([0-9a-f]+)", self.prim.operands)[1] if self.attr.is_branch else ""
+        except TypeError as e:
+            print(e)
+            print(linearr)
+
+        # self.attr.branch_target   = re.search(r"0x([0-9a-f]+)", self.prim.operands)[1] if self.attr.is_branch else ""
+
+
+
         self.attr.branch_offset   = int(((int("0x" + self.attr.branch_target, 0) - int("0x" + self.attr.lineno, 0)) / 4) - 1 if self.attr.is_branch else 0)
         self.attr.branch_distance = int(abs(self.attr.branch_offset) + (-1 if self.attr.branch_offset < 0 else 1))
         self.attr.infinite_loop   = self.attr.branch_offset == -1
@@ -168,7 +181,146 @@ class Node():
         self.ref      = branchObject
 
 
+def line_special_split_old(line: str):
+
+
+    #! dbg: write
+    with open("./live_dump.txt", "a") as f:
+        # f.write(f"{c}\n")
+        f.write(f"{line}\n")
+
+    out = []
+
+    # out = line.split("&&&")
+
+
+    # Split out the line number if it exists
+
+
+    if not re.search(r'^[0-9a-f]+:', line):
+        #! dbg: write
+        with open("./live_dump.txt", "a") as f: f.write("00-1\n")
+        return ["", "", ""]
+
+    if "&&&" in line:
+        #! dbg: write
+        with open("./live_dump.txt", "a") as f: f.write("00-2\n")
+        # return line.split("&&&")
+
+
+        a = line.split("&&&")
+
+        b = re.split(r"\s{2,}", a[1])
+
+        out = [a[0]] + b
+
+
+
+        # if b:
+        #     out += b
+
+        #! dbg: write
+        with open("./live_dump.txt", "a") as f: f.write(f"00-4: {out}\n")
+
+
+        return out
+
+
+    #! dbg: write
+    with open("./live_dump.txt", "a") as f: f.write("00-3\n")
+    return ["", line, ""]
+
+    e2 = re.sub(r"^[0-9a-f]+: *", "", line)
+    e1 = re.sub(e2, "", line)
+
+    return [e1, e2]
+
+
+
+    # out = re.split(r"(?:&&&|\s{2,})", b)
+
+
+def line_special_split(line: str):
+
+    out = []
+
+    if not re.search(r'^[0-9a-f]+:', line):
+        return ["", "", ""]
+
+    if "&&&" in line:
+        a = line.split("&&&")
+
+        out = [a[0]]
+
+        ## Replace operand delimiter
+        a[1] = re.sub(r",", ", ", a[1])
+
+        b = re.split(r"\s{2,}", a[1])
+
+        #- Handle instructions with no operands, like NOP
+        if len(b) == 1:
+            b.append("")
+
+        out += b
+
+        return out
+
+    lineno = re.sub(r":.+$", ":", line)
+    remain = line[len(lineno):]
+
+    # return ["", line, ""]
+    return [lineno, remain, ""]
+
+
+
+
+
 def generate_branching_arrows(input: List):
+
+    # #! dbg: clear
+    # with open("./live_dump.txt", "w") as f:
+    #     f.write("")
+
+    def split_cb_old(line):
+        i = 0
+        for j in range(len(line)):
+            if (re.search(r'^[0-9a-f]+:', line[j:])):
+                i = j
+                break
+
+        prefix = line[0:i]
+
+        b = line[i:]
+        c = line_special_split(b)
+
+        if len(c) < 2:
+            return (prefix, "", "", "")
+
+        lineno = c[0]
+        instr  = c[1]
+
+        if not instr:
+            return (prefix, lineno, "", "")
+
+        d = re.split(r"\s+", instr)
+
+        # print(instr)
+        # print(d)
+        # print(c[2])
+
+        ## longest opcode string(s): "cvt.s.w"-like?
+        opcode = d[0].ljust(8, " ")
+
+        # operands = re.sub(r",", "  ", d[1]) if len(d) >= 2 else ""
+        operands = re.sub(r",", "  ", d[1]) if len(d) >= 2 else c[2] if len(c) >= 3 else ""
+        # operands = c[2]
+
+        return (prefix, lineno, opcode, operands)
+
+
+
+
+
     def split_cb(line):
         i = 0
         for j in range(len(line)):
@@ -179,46 +331,69 @@ def generate_branching_arrows(input: List):
         prefix = line[0:i]
 
         b = line[i:]
-        c = b.split("&&&")
+        c = line_special_split(b)
 
-        if len(c) < 2:
-            return [prefix, "", "", ""]
+        if len(c) < 3:
+            print("01-1")
+            print(c)
+            return (prefix, "", "", "")
 
-        lineno = c[0]
-        instr  = c[1]
+        lineno   = c[0]
+        opcode   = c[1].ljust(8, " ") ## longest opcode string(s): "cvt.s.w"-like?
+        operands = c[2]
 
-        if not instr:
-            return [prefix, lineno, "", ""]
-
-        d = re.split(r"\s+", instr)
-
-        ## longest opcode string(s): "cvt.s.w"-like?
-        opcode = d[0].ljust(8, " ")
-
-        operands = re.sub(r",", "  ", d[1]) if len(d) >= 2 else ""
+        if not opcode:
+            return (prefix, lineno, "", "")
 
         return (prefix, lineno, opcode, operands)
 
 
-    lines_target:  List[LineObj] = []
-    lines_current: List[LineObj] = []
+
+
+
+
+
+    lines_0: List[LineObj] = []
+    lines_1: List[LineObj] = []
+    lines_2: List[LineObj] = []
 
     for (i, e) in enumerate(input):
-        lo = LineObj(split_cb(e.base if e.base else ""))
+        s = e.base if e.base else ""
+        lo = LineObj(split_cb(s))
         lo.attr.line_idx = i
-        lines_target.append(lo)
+        lines_0.append(lo)
+
+    # #! dbg: write
+    # with open("./live_dump.txt", "a") as f:
+    #     f.write("---------------------------------\n")
 
     for (i, e) in enumerate(input):
-        lo = LineObj(split_cb(e.fmt2 if e.fmt2 else ""))
+        s = e.fmt2 if e.fmt2 else ""
+        lo = LineObj(split_cb(s))
         lo.attr.line_idx = i
-        lines_current.append(lo)
+        lines_1.append(lo)
 
-    lines_target  = process_lines(lines_target)
-    lines_current = process_lines(lines_current)
+    # #! dbg: write
+    # with open("./live_dump.txt", "a") as f:
+    #     f.write("---------------------------------\n")
+
+    for (i, e) in enumerate(input):
+        s = e.key2 if e.key2 else ""
+        lo = LineObj(split_cb(s))
+        lo.attr.line_idx = i
+        lines_2.append(lo)
+
+
+    lines_0 = process_lines(lines_0)
+    lines_1 = process_lines(lines_1)
+    lines_2 = process_lines(lines_2)
 
     for i in range(len(input)):
-        input[i].base = " " + lines_target[i]
-        input[i].fmt2 = " " + lines_current[i]
+        input[i].base = " " + lines_0[i]
+        input[i].fmt2 = " " + lines_1[i]
+        input[i].key2 = " " + lines_2[i]
+
+
 
     return input
 
@@ -520,10 +695,10 @@ def ASCII_get_for_node(node: Node):
 
 
 def strip_colour(string: str):
-    if not str:
+    if not string:
         return ""
 
-    return re.sub(r"\x1b[^m]+m", "", str, flags="g")
+    return re.sub(r"\x1b[^m]+m", "", string, flags="g")
 
 
 def render_board(board: List[List[Node]], info: List[LineObj]) -> List[str]:
@@ -538,17 +713,19 @@ def render_board(board: List[List[Node]], info: List[LineObj]) -> List[str]:
     for (idx, line) in enumerate(board):
         res = ""
 
+        branch = ""
+
         for i in range(max_level - 1, -1, -1):
             cell = line[i]
 
             if cell is None:
-                res += " "
+                branch += " "
                 continue
 
             ## There's a node at this cell
             node = cell
 
-            res += ASCII_get_for_node(node)
+            branch += ASCII_get_for_node(node)
 
         ## instruction data
         if True:
@@ -562,7 +739,7 @@ def render_board(board: List[List[Node]], info: List[LineObj]) -> List[str]:
             if not opcode:   opcode   = ""
             if not operands: operands = ""
 
-            res += f" {prefix}{lineno} {opcode} {operands.strip()}".ljust(28, " ")
+            res += branch + f" {prefix}{lineno} {opcode} {operands.strip()}".ljust(28, " ")
         
         out.append(res)
 

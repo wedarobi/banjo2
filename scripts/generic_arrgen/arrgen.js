@@ -506,7 +506,7 @@ function dehardcode_val(val, { type=undefined, base=16 }={})
 
 
 /**
- * 
+ * Declare a member of a struct
  * @param {string} type  mnemonic for type. e.g. u16, MAP, u32, s8, etc. affects the output format
  * @param {string} name  name of the struct member
  * 
@@ -515,7 +515,7 @@ function dehardcode_val(val, { type=undefined, base=16 }={})
  * 
  * @returns 
  */
-function member(type, name, { width=undefined, base=16 }={})
+function _member(type, name, { width=undefined, base=16 }={})
 {
     if (width === undefined)
     {
@@ -533,8 +533,13 @@ function member(type, name, { width=undefined, base=16 }={})
             case "long": width = 32; break;
             case "f32":  width = 32; break;
             case "f64":  width = 64; break;
+            case "WORD": width = 32; break;
+            case "HALF": width = 16; break;
+            case "BYTE": width = 8;  break;
+
             case "vec2f": width = 32 * 2; break;
             case "vec3f": width = 32 * 3; break;
+
             default:
             {
                 FATAL(`Could not autodetect width for member: ${type} ${name}`);
@@ -545,6 +550,39 @@ function member(type, name, { width=undefined, base=16 }={})
     var out = { name, type, width, base };
 
     return out;
+}
+
+/**
+ * Allow declaring a member with natural C syntax
+ * @param {string} declaration e.g. "MAP map : 16" or "int height", can end in semicolon
+ * @param {number} base
+ */
+function member(declaration, base=16)
+{
+    //# Remove semicolons
+    declaration = declaration.replace(/;+$/, "");
+
+    //- Process width in bits
+    let width = undefined;
+    {
+        let m = declaration.match(/:\s*(\d+)/);
+        if (m)
+            //# Includes width
+            width = parseInt(m[1]);
+    }
+
+    //# Remove width
+    declaration = declaration.replace(/\s*:.*$/g, "").trim();
+
+    //- Extract name token
+    //# Do this first, since type can be multiple words long
+    let name = declaration.replace(/^.+ /g, "").trim();
+    
+    //- Extract type
+    //# Do this last, since type can be multiple words long
+    let type = declaration.replace(/ .+$/g, "").trim();
+
+    return _member(type, name, { width, base });
 }
 
 /**
@@ -614,7 +652,6 @@ function bitwrapper(bytes)
          */
         codify(structdef)
         {
-
             //# total size of struct in bits
             let structSize = structdef.reduce((a, e) => a + e.width, 0);
 
@@ -639,7 +676,12 @@ function bitwrapper(bytes)
             //- Stringify all
             // TODO pad each element neatly
 
-            return out.map((e, i) => `/* ${i.toString().padStart(3, " ")} */ { ${e.join(", ")} },`).join("\n");
+            {
+                //# index autopadded to the right width
+                const p = i => i.toString().padStart(~~Math.log10(out.length) + 1, " ");
+
+                return out.map((e, i) => `/* ${p(i)} */ { ${e.join(", ")} },`).join("\n");
+            }
         },
     };
 }
@@ -651,8 +693,17 @@ async function main()
 
     let bytes = "00 d6 00 01 01 a7 00 11 01 a6 00 16 01 a8 00 12 01 a9 00 13 00 f4 00 05 00 f6 00 05 00 f7 00 05 00 fa 00 05 00 fc 00 05 00 f8 00 06 00 e7 00 07 00 f1 00 08 01 26 00 0b 01 25 00 0a 01 81 00 09 01 82 00 09 00 bb 00 0d 00 b8 00 0e 00 c6 00 0c 00 c8 00 0c 00 c9 00 0c 01 2e 00 0c 01 2f 00 0c 01 30 00 0c 01 27 00 14 01 80 00 0c 01 2d 00 17 01 5d 00 15 01 42 00 0f 01 55 00 10 ff ff 00 00";
 
-    let b = bitwrapper(bytes);
+    console.log(
+        bitwrapper(bytes).codify(
+            [
+                // member("MAP", "map", { width: 16 }),
+                // member("u16", "unk"),
 
+                member("MAP map : 16"),
+                member("u16 unk"),
+            ]
+        )
+    );
 
     // console.log(b.pull(16).toString(16))
     // console.log(b.pull(16).toString(16))
@@ -661,16 +712,13 @@ async function main()
     // console.log(b.pull(16).toString(16))
     // console.log(b.pull(16).toString(16))
 
-
-    let struct =
-    [
-        member("MAP", "map", { width: 16 }),
-        member("u16", "unk"),
-    ];
+    // let struct =
+    // [
+    //     member("MAP", "map", { width: 16 }),
+    //     member("u16", "unk"),
+    // ];
 
     // b.codify(struct);
-
-    console.log(b.codify(struct))
 
 
 }

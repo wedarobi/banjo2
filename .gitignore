@@ -88,4 +88,5 @@ manager/watches/_curr_dll_fn_*
 tools/mcompress/gzip
 tools/mcompress/zlib
 
+scripts/generic_arrgen/runs
 

@@ -1518,6 +1518,8 @@ async function dll_process(dll, objFilePath, romVer,toSkip=false)
                 let LINKER_INCLUDES = "";
                 LINKER_INCLUDES += ` -T misc/linkerscript/dll.ld`;
                 LINKER_INCLUDES += ` -T ver/${romVer}/syms/undefined.txt`;
+                LINKER_INCLUDES += ` -T ver/${romVer}/syms/auto_fns.txt`;
+                LINKER_INCLUDES += ` -T ver/${romVer}/syms/auto_vars.txt`;
 
                 /**
                  * A very hacky way of excluding call table symbols from the
@@ -2004,7 +2006,7 @@ async function HELPER_parse_out_dll_linker_symbols()
  * files and parse out magic comments and declarations into
  * linker symbols.
  *
- * Also use version recognition and try and automatically
+ * TODO: Also use version recognition and try and automatically
  * generate equivalent symbols for other versions through
  * baserom analysis.
  *
@@ -2014,7 +2016,115 @@ async function HELPER_parse_out_dll_linker_symbols()
  */
 async function HELPER_parse_out_static_linker_symbols()
 {
-    // TODO
+    let files =
+    [
+        "include/functions.h",
+        "include/variables.h",
+    ];
+
+    let outputs =
+    [
+        "auto_fns.txt",
+        "auto_vars.txt",
+    ];
+
+    if (files.length !== outputs.length)
+        FATAL("[parse out syms] Length mismatch");
+
+    for (let i = 0; i < files.length; i++)
+    {
+        let file    = files[i];
+        let outname = outputs[i];
+
+        let fn_header = gRootDir + file;
+        let header    = (await fsp.readFile(fn_header)).toString();
+
+        for (let [romIdx, romVer] of allRomVers.entries())
+        {
+            let outpath = gRootDir + `ver/${romVer}/syms/${outname}`;
+            ensureFile(outpath);
+
+            //# Check if file was modified
+            if ((await fsp.stat(outpath)).mtimeMs >= (await fsp.stat(fn_header)).mtimeMs)
+                //# Header file was not modified since last time, skip
+                continue;
+
+            //- Parse out the addresses now
+
+            /**
+             * Arbitrary, but large enough to cover all symbols and all rom version vectors from < to >: "<0x, 0x, 0x, 0x>"
+             * Increase if we add more rom versions later
+             */
+            const lookahead = 120;
+
+            let waiting = false;
+
+            let symbols = [];
+
+            let currAddress = "";
+
+            for (let i = 0; i < header.length; i++)
+            {
+                if (header.substr(i, 5) === "/*<0x")
+                {
+                    //# Parse out all addresses <usa,jpn,eur,aus>
+                    //# We try and leave support for future versions
+
+                    let segment = header.substr(i + 2, lookahead);
+
+                    let m = segment.match(/^<(.+?)>/);
+                    if (!m || m.length < 2)
+                        FATAL(`[parse out syms] Detected sym comment, but could not parse!`);
+
+                    //# Multiple matches may occur, just take the first
+                    let vector = m[1].split(/, ?/g).map(e => e.trim());
+
+                    if (vector.length < allRomVers.length)
+                        FATAL(`[parse out syms] Sym comment doesn't cover enough versions!`);
+
+                    //# Store until we see the name token
+                    currAddress = vector[romIdx];
+                    //# Wait for name
+                    waiting = true;
+
+                    continue;
+                }
+
+                if (!waiting)
+                    continue;
+
+                let next = header.substr(i, lookahead * 2);
+                {
+                    //# Don't bother to test first, just go for the match
+                    let m = next.match(/^([a-z0-9_]+?)\s*\(/im);
+                    if (m && m.length >= 2)
+                    {
+                        //# Found start of name token, process it
+
+                        let symbol = m[1];
+
+                        symbols.push({
+                            symbol,
+                            addr: currAddress.replace(/^0x/g, ""),
+                        });
+
+                        currAddress = "";
+
+                        //# Prime for the next comment
+                        waiting = false;
+                    }
+                }
+            }
+
+            //- Write all symbols to file
+            {
+                let lengthOfLongestSymbol = symbols.reduce((acc, e) => Math.max(acc, e.symbol.length), 0);
+                let data = symbols.map(e => `${e.symbol.padEnd(lengthOfLongestSymbol + 2, " ")} = 0x${e.addr.toString(16).toUpperCase()};`)
+
+                await fsp.writeFile(outpath, data.join("\n"));
+            }
+        }
+    }
 }
 
 const MATCH_COLOURS =
@@ -2096,6 +2206,7 @@ var gDllHashMap = {};
 async function dll_full_build_multi(dllNames)
 {
     await HELPER_parse_out_dll_linker_symbols();
+    await HELPER_parse_out_static_linker_symbols();
 
     // const SHOW_FILE_SIZES = false;
 

@@ -2904,6 +2904,7 @@ async function main()
     //= If no dll names were provided on the command line, do all
     if (!dllNames.length)
         dllNames = fs.readdirSync(gRootDir + "src/dlls")
+            .filter(x => x.endsWith(".c"))
             .map(name => name.replace(/\.c$/g, ""));
 
     // if (arg_toWatch && dllNames.length > 1)

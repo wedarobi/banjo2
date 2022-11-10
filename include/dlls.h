@@ -754,6 +754,9 @@
 /* $ gcdialogexec */
 /* $ gcegg */
 /* $ gcextra */
+/*@oooo*/ s32 DLL_gcextra_00_get_spent_honey_flags(void);
+/*@oooo*/ s32 DLL_gcextra_01_get_max_health_upgrade_count(void);
+/*@oooo*/ s32 DLL_gcextra_02_increment_spent_honey_flags(s32 increment);
 /* $ gcfrontend */
 /* $ gcgame */
 /* $ gcgamefix */

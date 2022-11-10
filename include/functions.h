@@ -68,17 +68,17 @@ void func_80015778(void);
 bool func_800D3948(void);
 
 
-/* ADDRv(0x8001ACCC, 0x8001A6BC, 0x8001A6EC, 0x8001A6EC) */ void *fn_malloc_temp(u32 size);
+void *fn_malloc_temp(u32 size);
 /**
  * [type]
  *   0 : temporary
  *   1 : permanent
  *   2 : unk
  */
-/* ADDRv(0x8001ACEC, 0x8001A6DC, 0x8001A70C, 0x8001A70C) */ void *fn_malloc     (u32 size, u32 type);
-/* ADDRv(0x8001B084, 0x8001AA74, 0x8001AAA4, 0x8001AAA4) */ void  fn_free       (void *ptr);
+void *fn_malloc     (u32 size, u32 type);
+void  fn_free       (void *ptr);
 
-
+/*<0x800D2054, 0x800CF7D4, 0x800DA544, 0x800DA424>*/ void minigame_highscore_set(u32, u32, u32);
 
 
 

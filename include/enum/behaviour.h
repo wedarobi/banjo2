@@ -101,9 +101,7 @@ typedef enum
 } ABILITY;
 
 
-
-
-
+// TODO: MS/BHV (movement state / behaviour)
 
 
 

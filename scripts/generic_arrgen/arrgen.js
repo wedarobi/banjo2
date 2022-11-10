@@ -245,6 +245,8 @@ function bitwrapper(bytes)
         {
             let out = 0;
 
+            let counter = 0;
+
             for (let remaining = width; remaining > 0; remaining--)
             {
                 let byte = offset >> 3;
@@ -252,13 +254,19 @@ function bitwrapper(bytes)
 
                 let val = this._arr[byte];
 
-                out |=  (val >>> (7 - bit)) & 1;
-                out <<= 1;
+                //# Do it on condition, to prevent signed
+                if (counter > 0)
+                    out <<= 1;
+
+                out |= (val >>> (7 - bit)) & 1;
+
+                out >>>= 0; //# ensure unsigned
 
                 offset++;
+                counter++;
             }
 
-            return out >>> 1;
+            return out;
         },
 
         /**

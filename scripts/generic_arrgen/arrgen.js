@@ -32,11 +32,23 @@ function load_json_with_comments(path)
     return JSON.parse(sanitised);
 }
 
-const ENUM =
+var gEnum = {};
+
+function fetch_enum(name)
 {
-    MAP:   load_json_with_comments("./ENUM/MAP.json"),
-    MUSIC: load_json_with_comments("./ENUM/MUSIC.json"),
-};
+    if (name in gEnum)
+        //- Already loaded
+        return gEnum[name];
+
+    let path = `./ENUM/${name}.json`;
+
+    if (!fs.existsSync(path))
+        FATAL(`JSON enum does not exist for: ${name} at: ${path}`);
+
+    gEnum[name] = load_json_with_comments(path);
+
+    return gEnum[name];
+}
 
 /**
  * Takes a value e.g. 1a7, and turns it into a "good value" e.g. "MAP_1A7_JRL_MAIN_AREA"
@@ -53,7 +65,7 @@ function dehardcode_val(val, { type=undefined, base=16, prepadwidth=0 }={})
     {
         case "MAP":
         {
-            let MAP = ENUM.MAP;
+            let MAP = fetch_enum("MAP");
 
             let idx = val - 0xA0;
 
@@ -65,7 +77,7 @@ function dehardcode_val(val, { type=undefined, base=16, prepadwidth=0 }={})
         }
         case "MUSIC":
         {
-            let MUSIC = ENUM.MUSIC;
+            let MUSIC = fetch_enum("MUSIC");
 
             if (val === 0x3FFF)
                 return "MUSIC_NONE";
@@ -366,9 +378,6 @@ async function main()
             u16 _ @16-2;
         `
     ));
-
-    // member("MAP", "map", { width: 16 }),
-    // member("u16", "unk"),
 
 }
 

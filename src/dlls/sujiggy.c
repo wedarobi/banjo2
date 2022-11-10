@@ -6,12 +6,13 @@
 
 
 #include "include/enum/map.h"
+#include "include/enum/minigame.h"
 
 
 #define SPITEM_JIGGIES (1)
 
 
-struct
+static struct
 {
 /* 00 */ u8  UNK_00;
 /* 01 */ u8  UNK_01;
@@ -33,19 +34,19 @@ struct
 /* 17 */ u8  UNK_17;
 }
 mapInfo[] =
+// 01 00 00 00 09 40 0c c0 01 64 00 00 05 40 0b 74 7a 0f 00 00 03 91 00 00 04 00 00 00 00 00 09 54 01 64 00 00 05 40 02 90 7b 0d 00 00 03 93 00 00 08 00 00 00 00 00 0b 20 01 64 00 00 06 e4 0a 68 7c 0b 00 00 04 89 00 00 0e 00 00 00 00 00 09 6c 01 64 00 00 05 40 0c 68 7d 09 00 00 03 92 00 00 14 00 00 00 0d ae 0c c8 01 64 00 00 05 40 0c c8 7e 07 00 00 03 96 00 00 1c 00 00 00 00 00 0d ae 01 64 00 00 05 40 00 04 7f 05 00 00 04 db 00 00 24 00 00 00 0a f6 0c c0 01 64 00 00 05 40 0c 68 80 04 00 01 03 94 00 00 2d 00 00 00 09 e6 00 04 01 64 00 00 05 40 0c c8 81 03 00 01 04 12 00 00 37 00 00 00 05 40 0b 98 01 64 00 00 05 40 00 04 82 02 00 01 04 8d 00 00 46 00 00 00 05 40 04 80 01 64 00 00 05 40 0b 98 83 00 00 00 04 8d 00 00 00 00 00 00 05 40 0b 80 01 64 00 00 00 00 00 00 00 00 0f 00 00 00 00 00
 {
-// /*  0 */ {},
-// /*  1 */ {},
-// /*  2 */ {},
-// /*  3 */ {},
-// /*  4 */ {},
-// /*  5 */ {},
-// /*  6 */ {},
-// /*  7 */ {},
-// /*  8 */ {},
-// /*  9 */ {},
-// /* 10 */ {},
-0
+/*  0 */ { 0x01, 0x0, 0x0, 0x0, 0x09400CC0, 0x1, 0x64, 0x0, 0x0, 0x05400B74, 0x7A, 0xF, 0x0, 0x0, 0x391, 0x0, 0x0 },
+/*  1 */ { 0x04, 0x0, 0x0, 0x0, 0x00000954, 0x1, 0x64, 0x0, 0x0, 0x05400290, 0x7B, 0xD, 0x0, 0x0, 0x393, 0x0, 0x0 },
+/*  2 */ { 0x08, 0x0, 0x0, 0x0, 0x00000B20, 0x1, 0x64, 0x0, 0x0, 0x06E40A68, 0x7C, 0xB, 0x0, 0x0, 0x489, 0x0, 0x0 },
+/*  3 */ { 0x0E, 0x0, 0x0, 0x0, 0x0000096C, 0x1, 0x64, 0x0, 0x0, 0x05400C68, 0x7D, 0x9, 0x0, 0x0, 0x392, 0x0, 0x0 },
+/*  4 */ { 0x14, 0x0, 0x0, 0x0, 0x0DAE0CC8, 0x1, 0x64, 0x0, 0x0, 0x05400CC8, 0x7E, 0x7, 0x0, 0x0, 0x396, 0x0, 0x0 },
+/*  5 */ { 0x1C, 0x0, 0x0, 0x0, 0x00000DAE, 0x1, 0x64, 0x0, 0x0, 0x05400004, 0x7F, 0x5, 0x0, 0x0, 0x4DB, 0x0, 0x0 },
+/*  6 */ { 0x24, 0x0, 0x0, 0x0, 0x0AF60CC0, 0x1, 0x64, 0x0, 0x0, 0x05400C68, 0x80, 0x4, 0x0, 0x1, 0x394, 0x0, 0x0 },
+/*  7 */ { 0x2D, 0x0, 0x0, 0x0, 0x09E60004, 0x1, 0x64, 0x0, 0x0, 0x05400CC8, 0x81, 0x3, 0x0, 0x1, 0x412, 0x0, 0x0 },
+/*  8 */ { 0x37, 0x0, 0x0, 0x0, 0x05400B98, 0x1, 0x64, 0x0, 0x0, 0x05400004, 0x82, 0x2, 0x0, 0x1, 0x48D, 0x0, 0x0 },
+/*  9 */ { 0x46, 0x0, 0x0, 0x0, 0x05400480, 0x1, 0x64, 0x0, 0x0, 0x05400B98, 0x83, 0x0, 0x0, 0x0, 0x48D, 0x0, 0x0 },
+/* 10 */ { 0x00, 0x0, 0x0, 0x0, 0x05400B80, 0x1, 0x64, 0x0, 0x0, 0x00000000, 0x0,  0x0, 0xF, 0x0, 0x000, 0x0, 0x0 },
 };
 
 
@@ -53,39 +54,7 @@ mapInfo[] =
 
 /*static*/ MAP decrypt_map_with_bootcode(u32 encryptedMap)
 {
-    u32 word;
-    u32 res;
-
-    u32 addr1;
-    u32 addr2;
-
-    addr1 = 0xB0000000 + (encryptedMap & 0xFFFF);
-    addr2 = 0xB0000000 + (encryptedMap & 0xFFFF0000) >> 0x10;
-
-    if ((addr1 & 2) != 0)
-    {
-        fn_rom_fetch_WORD(addr1 >> 2 << 2, &word);
-        res = word >> 0x10;
-    }
-    else
-    {
-        fn_rom_fetch_WORD(addr1, &word);
-        res = word & 0xFFFF;
-    }
-
-    if (encryptedMap >> 0x10 != 0)
-    {
-        if ((addr2 & 2) != 0)
-        {
-            fn_rom_fetch_WORD(addr2 >> 2 << 2, &word);
-            res += word >> 0x10;
-        }
-        else
-        {
-            fn_rom_fetch_WORD(addr2, &word);
-            res += word & 0xFFFF;
-        }
-    }
+    u32 res = 0;
 
     res += MAP_0A0_MIN;
 
@@ -134,7 +103,48 @@ u8 DLL_sujiggy_07(s32 a0)
 
 void DLL_sujiggy_08(void)
 {
+    s32 completedFlags;
+    u32 tmp0;
+    MAP map;
 
+    completedFlags = DLL_sujiggy_00_completed_puzzle_flags_get();
+
+    if (!fn_flag_get(FLAG_3E9_ATTEMPTED_JIGGYWIGGY_PUZZLE))
+    {
+        fn_flag_set_multi(GFLAG_C0D_UNK, 0, 8);
+        fn_flag_set_multi(FLAG5_D57_UNK, 0, 4);
+    }
+
+    fn_flag_set_FALSE(FLAG5_D4D_UNK);
+    fn_flag_set_TRUE(FLAG5_D4E_UNK);
+
+    if (completedFlags >= 10)
+        fn_flag_set(FLAG5_D49_TEMPCOPY_ATTEMPTED_JIGGYWIGGY_PUZZLE, fn_flag_get(FLAG_589_ATTEMPTED_JIGGYWIGGY_SPECIAL_PUZZLE));
+    else
+        fn_flag_set(FLAG5_D49_TEMPCOPY_ATTEMPTED_JIGGYWIGGY_PUZZLE, fn_flag_get(FLAG_3E9_ATTEMPTED_JIGGYWIGGY_PUZZLE));
+
+#if VERSION_USA
+    fn_flag_set(FLAG5_D74_UNK, fn_flag_get(FLAG_57B_UNK));
+#else
+    fn_flag_set(FLAG5_D6A_UNK, fn_flag_get(FLAG_57B_UNK));
+#endif
+
+    fn_flag_set_multi(FLAG5_D50_UNK, completedFlags, 4);
+
+#if VERSION_USA
+    fn_flag_set_FALSE(FLAG5_D73_UNK);
+#endif
+
+    gMusicObj_playThroughLz_set(2);
+    gMusicObj_0x17_set(1);
+    MUSIC_play_sfx_2_bgm(MUSIC_2E_PUZZLE_START);
+    null_800A9B84();
+    jiggywiggy_map_store_temple_in_temp_map_flags(MAP_151_IOH_JIGGYWIGGYS_TEMPLE, 3);
+
+    map  = DLL_sujiggy_04(completedFlags);
+    tmp0 = DLL_sujiggy_05(completedFlags);
+
+    tmt_gameover_orchestrate_UNK(1, map, tmp0);
 }
 
 void DLL_sujiggy_09(void)
@@ -144,12 +154,32 @@ void DLL_sujiggy_09(void)
 
 void DLL_sujiggy_10(void)
 {
+    gMusicObj_playThroughLz_set(2);
+    gMusicObj_0x17_set(1);
+    fn_flag_set_TRUE(FLAG5_D4F_UNK);
 
+    if (fn_flag_get(FLAG5_D4D_UNK))
+        fn_flag_set_multi(FLAG5_D57_UNK, 0, 4);
+    else
+        fn_flag_set_multi(FLAG5_D57_UNK, DLL_sujiggy_19() + 1, 4);
+
+    jiggywiggy_return_from_puzzle();
 }
 
-u32 DLL_sujiggy_11(void)
+u32 DLL_sujiggy_11(u32 a0)
 {
+    u32 tmp0;
+    MAP map;
 
+    MUSIC_play_sfx_2_bgm(MUSIC_2E_PUZZLE_START);
+    gMusicObj_playThroughLz_set(2);
+    gMusicObj_0x17_set(1);
+    fn_flag_set_multi(FLAG5_D57_UNK, DLL_sujiggy_19() + 1, 4);
+
+    map  = DLL_sujiggy_04(a0);
+    tmp0 = DLL_sujiggy_05(a0);
+
+    tmt_gameover_orchestrate_UNK(1, map, tmp0);
 }
 
 u32 DLL_sujiggy_12(void)
@@ -164,14 +194,57 @@ u32 DLL_sujiggy_13(void)
 
 u32 DLL_sujiggy_14(void)
 {
+    bool tmp0;
 
+    if (DLL_sujiggy_21())
+        tmp0 = fn_flag_get(FLAG5_D4D_UNK) ? 2 : 3;
+    else
+        tmp0 = fn_flag_get(FLAG5_D4D_UNK) ? 1 : 0;
+
+   fn_flag_set_multi(FLAG_35C_JIGGYWIGGY_CHALLENGE_COMPLETION_1, fn_flag_get_multi(FLAG5_D50_UNK, 4), 4);
+
+    if (DLL_sujiggy_21())
+    {
+        fn_flag_set(
+            FLAG_589_ATTEMPTED_JIGGYWIGGY_SPECIAL_PUZZLE,
+            fn_flag_get(FLAG5_D49_TEMPCOPY_ATTEMPTED_JIGGYWIGGY_PUZZLE)
+        );
+    }
+    else
+    {
+        fn_flag_set(
+            FLAG_3E9_ATTEMPTED_JIGGYWIGGY_PUZZLE,
+            fn_flag_get(FLAG5_D49_TEMPCOPY_ATTEMPTED_JIGGYWIGGY_PUZZLE)
+        );
+    }
+
+    fn_flag_set(FLAG_57B_UNK, fn_flag_get(FLAG5_D74_UNK));
+
+    if (tmp0 == 1)
+        fn_flag_get_and_increment_multi(FLAG_35C_JIGGYWIGGY_CHALLENGE_COMPLETION_1, 4);
+
+    fn_flag_set_FALSE(FLAG5_D4F_UNK);
+    fn_flag_set_FALSE(FLAG5_D4E_UNK);
+
+#if VERSION_USA
+    if (fn_flag_get(FLAG5_D73_UNK))
+    {
+        minigame_highscore_set(1, MINIGAME_JIGGYWIGGY_FINAL_PUZZLE, DLL_sujiggy_24());
+        fn_flag_set_FALSE(FLAG5_D73_UNK);
+    }
+#endif
+
+    return tmp0;
 }
 
 u32 DLL_sujiggy_15(s32 a0, s32 a1)
 {
     if (fn_flag_get(FLAG_58A_UNK))
     {
-        DLL_glcutDll_06(decrypt_map_with_bootcode(mapInfo[a0].encryptedLevelEntranceMapIdx), 0x7A + a0);
+        DLL_glcutDll_06(
+            decrypt_map_with_bootcode(mapInfo[a0].encryptedLevelEntranceMapIdx),
+            0x7A + a0
+        );
     }
     else if (a1 != 0)
     {
@@ -180,7 +253,11 @@ u32 DLL_sujiggy_15(s32 a0, s32 a1)
     else
     {
         fn_flag_set_TRUE(FLAG_58A_UNK);
-        DLL_glcutDll_24(decrypt_map_with_bootcode(mapInfo[a0].encryptedLevelEntranceMapIdx), MAP_151_IOH_JIGGYWIGGYS_TEMPLE, 0x7A + a0);
+        DLL_glcutDll_24(
+            decrypt_map_with_bootcode(mapInfo[a0].encryptedLevelEntranceMapIdx),
+            MAP_151_IOH_JIGGYWIGGYS_TEMPLE,
+            0x7A + a0
+        );
     }
 }
 
@@ -274,25 +351,6 @@ u32 DLL_sujiggy_25(s32 a0)
         return 0;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -374,7 +374,6 @@ function bitwrapper(bytes)
 
 async function main()
 {
-
     let basepath = __dirname + "/runs/";
 
     if (process.argv.length < 3)
@@ -383,16 +382,6 @@ async function main()
     let runname = process.argv[2];
     runname = runname.replace(/\.txt$/g, "");
     runname += ".txt";
-
-
-    /**
-     * Structure of run file:
-     * 
-     * first line: array of bytes
-     * remaining lines: struct members
-     * 
-     * (empty lines are ignored, as are lines starting with // (C++ style comments))
-     */
 
     let runpath = basepath + runname;
 

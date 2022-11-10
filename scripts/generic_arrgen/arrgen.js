@@ -307,11 +307,9 @@ function dehardcode_val(val, { type=undefined, base=16, prepadwidth=0 }={})
 
             let idx = val - 0xA0;
 
-            if (val === 0xFFFF)
-                return "0xFFFF";
-
             if (idx < 0 || idx > MAP.length)
-                FATAL(`Value not a valid MAP: ${val}`);
+                // FATAL(`Value not a valid MAP: ${val}`);
+                return "0x" + val.toString(16).toUpperCase();
 
             return MAP[idx];
         }
@@ -544,9 +542,7 @@ function _member(type, name, { width=undefined, base=16, prepadwidth=0 }={})
         }
     }
 
-    var out = { name, type, width, base, prepadwidth };
-
-    return out;
+    return { name, type, width, base, prepadwidth };
 }
 
 /**
@@ -678,12 +674,17 @@ function bitwrapper(bytes)
          * Stringify the current array into a C array, based on a struct definition
          * @param {string} members lines of member declarations that makes up an element of the array
          * 
+         * e.g. "u16 unk @10-0"
+         *      "TYPE NAME : WIDTH_IN_BITS @ BASE - ZERO_PREPAD"
+         * 
          * e.g. codify(`MAP map : 16; \n u16 unk @10; u32 ptr @16-8`);
          */
         codify(members)
         {
             //# Convert each line into a member()
-            let structdef = members.trim().split(/(?:\r?\n)/g).map(e => e.trim()).map(member);
+            let memberArr = members.trim().split(/(?:\r?\n)/g).map(e => e.trim());
+
+            let structdef = memberArr.map(member);
 
             //# total size of struct in bits
             let structSize = structdef.reduce((a, e) => a + e.width, 0);
@@ -712,14 +713,50 @@ function bitwrapper(bytes)
                 out.push(e);
             }
 
-            //- Stringify all
-            // TODO pad each element neatly
-
+            //- Calculate padding for each member
+            let padding = (new Array(memberArr.length)).fill(0);
             {
-                //# index autopadded to the right width
+                for (let i = 0; i < padding.length; i++)
+                {
+                    for (let e of out)
+                    {
+                        //# Take into account the ", " delimiter that we'll add later
+                        let delimiterPad = i < padding.length - 1 ? 2 : 0;
+
+                        padding[i] = Math.max(padding[i], e[i].length + delimiterPad);
+                    }
+                }
+            }
+
+            //- Generate element string
+            let lines = [];
+            {
+                for (let e of out)
+                {
+                    let line = [];
+
+                    for (let [idx, str] of e.entries())
+                    {
+                        let paddedstr = str;
+
+                        if (idx < e.length - 1)
+                            paddedstr += ", ";
+
+                        paddedstr = paddedstr.padEnd(padding[idx], " ");
+
+                        line.push(paddedstr);
+                    }
+
+                    lines.push(line.join(""));
+                }
+            }
+
+            //- Stringify all
+            {
+                //# Calculate the index of the current line, autopadded to the right width
                 const p = i => i.toString().padStart(~~Math.log10(out.length) + 1, " ");
 
-                return out.map((e, i) => `/* ${p(i)} */ { ${e.join(", ")} },`).join("\n");
+                return lines.map((line, i) => `/* ${p(i)} */ { ${line} },`).join("\n");
             }
         },
     };
@@ -732,6 +769,8 @@ async function main()
 
     console.log(
 
+        // e.g. "u16 unk @10-0"
+        //      "TYPE NAME : WIDTH_IN_BITS @ BASE - ZERO_PREPAD"
         bitwrapper(bytes).codify(`
             MAP map : 16;
             u16 unk @10;

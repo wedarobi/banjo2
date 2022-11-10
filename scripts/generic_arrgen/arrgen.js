@@ -22,7 +22,7 @@ function FATAL(msg)
  * @param {number} base
  * @returns {string}
  */
-function dehardcode_val(val, { type=undefined, base=16 }={})
+function dehardcode_val(val, { type=undefined, base=16, prepadwidth=0 }={})
 {
 
     //- Handled custom types will RETURN HERE
@@ -494,11 +494,11 @@ function dehardcode_val(val, { type=undefined, base=16 }={})
     switch (base)
     {
         case 16:
-            return "0x" + val.toString(16).toUpperCase();
+            return "0x" + val.toString(16).toUpperCase().padStart(prepadwidth, "0");
         case 2:
-            return "0b" + val.toString(2);
+            return "0b" + val.toString(2).padStart(prepadwidth, "0");
         default:
-            return val.toString();
+            return val.toString().padStart(prepadwidth, " ");
     }
 }
 
@@ -512,7 +512,7 @@ function dehardcode_val(val, { type=undefined, base=16 }={})
  * 
  * @returns 
  */
-function _member(type, name, { width=undefined, base=16 }={})
+function _member(type, name, { width=undefined, base=16, prepadwidth=0 }={})
 {
     if (width === undefined)
     {
@@ -544,20 +544,51 @@ function _member(type, name, { width=undefined, base=16 }={})
         }
     }
 
-    var out = { name, type, width, base };
+    var out = { name, type, width, base, prepadwidth };
 
     return out;
 }
 
 /**
  * Allow declaring a member with natural C syntax
+ * 
+ * Also allows specifying the stringify base as e.g.: "@16" or "@ 16"
+ *   Can prepad base with zeros like so: "@16-4" which would give values like 0x0003, 0x0004, etc.
+ *     Note: with base 10, prepads with spaces not zeroes
+ * 
  * @param {string} declaration e.g. "MAP map : 16" or "int height", can end in semicolon
- * @param {number} base
  */
-function member(declaration, base=16)
+function member(declaration)
 {
     //# Remove semicolons
     declaration = declaration.replace(/;+$/, "");
+
+    //- Process base
+    let base = 16;
+    let prepadwidth = 0;
+    {
+        let m;
+
+        m = declaration.match(/@\s*(\d+)-(\d+)/);
+        if (m)
+        {
+            //# Includes base and prepad width
+            base        = parseInt(m[1]);
+            prepadwidth = parseInt(m[2]);
+        }
+        else
+        {
+            m = declaration.match(/@\s*(\d+)/);
+            if (m)
+            {
+                //# Includes base
+                base = parseInt(m[1]);
+            }
+        }
+
+        //# Remove base
+        declaration = declaration.replace(/\s*@.*$/g, "").trim();
+    }
 
     //- Process width in bits
     let width = undefined;
@@ -566,10 +597,10 @@ function member(declaration, base=16)
         if (m)
             //# Includes width
             width = parseInt(m[1]);
-    }
 
-    //# Remove width
-    declaration = declaration.replace(/\s*:.*$/g, "").trim();
+        //# Remove width
+        declaration = declaration.replace(/\s*:.*$/g, "").trim();
+    }
 
     //- Extract name token
     //# Do this first, since type can be multiple words long
@@ -579,7 +610,7 @@ function member(declaration, base=16)
     //# Do this last, since type can be multiple words long
     let type = declaration.replace(/ .+$/g, "").trim();
 
-    return _member(type, name, { width, base });
+    return _member(type, name, { width, base, prepadwidth });
 }
 
 /**
@@ -645,10 +676,15 @@ function bitwrapper(bytes)
 
         /**
          * Stringify the current array into a C array, based on a struct definition
-         * @param {Array<member~out>} structdef array of member() that makes up an element of the array
+         * @param {string} members lines of member declarations that makes up an element of the array
+         * 
+         * e.g. codify(`MAP map : 16; \n u16 unk @10; u32 ptr @16-8`);
          */
-        codify(structdef)
+        codify(members)
         {
+            //# Convert each line into a member()
+            let structdef = members.trim().split(/(?:\r?\n)/g).map(e => e.trim()).map(member);
+
             //# total size of struct in bits
             let structSize = structdef.reduce((a, e) => a + e.width, 0);
 
@@ -662,7 +698,13 @@ function bitwrapper(bytes)
                 {
                     let val = this.pull(member.width);
 
-                    let valstr = dehardcode_val(val, { type: member.type, base: member.base });
+                    let valstr = dehardcode_val(val,
+                        {
+                            type:        member.type,
+                            base:        member.base,
+                            prepadwidth: member.prepadwidth,
+                        }
+                    );
 
                     e.push(valstr);
                 }
@@ -689,16 +731,15 @@ async function main()
     let bytes = "00 d6 00 01 01 a7 00 11 01 a6 00 16 01 a8 00 12 01 a9 00 13 00 f4 00 05 00 f6 00 05 00 f7 00 05 00 fa 00 05 00 fc 00 05 00 f8 00 06 00 e7 00 07 00 f1 00 08 01 26 00 0b 01 25 00 0a 01 81 00 09 01 82 00 09 00 bb 00 0d 00 b8 00 0e 00 c6 00 0c 00 c8 00 0c 00 c9 00 0c 01 2e 00 0c 01 2f 00 0c 01 30 00 0c 01 27 00 14 01 80 00 0c 01 2d 00 17 01 5d 00 15 01 42 00 0f 01 55 00 10 ff ff 00 00";
 
     console.log(
-        bitwrapper(bytes).codify(
-            [
-                // member("MAP", "map", { width: 16 }),
-                // member("u16", "unk"),
 
-                member("MAP map : 16"),
-                member("u16 unk"),
-            ]
-        )
-    );
+        bitwrapper(bytes).codify(`
+            MAP map : 16;
+            u16 unk @10;
+        `
+    ));
+
+    // member("MAP", "map", { width: 16 }),
+    // member("u16", "unk"),
 
 }
 

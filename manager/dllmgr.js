@@ -235,7 +235,7 @@ const gCurrDir = __dirname + path.sep;
 
 const CMD =
 {
-    cc:        "tools/ido5.3_recomp/cc",
+    cc:        gRootDir + "tools/ido5.3_recomp/cc",
     include:   "-I . -I include -I include/2.0L -I include/2.0L/PR",
 };
 
@@ -273,8 +273,9 @@ async function dll_build(dll, romVer, toSkip=false)
          * 649: "Missing member name in struct/union"
          * 807: ?
          * 838: "Microsoft extension" > nested structs/unions (?)
+         * 624: "Trailing comma in enumerator list"
          */
-        cmd += ` -woff 649,807,838`;
+        cmd += ` -woff 649,807,838,624`;
         cmd += ` -O2 -mips2 -D_FINALROM -DF3DEX2_GBI ${CMD.include}`;
         cmd += ` ${file_in} -o ${file_out}`;
 
@@ -1529,10 +1530,11 @@ async function dll_process(dll, objFilePath, romVer,toSkip=false)
                     .trim()
                     .split(/\r?\n/)
                     .filter(line => !line.startsWith(`DLL_${dll}_`))
-                    .map(line => {
-                        let s = line.split(/\s+/g);
-                        return `--defsym=${s[0]}=${s[2].substr(0, 10)}`;
-                    })
+                    // .map(line => {
+                    //     let s = line.split(/\s+/g);
+                    //     return `--defsym=${s[0]}=${s[2].substr(0, 10)}`;
+                    // })
+                    .map(line => "--defsym=" + line.replace(/[\s;]+/g, ""))
                     .join(" ");
                 // LINKER_INCLUDES += ` -T ${path_dllSyms}`;
 
@@ -1750,6 +1752,15 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
         else
         {
             gzOut = zlib.deflateRawSync(rawFile.slice(0x10));
+
+            // let ab = new ArrayBuffer(4);
+
+            // ab[0] = 1;
+            // ab[1] = 2;
+            // ab[2] = 3;
+            // ab[3] = 4;
+
+            // gzOut = zlib.gzipSync(rawFile.slice(0x10), { level: 2 });
 
             if (!toSkip)
             {
@@ -2384,7 +2395,11 @@ const OPCODE =
     blezl:   14,
     bne:     15,
     bnel:    16,
-    jr_ra:   17,
+    bc1f:    17,
+    bc1fl:   18,
+    bc1t:    19,
+    bc1tl:   20,
+    jr_ra:   99,
 };
 
 function MIPS_instruction_parse(instr)
@@ -2427,6 +2442,23 @@ function MIPS_instruction_parse(instr)
         case 0b010110: opcode = OPCODE.blezl; break;
         case 0b000101: opcode = OPCODE.bne;   break;
         case 0b010101: opcode = OPCODE.bnel;  break;
+        case 0b010001:
+        {
+            if (((instr >>> 21) & 0b11111) !== 0b01000)
+            {
+                type_branch = false;
+                break;
+            }
+
+            switch (instr >>> 16 & 3)
+            {
+                case 0: opcode = OPCODE.bc1f;  break;
+                case 1: opcode = OPCODE.bc1t;  break;
+                case 2: opcode = OPCODE.bc1fl; break;
+                case 3: opcode = OPCODE.bc1tl; break;
+            }
+            break;
+        }
         default:
         {
             type_branch = false;

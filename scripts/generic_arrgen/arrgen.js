@@ -502,9 +502,6 @@ function dehardcode_val(val, { type=undefined, base=16 }={})
     }
 }
 
-
-
-
 /**
  * Declare a member of a struct
  * @param {string} type  mnemonic for type. e.g. u16, MAP, u32, s8, etc. affects the output format
@@ -689,8 +686,6 @@ function bitwrapper(bytes)
 async function main()
 {
 
-
-
     let bytes = "00 d6 00 01 01 a7 00 11 01 a6 00 16 01 a8 00 12 01 a9 00 13 00 f4 00 05 00 f6 00 05 00 f7 00 05 00 fa 00 05 00 fc 00 05 00 f8 00 06 00 e7 00 07 00 f1 00 08 01 26 00 0b 01 25 00 0a 01 81 00 09 01 82 00 09 00 bb 00 0d 00 b8 00 0e 00 c6 00 0c 00 c8 00 0c 00 c9 00 0c 01 2e 00 0c 01 2f 00 0c 01 30 00 0c 01 27 00 14 01 80 00 0c 01 2d 00 17 01 5d 00 15 01 42 00 0f 01 55 00 10 ff ff 00 00";
 
     console.log(
@@ -704,22 +699,6 @@ async function main()
             ]
         )
     );
-
-    // console.log(b.pull(16).toString(16))
-    // console.log(b.pull(16).toString(16))
-    // console.log(b.pull(16).toString(16))
-    // console.log(b.pull(16).toString(16))
-    // console.log(b.pull(16).toString(16))
-    // console.log(b.pull(16).toString(16))
-
-    // let struct =
-    // [
-    //     member("MAP", "map", { width: 16 }),
-    //     member("u16", "unk"),
-    // ];
-
-    // b.codify(struct);
-
 
 }
 

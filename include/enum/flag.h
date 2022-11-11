@@ -1,7 +1,7 @@
 #ifndef __ENUM_FLAG__
 #define __ENUM_FLAG__
 
-#define fJIG(x) (x - FLAG_250_JIGGY_MT_BOSS_TARGITZAN)
+#define fJIG(x) (x - FLAG_250_JIGGY_MT_BOSS_TARGITZAN + 1)
 
 /*
     FLAG TYPES:

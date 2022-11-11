@@ -10,8 +10,8 @@
 //# forward decls
 static void fix_flags_canary_mary(void);
 static void fix_flags_crushing_shed(void);
-static void fix_flags_scrotty_dinosaur(void);
-static void fix_flags_smugglers_cavern(void);
+static void fix_flags_dippy_pool(void);
+static void fix_flags_piglets_pool(void);
 static void fix_flags_unk(void);
 
 
@@ -19,9 +19,9 @@ void DLL_gcgamefix_00_fix_game_flags(void)
 {
     fix_flags_canary_mary();
     fix_flags_crushing_shed();
-    fix_flags_scrotty_dinosaur();
+    fix_flags_dippy_pool();
 #if !VERSION_USA
-    fix_flags_smugglers_cavern();
+    fix_flags_piglets_pool();
 #endif
 
     CONSUMABLE_change_held_count(0x4B, 0, 0);
@@ -60,23 +60,23 @@ static void fix_flags_crushing_shed(void)
         fn_flag_set_TRUE(FLAG_500_UNK);
 }
 
-static void fix_flags_scrotty_dinosaur(void)
+static void fix_flags_dippy_pool(void)
 {
     if (fn_flag_get(FLAG_327_UNK)
-    &&  !SPECIAL_ITEM_collected_status(fJIG(FLAG_27A_JIGGY_TDL_SCROTTY), SPECIAL_ITEMS_JIGGIES))
+    &&  !SPECIAL_ITEM_collected_status(fJIG(FLAG_279_JIGGY_TDL_DIPPY), SPECIAL_ITEMS_JIGGIES))
     {
-        SPECIAL_ITEM_JIGGIES_collected_set(fJIG(FLAG_27A_JIGGY_TDL_SCROTTY), 1, 1);
+        SPECIAL_ITEM_JIGGIES_collected_set(fJIG(FLAG_279_JIGGY_TDL_DIPPY), 1, 1);
     }
 }
 
 #if !VERSION_USA
-static void fix_flags_smugglers_cavern(void)
+static void fix_flags_piglets_pool(void)
 {
     if (fn_flag_get(FLAG_167_PHYSICAL_HFP_DrainedHotPool)
     &&  fn_flag_get(FLAG_166_UNK)
-    &&  !SPECIAL_ITEM_collected_status(fJIG(FLAG_272_JIGGY_JRL_SMUGGLERS_CAVERN), SPECIAL_ITEMS_JIGGIES))
+    &&  !SPECIAL_ITEM_collected_status(fJIG(FLAG_271_JIGGY_JRL_PIGLETS_POOL), SPECIAL_ITEMS_JIGGIES))
     {
-        SPECIAL_ITEM_JIGGIES_collected_set(fJIG(FLAG_272_JIGGY_JRL_SMUGGLERS_CAVERN), 1, 1);
+        SPECIAL_ITEM_JIGGIES_collected_set(fJIG(FLAG_271_JIGGY_JRL_PIGLETS_POOL), 1, 1);
     }
 }
 #endif

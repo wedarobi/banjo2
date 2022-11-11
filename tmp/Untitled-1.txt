@@ -1,0 +1,2 @@
+
+python3 tools/splat/split.py ver/usa/splat.yaml --target ver/usa/baserom.z64 --basedir .

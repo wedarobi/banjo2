@@ -33,4 +33,16 @@ typedef struct {
 } tuple_u32;
 
 
+
+#define FRAMEBUFFER_WIDTH  (304)
+#define FRAMEBUFFER_HEIGHT (228)
+
+typedef struct
+{
+    u16 px[FRAMEBUFFER_HEIGHT][FRAMEBUFFER_WIDTH];
+} Framebuffer;
+
+// typedef u16 Framebuffer[FRAMEBUFFER_HEIGHT][FRAMEBUFFER_WIDTH];
+
+
 #endif // __TYPES_H__

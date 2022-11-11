@@ -760,6 +760,8 @@
 /* $ gcfrontend */
 /* $ gcgame */
 /* $ gcgamefix */
+/*@oooo*/ void DLL_gcgamefix_00_fix_game_flags(void);
+/*@oooo*/ void DLL_gcgamefix_01_fix_jinjo_jiggy_flags(s32 unused);
 /* $ gcgoto */
 /* $ gcintrotext */
 /* $ gclevel */
@@ -816,8 +818,24 @@
 /* $ glgamedata */
 /* $ glgamestore */
 /* $ glglobaldata */
+/*@oooo*/ void DLL_glglobaldata_00_useless(void);
+/*@oooo*/ bool DLL_glglobaldata_01_if_global_data_header_valid(u8 *data);
+/*@oooo*/ void DLL_glglobaldata_02_load_global_data_into_memory(u8 *src);
+/*@oooo*/ void DLL_glglobaldata_03_prepare_global_data_for_save(u8 *data);
+/*@oooo*/ void DLL_glglobaldata_04_clear_global_data(char *dst);
 /* $ glglobalsettings */
 /* $ glhittableDll */
+/*@oooo*/ void DLL_glhittableDll_00(void);
+/*@oooo*/ void DLL_glhittableDll_01(void);
+// /*@oooo*/ u32  DLL_glhittableDll_02(u32 a0);
+/*@oooo*/ void DLL_glhittableDll_03(void);
+/*@oooo*/ void DLL_glhittableDll_04(void);
+/*@oooo*/ void DLL_glhittableDll_05(void);
+/*@oooo*/ void DLL_glhittableDll_06(void);
+/*@oooo*/ void DLL_glhittableDll_07(void);
+/*@oooo*/ void DLL_glhittableDll_08(void);
+/*@oooo*/ void DLL_glhittableDll_09(void);
+/*@oooo*/ void DLL_glhittableDll_10(void);
 /* $ glid */
 /* $ glidmake */
 /* $ glintrosyncDll */
@@ -971,11 +989,11 @@
 /*@oooo*/ void DLL_sujiggy_08                              (void);
 /*@oooo*/ void DLL_sujiggy_09                              (void);
 /*@oooo*/ void DLL_sujiggy_10                              (void);
-/*@oooo*/ u32  DLL_sujiggy_11                              (void);
+/*@oooo*/ void DLL_sujiggy_11                              (u32);
 /*@oooo*/ u32  DLL_sujiggy_12                              (void);
 /*@oooo*/ u32  DLL_sujiggy_13                              (void);
 /*@oooo*/ u32  DLL_sujiggy_14                              (void);
-/*@oooo*/ u32  DLL_sujiggy_15                              (s32 a0, s32 a1);
+/*@oooo*/ void DLL_sujiggy_15                              (s32 a0, s32 a1);
 /*@oooo*/ u32  DLL_sujiggy_16                              (void);
 /*@oooo*/ s32  DLL_sujiggy_17                              (void);
 /*@oooo*/ bool DLL_sujiggy_18                              (void);

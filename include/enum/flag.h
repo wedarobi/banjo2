@@ -1,6 +1,8 @@
 #ifndef __ENUM_FLAG__
 #define __ENUM_FLAG__
 
+#define fJIG(x) (x - FLAG_250_JIGGY_MT_BOSS_TARGITZAN)
+
 /*
     FLAG TYPES:
 
@@ -2311,6 +2313,54 @@ typedef enum FLAG {
 //- VERSION_USA has total flag space: 0xD74
 //- other versions have:              0xD6A
 } FLAG;
+
+
+
+
+//- flag block start indices
+
+#define FB0_START (FLAG0_000_STATE_CANARY_MARY_CAGE_TRIGGER_DIALOG)
+#define FB1_START (FLAG_029_FTT_ITEM_NOTE)
+#define FB2_START (FLAG2_641_CUTSCENE_STORAGE_ACTIVE)
+#define FB3_START (FLAG3_9C5_UNK)
+#define FB4_START (GFLAG_BB9_WIDESCREEN_ENABLED)
+#define FB5_START (FLAG5_D49_TEMPCOPY_ATTEMPTED_JIGGYWIGGY_PUZZLE)
+
+//- flag block end indices
+
+#define FB0_END (FLAG0_01F_UNK)
+
+#if VERSION_EUR
+#define FB1_END (FLAG_5A6_UNK)
+#else
+#define FB1_END (FLAG_5A4_UNK)
+#endif
+
+#if VERSION_EUR
+#define FB2_END (FLAG2_6ED_UNK)
+#else
+#define FB2_END (FLAG2_6EC_UNK)
+#endif
+#define FB3_END (FLAG3_AC3_UNK)
+
+#if VERSION_USA
+#define FB4_END (GFLAG_C15_UNK)
+#else
+#define FB4_END (GFLAG_EURC24_SCREEN_SCALE_Y_6)
+#endif
+
+#define FB5_END (FLAG5_D74_UNK)
+
+//- flag block sizes in bytes
+
+#define FB0_SIZE ((((FB0_END - FB0_START) + 1) / 8) + 1)
+#define FB1_SIZE ((((FB1_END - FB1_START) + 1) / 8) + 1)
+#define FB2_SIZE ((((FB2_END - FB2_START) + 1) / 8) + 1)
+#define FB3_SIZE ((((FB3_END - FB3_START) + 1) / 8) + 1)
+#define FB4_SIZE ((((FB4_END - FB4_START) + 1) / 8) + 1)
+#define FB5_SIZE ((((FB5_END - FB5_START) + 1) / 8) + 1)
+
+
 
 
 #endif // __ENUM_FLAG__

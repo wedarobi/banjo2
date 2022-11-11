@@ -879,7 +879,7 @@ async function dll_source_edit_location_dump(dllName, romVer)
                 if (vani_info.length !== cust_info.length || vani_info.length !== info.fns.length)
                 {
                     //- We have a length mismatch! We cannot continue!
-                    log(`[ERR]: #fns mismatch between dumps for: ${dllName}! Aborting info dump!`);
+                    log(`[ERR]: #fns mismatch between dumps for: ${romVer}/${dllName}! Aborting info dump!`);
 
                     return;
                 }

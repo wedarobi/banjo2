@@ -870,6 +870,8 @@
 /*@oooo*/ void DLL_gzpublic_00_debugger_main_window(OSThread *);
 /* $ gzreg */
 /*@oooo*/ void DLL_gzreg_00(OSThread *);
+/*@oooo*/ void DLL_gzreg_01(void);
+/*@o---*/ u32  DLL_gzreg_02(OSThread *);
 /* $ gzthread */
 /*@oooo*/ void DLL_gzthread_00_thread_name_get(OSId threadIdx, u8 *dst);
 /*@oooo*/ void DLL_gzthread_01_print_page_THREADS(s32 a0);

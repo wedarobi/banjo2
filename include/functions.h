@@ -87,6 +87,8 @@ void  fn_free       (void *ptr);
 
 /*<0x8001D96C, 0x8001D06C, 0x8001D09C, 0x8001D09C>*/ void fn_8001D96C(void);
 /*<0x8001D9CC, 0x8001D0CC, 0x8001D0FC, 0x8001D0FC>*/ void fn_8001D9CC(u32, u32);
+/*<0x8002DC20, 0x8002D1C0, 0x8002D1A0, 0x8002D1A0>*/ void fn_8002DC20(char *, char *, ...);
+/*<0x8001B3C0, 0x8001ADB0, 0x8001ADE0, 0x8001ADE0>*/ u32  HEAP_get_occupied_size(void);
 
 /*<0x80014ED4, 0x80014EE4, 0x80014E44, 0x80014E44>*/ Framebuffer *FRAMEBUFFER_get_computing(void);
 /*<0x80014F00, 0x80014F10, 0x80014E70, 0x80014E70>*/ Framebuffer *FRAMEBUFFER_get_active(void);
@@ -99,6 +101,8 @@ void  fn_free       (void *ptr);
 /*<0x8001D3D8, 0x8001CAD8, 0x8001CB08, 0x8001CB08>*/ void DEBUGGER_printf_at_pos(s32 x, s32 y, char *f, ...);
 /*<0x8001D37C, 0x8001CA7C, 0x8001CAAC, 0x8001CAAC>*/ void DEBUGGER_printf(char *f, ...);
 /*<0x8001E7A0, 0x8001DE20, 0x8001DE50, 0x8001DE50>*/ u32  DEBUGGER_fn_8001E7A0(u32);
+/*<0x800F21C4, 0x800ED80C, 0x800F85DC, 0x800F847C>*/ u32  DEBUGGER_get_float_error_type(f32);
+
 /*<0x8001DDA4, 0x8001D474, 0x8001D4A4, 0x8001D4A4>*/ OSThread *THREAD_get_by_idx(s32 threadIdx);
 /*<0x8001D98C, 0x8001D08C, 0x8001D0BC, 0x8001D0BC>*/ void fn_8001D98C(u32);
 

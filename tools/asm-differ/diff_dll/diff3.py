@@ -1362,10 +1362,6 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         line_color1 = line_color2 = sym_color = Fore.RESET
         line_prefix = " "
         if line1 and line2 and line1.diff_row == line2.diff_row:
-
-            #! dbg: write
-            with open("./live_dump.txt", "a") as f: f.write("1\n")
-
             if line1.normalized_original == line2.normalized_original:
                 out1 = line1.original
                 out2 = line2.original
@@ -1413,10 +1409,6 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
                         line_color1 = line_color2 = sym_color = Fore.YELLOW
                         line_prefix = "r"
         elif line1 and line2:
-
-            #! dbg: write
-            with open("./live_dump.txt", "a") as f: f.write("2\n")
-
             line_prefix = "|"
             line_color1 = Fore.LIGHTBLUE_EX
             line_color2 = Fore.LIGHTBLUE_EX
@@ -1424,29 +1416,17 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
             out1 = line1.original
             out2 = line2.original
         elif line1:
-
-            #! dbg: write
-            with open("./live_dump.txt", "a") as f: f.write("3\n")
-
             line_prefix = "<"
             line_color1 = sym_color = Fore.RED
             out1 = line1.original
             out2 = ""
         elif line2:
-
-            #! dbg: write
-            with open("./live_dump.txt", "a") as f: f.write("4\n")
-
             line_prefix = ">"
             line_color2 = sym_color = Fore.GREEN
             out1 = ""
             out2 = line2.original
 
         if args.source and line2 and line2.comment:
-
-            #! dbg: write
-            with open("./live_dump.txt", "a") as f: f.write("5\n")
-
             out2 += f" {line2.comment}"
 
         def format_part(
@@ -1458,6 +1438,7 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         ) -> Optional[str]:
             if line is None:
                 return None
+
             # in_arrow = "  "
             # out_arrow = ""
 
@@ -1480,10 +1461,6 @@ def do_diff(basedump: str, mydump: str) -> List[OutputLine]:
         mid = f"{sym_color}{line_prefix}"
 
         if line2:
-
-            #! dbg: write
-            with open("./live_dump.txt", "a") as f: f.write("6\n")
-
             for source_line in line2.source_lines:
                 color = Style.DIM
                 # File names and function names

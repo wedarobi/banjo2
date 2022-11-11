@@ -90,3 +90,6 @@ tools/mcompress/zlib
 
 scripts/generic_arrgen/runs
 
+# Auto-generated symbols
+ver/*/syms/auto*.txt
+

@@ -1,0 +1,8 @@
+To compile all DLLs and watch for changes:
+    $ node manager/dllmgr.js -w
+
+To start the DLL autodiffer and watch for changes through dllmgr:
+    $ cd ~/n64/decomp/bt/tools/asm-differ/diff_dll
+    $ ./diff -r usa -a
+
+

@@ -77,6 +77,23 @@
 
 
 
+- add support for [searchbase.txt]
+- a script which can convert internal arrays into nicely formatted C
+	- give it a list of enums it can use as values, in C format.
+		- parse this automatically into javascript format at the start
+	- tell it the type and width of every argument
+		type list it should support:
+			- u8, u16, s16, s32, etc
+			- void *, unk *, misc *, etc
+			- call table function calls ()
+	- spaces it out visually so each field has equal width
+
+- a script which can generate an entry for a single DLL for [dlls.h]
+	- we don't want to autogenerate one for EVERY dll because of issues with arguments
+		itll make it annoying to change return type/param types
+	- but doing it on demand for one specific DLL might be nice
+
+
 
 
 

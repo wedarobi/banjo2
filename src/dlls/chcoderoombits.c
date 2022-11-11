@@ -275,8 +275,6 @@ void DLL_chcoderoombits_02(s32 a0, s32 a1, s32 a2, s32 a3, s32 sp10)
 
 }
 
-extern s32 func_800D3E14(s32); // cheat_available_get
-
 /*static*/ s32 get_cheat_available_count(void)
 {
     s32 count;
@@ -285,7 +283,7 @@ extern s32 func_800D3E14(s32); // cheat_available_get
     count = 0;
 
     for (i = 1; i < 0xD; i++)
-        if (func_800D3E14(i))
+        if (CHEAT_available_get(i))
             count++;
 
     return count;

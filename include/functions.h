@@ -19,6 +19,7 @@ u32   func_800B2840(void);
 u32   func_800B2344(u32);
 void *func_800B27A0(void *);
 
+/*<0x80019E98, 0x80019998, 0x800199C8, 0x800199C8>*/ void fn_memset(void *, u32, u32);
 /*<0x8001BBA0, 0x8001B560, 0x8001B590, 0x8001B590>*/ void fn_memcpy(void *, void *, u32);
 void  fn_memcpy_fast(void *, void *, u32);
 
@@ -58,7 +59,7 @@ void fn_flag_set_675_TRUE(void);
 
 MAP gsWorldGetSection(void);
 
-void fn_rom_fetch_WORD(u32 addr, u32 *dst);
+s32 fn_rom_fetch_WORD(u32 addr, u32 *dst);
 
 s32 fn_SPITEM_count_get(u32);
 
@@ -82,8 +83,19 @@ void *fn_malloc_temp(u32 size);
 void *fn_malloc     (u32 size, u32 type);
 void  fn_free       (void *ptr);
 
+/*<0x000050F0, 0x000050B0, 0x000050B0, 0x000050B0>*/ void __BUILD_INFO_AREA(void); //! not a function
+
+/*<0x8001D96C, 0x8001D06C, 0x8001D09C, 0x8001D09C>*/ void fn_8001D96C(void);
+/*<0x8001D9CC, 0x8001D0CC, 0x8001D0FC, 0x8001D0FC>*/ void fn_8001D9CC(u32, u32);
+
 /*<0x80014ED4, 0x80014EE4, 0x80014E44, 0x80014E44>*/ Framebuffer *FRAMEBUFFER_get_computing(void);
+/*<0x80014F00, 0x80014F10, 0x80014E70, 0x80014E70>*/ Framebuffer *FRAMEBUFFER_get_active(void);
 /*<0x8001DB90, 0x8001D288, 0x8001D2B8, 0x8001D2B8>*/ void FRAMEBUFFER_8001DB90(Framebuffer *, s32, s32, void *);
+/*<0x80015430, 0x80015440, 0x80015364, 0x80015364>*/ void FRAMEBUFFER_swap_to(u32);
+/*<0x80014F38, 0x80014F48, 0x80014EA8, 0x80014EA8>*/ u32  FRAMEBUFFER_get_computing_idx(void);
+/*<0x8001DA60, 0x8001D158, 0x8001D188, 0x8001D188>*/ void FRAMEBUFFER_8001DA60(Framebuffer *);
+/*<0x80014EC8, 0x80014ED8, 0x80014E38, 0x80014E38>*/ u32  FRAMEBUFFER_get_size(void);
+
 /*<0x8001D3D8, 0x8001CAD8, 0x8001CB08, 0x8001CB08>*/ void DEBUGGER_printf_at_pos(s32 x, s32 y, char *f, ...);
 /*<0x8001D37C, 0x8001CA7C, 0x8001CAAC, 0x8001CAAC>*/ void DEBUGGER_printf(char *f, ...);
 /*<0x8001E7A0, 0x8001DE20, 0x8001DE50, 0x8001DE50>*/ u32  DEBUGGER_fn_8001E7A0(u32);

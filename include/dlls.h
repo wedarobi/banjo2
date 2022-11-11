@@ -867,9 +867,15 @@
 /* $ gspropsDll */
 /* $ gsworldDll */
 /* $ gzpublic */
+/*@oooo*/ void DLL_gzpublic_00_debugger_main_window(OSThread *);
 /* $ gzreg */
+/*@oooo*/ void DLL_gzreg_00(OSThread *);
 /* $ gzthread */
+/*@oooo*/ void DLL_gzthread_00_thread_name_get(OSId threadIdx, u8 *dst);
+/*@oooo*/ void DLL_gzthread_01_print_page_THREADS(s32 a0);
 /* $ gztrace */
+/*@oooo*/ void DLL_gztrace_00_null(void);
+/*@oooo*/ void DLL_gztrace_01(OSThread *, u32, u32, u32);
 /* $ idbounce */
 /* $ idflame */
 /* $ idflash */

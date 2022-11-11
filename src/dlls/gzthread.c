@@ -43,7 +43,7 @@ void DLL_gzthread_00_thread_name_get(OSId threadIdx, u8 *dst)
     }
 }
 
-// TODO
+// TODO s0 <-> s1
 void DLL_gzthread_01_print_page_THREADS(s32 a0)
 {
     s32 i;

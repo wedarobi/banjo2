@@ -16,7 +16,7 @@ struct DebugInfo
 #define TRIPLE(x) { (x), (x), #x }
 #define ARR_END { 0, 0, "" }
 
-static struct DebugInfo arr00[] =
+static struct DebugInfo debugInfo_RDP[] =
 {
 /*  0 */ TRIPLE(DPC_STATUS_XBUS_DMEM_DMA),
 /*  1 */ TRIPLE(DPC_STATUS_FREEZE),
@@ -32,7 +32,7 @@ static struct DebugInfo arr00[] =
 /* 11 */ ARR_END
 };
 
-static struct DebugInfo arr01[] =
+static struct DebugInfo debugInfo_RSP[] =
 {
 /*  0 */ TRIPLE(SP_STATUS_HALT),
 /*  1 */ TRIPLE(SP_STATUS_BROKE),
@@ -52,7 +52,7 @@ static struct DebugInfo arr01[] =
 /* 15 */ ARR_END
 };
 
-static struct DebugInfo arr02[] =
+static struct DebugInfo debugInfo_CAUSE[] =
 {
 /*  0 */ { CAUSE_BD,      CAUSE_BD,    "BD"                                              },
 /*  1 */ { CAUSE_IP8,     CAUSE_IP8,   "IP8"                                             },
@@ -84,7 +84,7 @@ static struct DebugInfo arr02[] =
 /* 27 */   ARR_END
 };
 
-static struct DebugInfo arr03[] =
+static struct DebugInfo debugInfo_SR[] =
 {
 /*  0 */ { SR_CU3,      SR_CU3,     "CU3" },
 /*  1 */ { SR_CU2,      SR_CU2,     "CU2" },
@@ -119,7 +119,7 @@ static struct DebugInfo arr03[] =
 /* 30 */   ARR_END
 };
 
-static struct DebugInfo arr04[] =
+static struct DebugInfo debugInfo_FP[] =
 {
 /*  0 */ { FPCSR_FS,      FPCSR_FS,    "FS"                      },
 /*  1 */ { FPCSR_C,       FPCSR_C,     "C"                       },
@@ -148,61 +148,61 @@ static struct DebugInfo arr04[] =
 
 
 
-static void print_enabled_bits(u32 val, char *name, struct DebugInfo *buf)
+static void print_enabled_bits(u32 val, char *name, struct DebugInfo *info)
 {
     bool toSkipComma = TRUE;
 
     DEBUGGER_printf("%s: x%08X ", name, val);
     DEBUGGER_printf("<");
 
-    while (buf->mask)
+    while (info->mask)
     {
-        if ((val & buf->mask) == buf->val)
+        if ((val & info->mask) == info->val)
         {
             if (toSkipComma)
                 toSkipComma = FALSE;
             else
                 DEBUGGER_printf(",");
 
-            DEBUGGER_printf("%s", buf->str);
+            DEBUGGER_printf("%s", info->str);
         }
 
-        buf++;
+        info++;
     }
 
     DEBUGGER_printf(">\n");
 }
 
-static void safe_print_float(char *a0, f32 a1)
+static void safe_sprint_float(char *dst, f32 val)
 {
-    switch (DEBUGGER_get_float_error_type(a1))
+    switch (DEBUGGER_get_float_error_type(val))
     {
         case 0:
-            fn_8002DC20(a0, "S.NaN");
+            fn_8002DC20(dst, "S.NaN");
             break;
         case 1:
-            fn_8002DC20(a0, "Q.NaN");
+            fn_8002DC20(dst, "Q.NaN");
             break;
         case 2:
-            fn_8002DC20(a0, "+ve INF");
+            fn_8002DC20(dst, "+ve INF");
             break;
         case 3:
-            fn_8002DC20(a0, "-ve INF");
+            fn_8002DC20(dst, "-ve INF");
             break;
         case 4:
         case 5:
         case 8:
         case 9:
-            fn_8002DC20(a0, "%.6e", a1);
+            fn_8002DC20(dst, "%.6e", val);
             break;
         case 6:
         case 7:
-            fn_8002DC20(a0, "%d", *(u32 *)&a1);
+            fn_8002DC20(dst, "%d", *(u32 *)&val);
             break;
     }
 }
 
-void DLL_gzreg_00(OSThread *t)
+void DLL_gzreg_00_print_page_REGISTERS(OSThread *t)
 {
     u32 pad;
 
@@ -215,9 +215,9 @@ void DLL_gzreg_00(OSThread *t)
 
 #if VERSION_USA
     //! why the FUCK does this match??? this makes NO SENSE
-    print_enabled_bits(ctx->cause, "cause", arr01);
+    print_enabled_bits(ctx->cause, "cause", debugInfo_RSP);
 #else
-    print_enabled_bits(ctx->cause, "cause", arr02);
+    print_enabled_bits(ctx->cause, "cause", debugInfo_CAUSE);
 #endif
     DEBUGGER_printf("\n");
 
@@ -232,34 +232,34 @@ void DLL_gzreg_00(OSThread *t)
     DEBUGGER_printf("ra:x%08X %s          badvaddr:x%08X\n", (u32)ctx->ra, "          ", (u32)ctx->badvaddr);
     DEBUGGER_printf("\n");
 
-    print_enabled_bits(ctx->fpcsr, "fpcsr", arr04);
+    print_enabled_bits(ctx->fpcsr, "fpcsr", debugInfo_FP);
     DEBUGGER_printf("\n");
 
-    safe_print_float(cbuf1, ctx->fp0.f.f_even);
-    safe_print_float(cbuf2, ctx->fp2.f.f_even);
-    safe_print_float(cbuf3, ctx->fp4.f.f_even);
+    safe_sprint_float(cbuf1, ctx->fp0.f.f_even);
+    safe_sprint_float(cbuf2, ctx->fp2.f.f_even);
+    safe_sprint_float(cbuf3, ctx->fp4.f.f_even);
     DEBUGGER_printf("f0  %-13s f2  %-13s f4  %-13s\n", cbuf1, cbuf2, cbuf3);
-    safe_print_float(cbuf1, ctx->fp6.f.f_even);
-    safe_print_float(cbuf2, ctx->fp8.f.f_even);
-    safe_print_float(cbuf3, ctx->fp10.f.f_even);
+    safe_sprint_float(cbuf1, ctx->fp6.f.f_even);
+    safe_sprint_float(cbuf2, ctx->fp8.f.f_even);
+    safe_sprint_float(cbuf3, ctx->fp10.f.f_even);
     DEBUGGER_printf("f6  %-13s f8  %-13s f10 %-13s\n", cbuf1, cbuf2, cbuf3);
-    safe_print_float(cbuf1, ctx->fp12.f.f_even);
-    safe_print_float(cbuf2, ctx->fp14.f.f_even);
-    safe_print_float(cbuf3, ctx->fp16.f.f_even);
+    safe_sprint_float(cbuf1, ctx->fp12.f.f_even);
+    safe_sprint_float(cbuf2, ctx->fp14.f.f_even);
+    safe_sprint_float(cbuf3, ctx->fp16.f.f_even);
     DEBUGGER_printf("f12 %-13s f14 %-13s f16 %-13s\n", cbuf1, cbuf2, cbuf3);
-    safe_print_float(cbuf1, ctx->fp18.f.f_even);
-    safe_print_float(cbuf2, ctx->fp20.f.f_even);
-    safe_print_float(cbuf3, ctx->fp22.f.f_even);
+    safe_sprint_float(cbuf1, ctx->fp18.f.f_even);
+    safe_sprint_float(cbuf2, ctx->fp20.f.f_even);
+    safe_sprint_float(cbuf3, ctx->fp22.f.f_even);
     DEBUGGER_printf("f18 %-13s f20 %-13s f22 %-13s\n", cbuf1, cbuf2, cbuf3);
-    safe_print_float(cbuf1, ctx->fp24.f.f_even);
-    safe_print_float(cbuf2, ctx->fp26.f.f_even);
-    safe_print_float(cbuf3, ctx->fp28.f.f_even);
+    safe_sprint_float(cbuf1, ctx->fp24.f.f_even);
+    safe_sprint_float(cbuf2, ctx->fp26.f.f_even);
+    safe_sprint_float(cbuf3, ctx->fp28.f.f_even);
     DEBUGGER_printf("f24 %-13s f26 %-13s f28 %-13s\n", cbuf1, cbuf2, cbuf3);
-    safe_print_float(cbuf1, ctx->fp30.f.f_even);
+    safe_sprint_float(cbuf1, ctx->fp30.f.f_even);
     DEBUGGER_printf("f30 %-13s\n", cbuf1);
     DEBUGGER_printf("\n");
 
-    print_enabled_bits(ctx->sr, "sr", arr03);
+    print_enabled_bits(ctx->sr, "sr", debugInfo_SR);
 }
 
 void DLL_gzreg_01(void)
@@ -268,12 +268,12 @@ void DLL_gzreg_01(void)
     DEBUGGER_printf("RDP start   = 0x%08X   (0x%016llx) \n", IO_READ(DPC_START_REG)   + K0BASE, *(u64 *)(IO_READ(DPC_START_REG)   + K0BASE));
     DEBUGGER_printf("RDP end     = 0x%08X   (0x%016llx) \n", IO_READ(DPC_END_REG)     + K0BASE, *(u64 *)(IO_READ(DPC_END_REG)     + K0BASE));
 
-    print_enabled_bits(IO_READ(DPC_STATUS_REG), "\nRDP status:", arr00);
+    print_enabled_bits(IO_READ(DPC_STATUS_REG), "\nRDP status:", debugInfo_RDP);
 #if VERSION_USA
     //! why the FUCK does this match??? this makes NO SENSE
-    print_enabled_bits(IO_READ(SP_STATUS_REG),  "\nRSP status:", arr02);
+    print_enabled_bits(IO_READ(SP_STATUS_REG),  "\nRSP status:", debugInfo_CAUSE);
 #else
-    print_enabled_bits(IO_READ(SP_STATUS_REG),  "\nRSP status:", arr01);
+    print_enabled_bits(IO_READ(SP_STATUS_REG),  "\nRSP status:", debugInfo_RSP);
 #endif
 
     DEBUGGER_printf("\nFree memory was %d bytes.\n", HEAP_get_occupied_size());

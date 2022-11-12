@@ -869,7 +869,7 @@
 /* $ gzpublic */
 /*@oooo*/ void DLL_gzpublic_00_debugger_main_window(OSThread *);
 /* $ gzreg */
-/*@oooo*/ void DLL_gzreg_00(OSThread *);
+/*@oooo*/ void DLL_gzreg_00_print_page_REGISTERS(OSThread *);
 /*@oooo*/ void DLL_gzreg_01(void);
 /*@o---*/ u32  DLL_gzreg_02(OSThread *);
 /* $ gzthread */

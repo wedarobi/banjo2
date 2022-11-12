@@ -77,7 +77,7 @@ void DLL_gzpublic_00_debugger_main_window(OSThread *t)
 
         //- Page 1: registers
         prepare_new_screen(t->id);
-        DLL_gzreg_00(t);
+        DLL_gzreg_00_print_page_REGISTERS(t);
         FRAMEBUFFER_8001DA60(FRAMEBUFFER_get_active());
         pause();
 

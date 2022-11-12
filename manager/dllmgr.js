@@ -164,16 +164,41 @@ function str_contains_colour(str, colour)
     return str.includes(`\x1b[${COLOUR_CODES[colour]};`);
 }
 
+function calc_max_width_for_box_contents(msgArr)
+{
+    function removeColour(str)
+    {
+        return str.replace(/\x1b.*?m/g, "");
+    }
+
+    let spacing = 1;
+    let max_width = 0;
+
+    for (let str of msgArr)
+    {
+        let fstr = removeColour(str);
+
+        if (fstr.length > max_width)
+            max_width = fstr.length;
+    }
+
+    //# Ignore, since we only want INTERNAL width
+    // max_width += spacing * 2;
+
+    return max_width;
+}
+
 /**
  * This function takes an array of strings and puts them in a nice ascii box.
  * @param {String[]} msgArr
  */
 function print_lines_in_box(msgArr, colour="white")
 {
-    function removeColour (str)
+    function removeColour(str)
     {
         return str.replace(/\x1b.*?m/g, "");
     }
+
     let os = ""; /// out_str
     let chars = "┌─┐│└─┘".split("");
     let spacing = 1;
@@ -2226,6 +2251,11 @@ async function dll_full_build_multi(dllNames)
      */
     let ifDllNotSkipped = [];
 
+    /**
+     * Estimate total amount of completed bytes
+     */
+    let computedTotalSize = { usa: 0, jpn: 0, eur: 0, aus: 0 };
+
     for (let [rvIdx, romVer] of allRomVers.entries())
     {
         await update_rom_version(romVer);
@@ -2308,12 +2338,27 @@ async function dll_full_build_multi(dllNames)
                         await dll_cache_source_update_locations(dllName, romVer);
                     }
 
+                    //- If the uncompressed version is matching, compress it and check for matching again in next inner iteration
                     if (!USE_COMPRESSION && similarity.found && similarity.similarity === 1)
                     {
                         rawIsMatching = true;
 
                         //# Defer to the compressed result
                         continue;
+                    }
+
+                    //- Add to total byte percentage
+                    {
+                        if (USE_COMPRESSION)
+                        {
+                            //# It's 100% matching. Fuck compressed bytes, this is all we care about
+                            computedTotalSize[romVer] += file_raw.byteLength;
+                        }
+                        else
+                        {
+                            //# It's not 100% matching
+                            computedTotalSize[romVer] += similarity.similarity * file_raw.byteLength;
+                        }
                     }
 
                     if (!USE_COMPRESSION || rawIsMatching)
@@ -2463,6 +2508,28 @@ async function dll_full_build_multi(dllNames)
                     remainingDllCount = Object.keys(gSyscallIdxMap).length - dllNames.length;
                 }
 
+                //- Calculate total percentage
+                let totalPercentagesDll  = {};
+                let totalPercentagesGame = {};
+                {
+                    //# hardcoded total byte size of all DLLs
+                    let totalSizeDll  = { usa: 2593440, jpn: 2579552, eur: 2582544, aus: 2580048 };
+                    let totalSizeCore = { usa:  877760 }; //= just fill in the others roughly
+
+                    //= hackily fill in the other values
+                    {
+                        for (let r in totalSizeDll)
+                            if (!(r in totalSizeCore))
+                                totalSizeCore[r] = totalSizeCore.usa;
+                    }
+
+                    for (let r in totalSizeDll)
+                    {
+                        totalPercentagesDll[r]  = (computedTotalSize[r] / totalSizeDll[r]) * 100;
+                        totalPercentagesGame[r] = (computedTotalSize[r] / (totalSizeDll[r] + totalSizeCore[r])) * 100;
+                    }
+                }
+
                 let header = `Status${str_counts}`.padEnd(headerPad, " ");
                 header += gct(numDlls.OK,           MATCH_COLOURS.OK);
                 header += gct(" matching   ",       "black");
@@ -2480,6 +2547,60 @@ async function dll_full_build_multi(dllNames)
 
                 strs.push(header);
                 strs.push(..._order_dll_result_strings_by_status(results_raw.filter(x => x)));
+
+                //# Add a spacer line
+                strs.push(gct("─".repeat(calc_max_width_for_box_contents(strs)), "yellow"));
+
+                //- Percentages
+                {
+                    function sprint_percentage(val)
+                    {
+                        let str = val.toFixed(5);
+
+                        let pivot = 6; //# Position from end that the colour will change at
+
+                        let str1 = str.substr(0,           str.length - pivot);
+                        let str2 = str.substr(str1.length, pivot);
+
+                        return gct(str1, "white") + gct(str2, "black") + gct("%", "black");
+                        // return gct(str1 + str2 + "%", "white");
+                    }
+
+                    //= DLLs
+
+                    let ptitle = "PROGRESS  ";
+
+                    {
+                        let p = [];
+
+                        for (let r of allRomVers)
+                        {
+                            let ps = "";
+                            ps += gct(`${r.substr(0, 2)}: `, "black");
+                            ps += sprint_percentage(totalPercentagesDll[r]);
+                            p.push(ps);
+                        }
+    
+                        let title = gct(ptitle, "yellow") + gct("DLLs only", "black") + gct(" -> ", "black");
+                        strs.push(title + p.join(gct(", ", "black")));
+                    }
+
+                    //= Out of entire game
+                    {
+                        let p = [];
+
+                        for (let r of allRomVers)
+                        {
+                            let ps = "";
+                            ps += gct(`${r.substr(0, 2)}: `, "black");
+                            ps += sprint_percentage(totalPercentagesGame[r]);
+                            p.push(ps);
+                        }
+
+                        let title = " ".repeat(ptitle.length) + gct("banjo2", "green") + gct("    -> ", "black");
+                        strs.push(title + p.join(gct(", ", "black")));
+                    }
+                }
 
                 print_lines_in_box(strs, "yellow");
             }

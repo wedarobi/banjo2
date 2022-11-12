@@ -213,12 +213,7 @@ void DLL_gzreg_00_print_page_REGISTERS(OSThread *t)
 
     DEBUGGER_printf("pc:x%08X\n", ctx->pc);
 
-#if VERSION_USA
-    //! why the FUCK does this match??? this makes NO SENSE
-    print_enabled_bits(ctx->cause, "cause", debugInfo_RSP);
-#else
     print_enabled_bits(ctx->cause, "cause", debugInfo_CAUSE);
-#endif
     DEBUGGER_printf("\n");
 
     DEBUGGER_printf("at:x%08X v0:x%08X v1:x%08X a0:x%08X\n", (u32)ctx->at, (u32)ctx->v0, (u32)ctx->v1, (u32)ctx->a0);
@@ -269,12 +264,7 @@ void DLL_gzreg_01(void)
     DEBUGGER_printf("RDP end     = 0x%08X   (0x%016llx) \n", IO_READ(DPC_END_REG)     + K0BASE, *(u64 *)(IO_READ(DPC_END_REG)     + K0BASE));
 
     print_enabled_bits(IO_READ(DPC_STATUS_REG), "\nRDP status:", debugInfo_RDP);
-#if VERSION_USA
-    //! why the FUCK does this match??? this makes NO SENSE
-    print_enabled_bits(IO_READ(SP_STATUS_REG),  "\nRSP status:", debugInfo_CAUSE);
-#else
     print_enabled_bits(IO_READ(SP_STATUS_REG),  "\nRSP status:", debugInfo_RSP);
-#endif
 
     DEBUGGER_printf("\nFree memory was %d bytes.\n", HEAP_get_occupied_size());
 }

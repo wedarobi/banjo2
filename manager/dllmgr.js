@@ -531,10 +531,24 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
     }
 
     //- Execute compare
-    let similarity = stringSimilarity.compareTwoStrings(
-        buf_vani.toString(),
-        buf_cust.toString(),
-    );
+    let similarity;
+    {
+        let s_v = buf_vani.toString();
+        let s_c = buf_cust.toString();
+
+        if (s_v == s_c)
+        {
+            similarity = 1;
+        }
+        else
+        {
+            similarity = stringSimilarity.compareTwoStrings(s_v, s_c);
+
+            if (similarity > 0.999)
+                //# Not matching but similarity score says matching, force mismatch
+                similarity = 0.999;
+        }
+    }
 
     return { found: true, similarity, };
 }
@@ -2326,6 +2340,15 @@ async function dll_full_build_multi(dllNames)
                     let similarity = await dll_get_similarity_and_make_fndumps(dllName, file, romVer, USE_COMPRESSION, toSkip);
                     let endPad = 10;
 
+                    //- Increment total byte percentage
+                    if (!USE_COMPRESSION)
+                    {
+                        // computedTotalSize[romVer] += Math.min(similarity.similarity, 1) * file_raw.byteLength;
+
+                        let text_size = file_raw.readUint16BE(0x00) * 0x10;
+                        computedTotalSize[romVer] += Math.min(similarity.similarity, 1) * text_size;
+                    }
+
                     //- Diff script helpers (live update)
                     if (!USE_COMPRESSION)
                     {
@@ -2345,20 +2368,6 @@ async function dll_full_build_multi(dllNames)
 
                         //# Defer to the compressed result
                         continue;
-                    }
-
-                    //- Add to total byte percentage
-                    {
-                        if (USE_COMPRESSION)
-                        {
-                            //# It's 100% matching. Fuck compressed bytes, this is all we care about
-                            computedTotalSize[romVer] += file_raw.byteLength;
-                        }
-                        else
-                        {
-                            //# It's not 100% matching
-                            computedTotalSize[romVer] += similarity.similarity * file_raw.byteLength;
-                        }
                     }
 
                     if (!USE_COMPRESSION || rawIsMatching)
@@ -2464,6 +2473,51 @@ async function dll_full_build_multi(dllNames)
         }
     }
 
+    /**
+     * approx .text ranges:
+     * 
+     * core0 (add range) (without RSP code)
+     *     usa 80012030 -> 80037880
+     *     jpn 80012030 -> 80037030
+     *     eur 80012030 -> 80037010
+     *     aus 80012030 -> 80037010
+     * 
+     * core2 (add range)
+     *     usa 800815C0 -> 80117C20
+     *     jpn 80080D80 -> 80111F00
+     *     eur 8008B9D0 -> 8011CD30
+     *     aus 8008B9D0 -> 8011CB70
+     * 
+     * dll call table (subtract range)
+     *     usa 80082540 -> 8008A990
+     *     jpn 80081CD0 -> 80089CE0
+     *     eur 8008C920 -> 80094940
+     *     aus 8008C920 -> 80094930
+     * 
+     **************************************
+     * 
+     * approx TOTAL SIZE OF core .text:
+     *   usa: 735840
+     *   jpn: 713072
+     *   eur: 713504
+     *   aus: 713072
+     * 
+     * ************************************
+     * 
+     * approx TOTAL SIZE OF ALL .text:
+     *   usa: 2854960 (2.72 MB)
+     *   jpn: 2820048 (2.68 MB)
+     *   eur: 2823184 (2.69 MB)
+     *   aus: 2820512 (2.68 MB)
+     */
+
+    //# hardcoded total byte size of all DLLs
+    // let totalVanillaSizeAllDll  = { usa: 2593440, jpn: 2579552, eur: 2582544, aus: 2580048 };
+    // let totalVanillaSizeAllCore = { usa:  877760 }; //= just fill in the others roughly
+    //- .text only (core0 minus RSP code, and core2)
+    let totalVanillaSizeAllDll  = { usa: 2119120, jpn: 2106976, eur: 2109680, aus: 2107440 };
+    let totalVanillaSizeAllCore = { usa:  735840, jpn:  713072, eur:  713504, aus:  713072 };
+
     //- Print results
     {
         //= Raw
@@ -2512,21 +2566,10 @@ async function dll_full_build_multi(dllNames)
                 let totalPercentagesDll  = {};
                 let totalPercentagesGame = {};
                 {
-                    //# hardcoded total byte size of all DLLs
-                    let totalSizeDll  = { usa: 2593440, jpn: 2579552, eur: 2582544, aus: 2580048 };
-                    let totalSizeCore = { usa:  877760 }; //= just fill in the others roughly
-
-                    //= hackily fill in the other values
+                    for (let r in totalVanillaSizeAllDll)
                     {
-                        for (let r in totalSizeDll)
-                            if (!(r in totalSizeCore))
-                                totalSizeCore[r] = totalSizeCore.usa;
-                    }
-
-                    for (let r in totalSizeDll)
-                    {
-                        totalPercentagesDll[r]  = (computedTotalSize[r] / totalSizeDll[r]) * 100;
-                        totalPercentagesGame[r] = (computedTotalSize[r] / (totalSizeDll[r] + totalSizeCore[r])) * 100;
+                        totalPercentagesDll[r]  = (computedTotalSize[r] / totalVanillaSizeAllDll[r]) * 100;
+                        totalPercentagesGame[r] = (computedTotalSize[r] / (totalVanillaSizeAllDll[r] + totalVanillaSizeAllCore[r])) * 100;
                     }
                 }
 
@@ -2562,13 +2605,19 @@ async function dll_full_build_multi(dllNames)
                         let str1 = str.substr(0,           str.length - pivot);
                         let str2 = str.substr(str1.length, pivot);
 
-                        return gct(str1, "white") + gct(str2, "black") + gct("%", "black");
+                        // return gct(str1, "white") + gct(str2, "black") + gct("%", "black");
                         // return gct(str1 + str2 + "%", "white");
+                        return str1 + str2 + "%";
+                    }
+
+                    function sz(val)
+                    {
+                        return (val / (1024 * 1024)).toFixed(3) + " MB";
                     }
 
                     //= DLLs
 
-                    let ptitle = "PROGRESS  ";
+                    let ptitle = "PROGRESS (.text)  ";
 
                     {
                         let p = [];
@@ -2577,12 +2626,15 @@ async function dll_full_build_multi(dllNames)
                         {
                             let ps = "";
                             ps += gct(`${r.substr(0, 2)}: `, "black");
+                            // ps += `${sz(computedTotalSize[r])}/${sz(totalVanillaSizeAllDll[r])}`;
+                            // ps += " ("
                             ps += sprint_percentage(totalPercentagesDll[r]);
+                            // ps += ")"
                             p.push(ps);
                         }
     
                         let title = gct(ptitle, "yellow") + gct("DLLs only", "black") + gct(" -> ", "black");
-                        strs.push(title + p.join(gct(", ", "black")));
+                        strs.push(title + p.join(gct(" ", "black")));
                     }
 
                     //= Out of entire game
@@ -2593,12 +2645,15 @@ async function dll_full_build_multi(dllNames)
                         {
                             let ps = "";
                             ps += gct(`${r.substr(0, 2)}: `, "black");
+                            // ps += `${sz(computedTotalSize[r])}/${sz(totalVanillaSizeAllCore[r] + totalVanillaSizeAllDll[r])}`;
+                            // ps += " ("
                             ps += sprint_percentage(totalPercentagesGame[r]);
+                            // ps += ")"
                             p.push(ps);
                         }
 
                         let title = " ".repeat(ptitle.length) + gct("banjo2", "green") + gct("    -> ", "black");
-                        strs.push(title + p.join(gct(", ", "black")));
+                        strs.push(title + p.join(gct(" ", "black")));
                     }
                 }
 

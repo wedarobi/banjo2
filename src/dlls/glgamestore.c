@@ -85,14 +85,14 @@ static s32 save_data_to_EEP(s32 a0, void *a1, s32 a2)
     return res;
 }
 
-void DLL_glgamestore_02_save_file_slot_to_EEP(s32 a0, void *a1)
+s32 DLL_glgamestore_02_save_file_slot_to_EEP(s32 a0, void *a1)
 {
-    save_data_to_EEP(get_eep_offset_for_slotidx(a0), a1, SIZE_SLOT_NORMAL);
+    return save_data_to_EEP(get_eep_offset_for_slotidx(a0), a1, SIZE_SLOT_NORMAL);
 }
 
-void DLL_glgamestore_03_save_global_data_to_EEP(s32 a0, void *a1)
+s32 DLL_glgamestore_03_save_global_data_to_EEP(s32 a0, void *a1)
 {
-    save_data_to_EEP(global_slot_size_for_count(a0), a1, SIZE_SLOT_GLOBAL);
+    return save_data_to_EEP(global_slot_size_for_count(a0), a1, SIZE_SLOT_GLOBAL);
 }
 
 static bool force_corrupt_slot_header(s32 a0)

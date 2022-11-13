@@ -45,4 +45,8 @@ typedef struct
 // typedef u16 Framebuffer[FRAMEBUFFER_HEIGHT][FRAMEBUFFER_WIDTH];
 
 
+#define TVTYPE_NTSC ((VERSION_USA) || (VERSION_JPN))
+#define TVTYPE_PAL  ((VERSION_EUR) || (VERSION_AUS))
+
+
 #endif // __TYPES_H__

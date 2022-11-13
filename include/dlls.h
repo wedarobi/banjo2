@@ -826,6 +826,12 @@
 /*@oooo*/ s32  DLL_gleeprom_02(s32, void *, s32);
 /* $ glgamedata */
 /* $ glgamestore */
+/*@oooo*/ s32  DLL_glgamestore_00_load_slot_data_from_EEP(s32 a0, void *dst);
+/*@oooo*/ s32  DLL_glgamestore_01_load_global_data_from_EEP(s32 a0, void *dst);
+/*@oooo*/ s32  DLL_glgamestore_02_save_file_slot_to_EEP(s32 a0, void *a1);
+/*@oooo*/ s32  DLL_glgamestore_03_save_global_data_to_EEP(s32 a0, void *a1);
+/*@oooo*/ bool DLL_glgamestore_04_corrupt_dummy_slot_header(s32 a0);
+/*@oooo*/ bool DLL_glgamestore_05_corrupt_global_data_header(s32 a0);
 /* $ glglobaldata */
 /*@oooo*/ void DLL_glglobaldata_00_useless(void);
 /*@oooo*/ bool DLL_glglobaldata_01_if_global_data_header_valid(u8 *data);
@@ -838,11 +844,22 @@
 /*@oooo*/ s32  DLL_glglobalsettings_02_trigger_globaldata_save_to_EEP(void);
 /*@oooo*/ bool DLL_glglobalsettings_03_get_widescreen_from_gflags(void);
 /*@oooo*/ void DLL_glglobalsettings_04_set_widescreen_to_gflags(s32 enabled);
-/*@oooo*/ void DLL_glglobalsettings_05_get_screen_from_gflags(s32 *a0, s32 *a1);
-/*@oooo*/ void DLL_glglobalsettings_06_set_screen_to_gflags(s32 a0, s32 a1);
+/*@oooo*/
+#if TVTYPE_NTSC
+void DLL_glglobalsettings_05_get_screen_from_gflags(s32 *a0, s32 *a1);
+#elif TVTYPE_PAL
+void DLL_glglobalsettings_05_get_screen_from_gflags(s32 *a0, s32 *a1, s32 *a2, s32 *a3);
+#endif
+/*@oooo*/
+#if TVTYPE_NTSC
+void DLL_glglobalsettings_06_set_screen_to_gflags(s32 a0, s32 a1);
+#elif TVTYPE_PAL
+void DLL_glglobalsettings_06_set_screen_to_gflags(s32 a0, s32 a1, s32 a2, s32 a3);
+#endif
 /*@oooo*/ s32  DLL_glglobalsettings_07_get_sound_mode_from_gflags(void);
 /*@oooo*/ void DLL_glglobalsettings_08_set_sound_mode_to_gflags(s32 value);
-// TODO eur?
+/*@--o-*/ s32  DLL_glglobalsettings_09_get_language_from_gflags(void);
+/*@--o-*/ void DLL_glglobalsettings_10_set_language_to_gflags(s32 lang);
 /* $ glhittableDll */
 /*@oooo*/ void DLL_glhittableDll_00(void);
 /*@oooo*/ void DLL_glhittableDll_01(void);

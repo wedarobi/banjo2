@@ -131,6 +131,13 @@ void  fn_free       (void *ptr);
 /*<0x800F2EA0, 0x800EE260, 0x800F9090, 0x800F8ED0>*/ void fn_800F2EA0(s32, char *);
 
 /*<0x800157E0, 0x800157F0, 0x80015810, 0x80015810>*/ void WIDESCREEN_set(bool enabled);
+#if TVTYPE_NTSC
+void SCREEN_DIMENSIONS_set(s32, s32);
+#elif TVTYPE_PAL
+void SCREEN_DIMENSIONS_set(s32, s32, s32, s32);
+#endif
+/*<0x80012F0C, 0x80012E7C, 0x80012E1C, 0x80012E1C>*/ void SOUND_MODE_unk1_set(s16);
+/*<0x80012F34, 0x80012EA4, 0x80012E44, 0x80012E44>*/ void SOUND_MODE_unk2_set(s32, s16);
 
 /*<0x80106790, 0x80100FB8, 0x8010BDE8, 0x8010BC28>*/ Object *fn_ois_get_object(OIS *ois);
 /*<0x80100094, 0x800FAB54, 0x80105984, 0x801057C4>*/ void   *fn_Object_privStorPtr_get(Object *, u32 idx);

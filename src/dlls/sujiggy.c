@@ -54,7 +54,7 @@ mapInfo[] =
 #define HI(x) ((x & 0xFFFF0000) >> 0x10)
 #define LO(x)  (x & 0x0000FFFF)
 
-// TODO
+// TODO v1 + stack -> s0
 static MAP decrypt_map_with_bootcode(u32 encryptedMap)
 {
     u32 tmp;

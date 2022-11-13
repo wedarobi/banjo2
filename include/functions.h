@@ -127,6 +127,11 @@ void  fn_free       (void *ptr);
 /*<0x800FC74C, 0x800F720C, 0x8010203C, 0x80101E7C>*/ void MUSIC_800FC74C(s32);
 /*<0x80016DF8, 0x80016CB8, 0x80016CE8, 0x80016CE8>*/ void MUSIC_80016DF8(s32);
 /*<0x800FEDC4, 0x800F9884, 0x801046B4, 0x801044F4>*/ void fn_800FEDC4(s32, s32, f32, f32);
+/*<0x800F3320, 0x800EE670, 0x800F94A0, 0x800F92E0>*/ void fn_800F3320(char *, void *, void *, f32);
+/*<0x800F2EA0, 0x800EE260, 0x800F9090, 0x800F8ED0>*/ void fn_800F2EA0(s32, char *);
+
+/*<0x80106790, 0x80100FB8, 0x8010BDE8, 0x8010BC28>*/ Object *fn_ois_get_object(OIS *ois);
+/*<0x80100094, 0x800FAB54, 0x80105984, 0x801057C4>*/ void   *fn_Object_privStorPtr_get(Object *, u32 idx);
 
 /*<0x800A9BA0, 0x800A8440, 0x800B3180, 0x800B3090>*/ void tmt_gameover_orchestrate_UNK(u32, u32, u32);
 /*<0x800A9C50, 0x800A849C, 0x800B31DC, 0x800B30EC>*/ void jiggywiggy_return_from_puzzle(void);

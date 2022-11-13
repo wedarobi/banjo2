@@ -51,8 +51,6 @@ fn_flag_set_675_TRUE = 0x80103F7C;
 
 gsWorldGetSection = 0x800F0B8C;
 
-fn_Object_privStorPtr_get = 0x801057C4;
-
 fn_rom_fetch_WORD = 0x8001D8C0;
 
 fn_SPITEM_count_get = 0x800D87AC;

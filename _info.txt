@@ -36,7 +36,7 @@ To start the DLL autodiffer and watch for changes through dllmgr:
     mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary build/usa/dlls/chmrtannoy.lpo build/usa/dlls/chmrtannoy.out
 
 [binary compare between two files]
-    hexdiff expected/usa/dlls/chcoderoombits.raw build/usa/dlls/chcoderoombits.bin
+    hexdiff expected/usa/dlls/chcoderoombits.bin build/usa/dlls/chcoderoombits.bin
 
 [permuter run]
     python3 permuter.py --best-only --better-only --stack-diffs --no-context-output -j 16 nonmatchings/gzthread---DLL_gzthread_01_pri

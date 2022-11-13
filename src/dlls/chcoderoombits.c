@@ -7,7 +7,6 @@
 #include "include/hacks/helpers.h"
 
 
-void *fn_Object_privStorPtr_get(Object *, u32 idx); // 0x80100094, 0x800FAB54, 0x80105984, 0x801057C4
 
 
 
@@ -51,18 +50,17 @@ struct struct_unk00
     s32 a;
     f32 b;
     f32 c;
-};
+}; // size: 0x0C
 
-
-//! the "00" here in the name refers to it belonging to "aids00"
-struct chcoderoombits_00_privStor00
+//= the "_00_" here in the name refers to it belonging to "aids00"
+//# ps: privstor
+struct chcoderoombits_00_ps00
 {
 /* hex        */
 // /* 000 >>>>>> */ BYTE UNK_000[0x154];
 
-    struct struct_unk00 UNK_000[0x154 / 0x0C];
+    struct struct_unk00 UNK_000[0x154 / sizeof(struct struct_unk00)];
 }; // size: 0x154
-
 
 
 struct CheatInfo
@@ -78,33 +76,36 @@ struct CheatInfo
     u8    UNK_0B;
 };
 
+#include "include/hacks/cheatcipher_start.h"
+
 static struct CheatInfo cheatArr[] =
 {
-/*   0 */ { "IPWNBZ",            0, 0, 0, 0x00, 0x00, 0x00, FALSE, 0 }, // CHEATO
-/*   1 */ { "CWNBPWDQ",          0, 1, 0, 0x01, 0x11, 0x50, FALSE, 0 }, // FEATHERS
-/*   2 */ { "WSSQ",              0, 1, 0, 0x02, 0x11, 0x51, FALSE, 0 }, // EGGS
-/*   3 */ { "CNYYGDZZC",         0, 1, 0, 0x03, 0x11, 0x52, FALSE, 0 }, // FALLPROOF
-/*   4 */ { "PZKWFENIH",         0, 1, 0, 0x04, 0x11, 0x53, FALSE, 0 }, // HONEYBACK
-/*   5 */ { "AXHWEZU",           0, 1, 0, 0x05, 0x11, 0x54, FALSE, 0 }, // JUKEBOX
-/*   6 */ { "SWBAOSSF",          0, 1, 0, 0x06, 0x11, 0x55, FALSE, 0 }, // GETJIGGY
-/*   7 */ { "PZVOKS",            0, 1, 0, 0x0C, 0x11, 0x62, FALSE, 0 }, // HOMING
-/*   8 */ { "QXGWDENKAZ",        0, 1, 0, 0x07, 0x11, 0x56, TRUE,  0 }, // SUPERBANJO
-/*   9 */ { "QXGWDENTTF",        0, 1, 0, 0x08, 0x11, 0x57, TRUE,  0 }, // SUPERBADDY
-/*  10 */ { "PZKWFHOKS",         0, 1, 0, 0x09, 0x11, 0x58, TRUE,  0 }, // HONEYKING
-/*  11 */ { "KWQBHOKS",          0, 1, 0, 0x0A, 0x11, 0x59, TRUE,  0 }, // NESTKING
-/*  12 */ { "QDWPBNWC",          0, 1, 0, 0x01, 0x11, 0x50, TRUE,  0 }, // SREHTAEF
-/*  13 */ { "QSSW",              0, 1, 0, 0x02, 0x11, 0x51, TRUE,  0 }, // SGGE
-/*  14 */ { "CZZDGYYNC",         0, 1, 0, 0x03, 0x11, 0x52, TRUE,  0 }, // FOORPLLAF
-/*  15 */ { "HINEFWKZP",         0, 1, 0, 0x04, 0x11, 0x53, TRUE,  0 }, // KCABYENOH
-/*  16 */ { "UZEWHXA",           0, 1, 0, 0x05, 0x11, 0x54, TRUE,  0 }, // XOBEKUJ
-/*  17 */ { "FSSOABWS",          0, 1, 0, 0x06, 0x11, 0x55, TRUE,  0 }, // YGGIJTEG
-/*  18 */ { "SKOVZP",            0, 1, 0, 0x0C, 0x11, 0x62, TRUE,  0 }, // GNIMOH
-/*  19 */ { "AOSSFJOSSFQGWIONY", 0, 1, 0, 0x0B, 0x11, 0x5F, TRUE,  0 }, // JIGGYWIGGYSPECIAL
-/*  20 */ { "INQBYOQB",          0, 2, 0, 0x85, 0x11, 0x60, TRUE,  0 }, // CASTLIST
-/*  21 */ { "GYNFOBNSNOKQZK",    0, 3, 0, 0x00, 0x11, 0x61, TRUE,  0 }, // PLAYITAGAINSON
-/*     */ { NULL,                0, 0, 0, 0x00, 0x00, 0x00, FALSE, 0 },
+/*   0 */ { C H E A T O,                        0, 0, 0, 0x00, 0x00, 0x00, FALSE, 0 },
+/*   1 */ { F E A T H E R S,                    0, 1, 0, 0x01, 0x11, 0x50, FALSE, 0 },
+/*   2 */ { E G G S,                            0, 1, 0, 0x02, 0x11, 0x51, FALSE, 0 },
+/*   3 */ { F A L L P R O O F,                  0, 1, 0, 0x03, 0x11, 0x52, FALSE, 0 },
+/*   4 */ { H O N E Y B A C K,                  0, 1, 0, 0x04, 0x11, 0x53, FALSE, 0 },
+/*   5 */ { J U K E B O X,                      0, 1, 0, 0x05, 0x11, 0x54, FALSE, 0 },
+/*   6 */ { G E T J I G G Y,                    0, 1, 0, 0x06, 0x11, 0x55, FALSE, 0 },
+/*   7 */ { H O M I N G,                        0, 1, 0, 0x0C, 0x11, 0x62, FALSE, 0 },
+/*   8 */ { S U P E R B A N J O,                0, 1, 0, 0x07, 0x11, 0x56, TRUE,  0 },
+/*   9 */ { S U P E R B A D D Y,                0, 1, 0, 0x08, 0x11, 0x57, TRUE,  0 },
+/*  10 */ { H O N E Y K I N G,                  0, 1, 0, 0x09, 0x11, 0x58, TRUE,  0 },
+/*  11 */ { N E S T K I N G,                    0, 1, 0, 0x0A, 0x11, 0x59, TRUE,  0 },
+/*  12 */ { S R E H T A E F,                    0, 1, 0, 0x01, 0x11, 0x50, TRUE,  0 },
+/*  13 */ { S G G E,                            0, 1, 0, 0x02, 0x11, 0x51, TRUE,  0 },
+/*  14 */ { F O O R P L L A F,                  0, 1, 0, 0x03, 0x11, 0x52, TRUE,  0 },
+/*  15 */ { K C A B Y E N O H,                  0, 1, 0, 0x04, 0x11, 0x53, TRUE,  0 },
+/*  16 */ { X O B E K U J,                      0, 1, 0, 0x05, 0x11, 0x54, TRUE,  0 },
+/*  17 */ { Y G G I J T E G,                    0, 1, 0, 0x06, 0x11, 0x55, TRUE,  0 },
+/*  18 */ { G N I M O H,                        0, 1, 0, 0x0C, 0x11, 0x62, TRUE,  0 },
+/*  19 */ { J I G G Y W I G G Y S P E C I A L,  0, 1, 0, 0x0B, 0x11, 0x5F, TRUE,  0 },
+/*  20 */ { C A S T L I S T,                    0, 2, 0, 0x85, 0x11, 0x60, TRUE,  0 },
+/*  21 */ { P L A Y I T A G A I N S O N,        0, 3, 0, 0x00, 0x11, 0x61, TRUE,  0 },
+/*  22 */ { NULL,                               0, 0, 0, 0x00, 0x00, 0x00, FALSE, 0 },
 };
 
+#include "include/hacks/cheatcipher_end.h"
 
 
 
@@ -115,23 +116,23 @@ AIDS *DLL_chcoderoombits_00(void)
 
 static void fn_priv_00(Object *o)
 {
-
+    // TODO
 }
 
 static void fn_priv_01(Object *o)
 {
-
+    // TODO
 }
 
 static void fn_priv_02(Object *o, s32 interactionType, s32 a2)
 {
-
+    // TODO
 }
 
 // $a1: dialogId / assetId / fileId, whatever
 static void fn_priv_03(Object *o, s32 dialogId)
 {
-
+    // TODO
 }
 
 /*static*/ void fn_priv_04(Object *o)
@@ -153,12 +154,12 @@ static void fn_priv_03(Object *o, s32 dialogId)
 
 static void fn_priv_05(Object *o, char *a1)
 {
-
+    // TODO
 }
 
 static void fn_priv_06(Object *o, struct CheatInfo *a1)
 {
-
+    // TODO
 }
 
 /*static*/ void fn_priv_07(Object *o)
@@ -195,24 +196,22 @@ static void fn_priv_06(Object *o, struct CheatInfo *a1)
 
 void DLL_chcoderoombits_01(s32 a0, s32 a1)
 {
-
+    // TODO
 }
 
 static void fn_priv_09(s32 a0, s32 a1)
 {
-
+    // TODO
 }
 
 static void fn_priv_10(Object *o)
 {
-
+    // TODO
 }
-
-
 
 /*static*/ void fn_priv_11(Object *o, s32 a1)
 {
-    struct chcoderoombits_00_privStor00
+    struct chcoderoombits_00_ps00
         *p = fn_Object_privStorPtr_get(o, 0);
 
     switch (p->UNK_000[a1 + 3].a)
@@ -242,7 +241,7 @@ static void fn_priv_12(Object *o)
 {
     s32 i;
 
-    struct chcoderoombits_00_privStor00
+    struct chcoderoombits_00_ps00
         *p = fn_Object_privStorPtr_get(o, 0);
 
     for (i = 0; i < 26; i++)
@@ -268,11 +267,38 @@ static void fn_priv_12(Object *o)
             case 3: break;
         }
     }
-
 }
-void DLL_chcoderoombits_02(s32 a0, s32 a1, s32 a2, s32 a3, s32 sp10)
-{
 
+
+// TODO
+void DLL_chcoderoombits_02(s32 a0, s32 a1, s32 a2, u32 a3, OIS *ois)
+{
+    char cbuf[0x10];
+
+    s32 i;
+
+    static u8 buf[] = { 0xFF, 0, 0, 0, 0, 0, 0, 0 }; // TODO unknown length/type
+
+    Object *o = fn_ois_get_object(ois);
+
+    struct chcoderoombits_00_ps00 *store = fn_Object_privStorPtr_get(o, 0);
+
+    fn_800F3320(
+        cbuf,
+
+        (void *)((u32)a1 + 0x0C),
+
+        buf,
+        store->UNK_000[a0 + 1].b
+    );
+
+    for (i = 0; a1 < (a1 + a3 * 0x10); i++)
+    {
+        fn_800F2EA0(a2 + 0xC, cbuf);
+
+        a1 += 0x10;
+        a2 += 0x10;
+    }
 }
 
 /*static*/ s32 get_cheat_available_count(void)

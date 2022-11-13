@@ -20,7 +20,7 @@ typedef struct GenericSimpleArrHeader
 
 typedef struct Object
 {
-/* 0x00 */ struct ObjIdStruct *ObjIdStruct;
+/* 0x00 */ struct OIS *OIS;
 /* 0x04 */ Vec3f               position;
 // TODO: change to func, change in ml_bto and snooie
 /* 0x10 */ void               *AIDS_getter;
@@ -55,7 +55,7 @@ typedef struct Object
 /* 0x36 >>> */ BYTE UNK_0x36;
 /* 0x37 >>> */ BYTE UNK_0x37;
 /* 0x38 */ f32                 scale;
-/* 0x3C */ struct ObjIdStruct *ObjIdStruct_2; //? what for?
+/* 0x3C */ struct OIS *ObjIdStruct_2; //? what for?
 /* 0x40 */ struct Object      *shadowObject;
 /* 0x44 */ union
     {
@@ -224,7 +224,8 @@ typedef struct Object
 /* 0x9B */ u8                  opacity;
 } Object; // 0x9C
 
-typedef struct ObjIdStruct
+//# OIS: ObjIdStruct
+typedef struct OIS
 {
 /* 0x00 >>> */ void *PTR_0x00;
 /* 0x04 >>> */ void *PTR_0x04;
@@ -272,17 +273,133 @@ typedef struct ObjIdStruct
 /* 0x2D >>> */ BYTE  UNK_0x2D;
 /* 0x2E >>> */ BYTE  UNK_0x2E;
 /* 0x2F >>> */ BYTE  UNK_0x2F;
-} ObjIdStruct;
+} OIS;
 
+
+
+enum AIDS_bitfield_2
+{
+/* 80000000 */ ABF2_31 = (1 << 31),
+/* 40000000 */ ABF2_30 = (1 << 30),
+/* 20000000 */ ABF2_29 = (1 << 29),
+/* 10000000 */ ABF2_28 = (1 << 28),
+/* 08000000 */ ABF2_27 = (1 << 27),
+/* 04000000 */ ABF2_26 = (1 << 26),
+/* 02000000 */ ABF2_25 = (1 << 25),
+/* 01000000 */ ABF2_24 = (1 << 24),
+/* 00800000 */ ABF2_23 = (1 << 23),
+/* 00400000 */ ABF2_22 = (1 << 22),
+/* 00200000 */ ABF2_21 = (1 << 21),
+/* 00100000 */ ABF2_20 = (1 << 20),
+/* 00080000 */ ABF2_19 = (1 << 19),
+/* 00040000 */ ABF2_18 = (1 << 18),
+/* 00020000 */ ABF2_17 = (1 << 17),
+/* 00010000 */ ABF2_16 = (1 << 16),
+/* 00008000 */ ABF2_15 = (1 << 15),
+/* 00004000 */ ABF2_14 = (1 << 14),
+/* 00002000 */ ABF2_13 = (1 << 13),
+/* 00001000 */ ABF2_12 = (1 << 12),
+/* 00000800 */ ABF2_11 = (1 << 11),
+/* 00000400 */ ABF2_10 = (1 << 10),
+/* 00000200 */ ABF2_09 = (1 << 9),
+/* 00000100 */ ABF2_08 = (1 << 8),
+/* 00000080 */ ABF2_07 = (1 << 7),
+/* 00000040 */ ABF2_06 = (1 << 6),
+/* 00000020 */ ABF2_05 = (1 << 5),
+/* 00000010 */ ABF2_04 = (1 << 4),
+/* 00000008 */ ABF2_03 = (1 << 3),
+/* 00000004 */ ABF2_02 = (1 << 2),
+/* 00000002 */ ABF2_01 = (1 << 1),
+/* 00000001 */ ABF2_00 = (1 << 0),
+};
+
+/**
+ * Don't mix MODE0 and MODE1 bits
+ */
+
+#define AIDS_BITFIELD_1_MODE_1(x) (0x80000000 | (1 << (x)))
+#define AIDS_BITFIELD_1_MODE_0(x) (0x00000000 | (1 << (x)))
+
+enum AIDS_bitfield_1
+{
+// 31 - mode switch bit
+
+// mode1 bits
+/* C0000000 */ ABF1_M1_30 = AIDS_BITFIELD_1_MODE_1(30),
+/* A0000000 */ ABF1_M1_29 = AIDS_BITFIELD_1_MODE_1(29),
+/* 90000000 */ ABF1_M1_28 = AIDS_BITFIELD_1_MODE_1(28),
+/* 88000000 */ ABF1_M1_27 = AIDS_BITFIELD_1_MODE_1(27),
+/* 84000000 */ ABF1_M1_26 = AIDS_BITFIELD_1_MODE_1(26),
+/* 82000000 */ ABF1_M1_25 = AIDS_BITFIELD_1_MODE_1(25),
+/* 81000000 */ ABF1_M1_24 = AIDS_BITFIELD_1_MODE_1(24),
+/* 80800000 */ ABF1_M1_23 = AIDS_BITFIELD_1_MODE_1(23),
+/* 80400000 */ ABF1_M1_22 = AIDS_BITFIELD_1_MODE_1(22),
+/* 80200000 */ ABF1_M1_21 = AIDS_BITFIELD_1_MODE_1(21),
+/* 80100000 */ ABF1_M1_20 = AIDS_BITFIELD_1_MODE_1(20),
+/* 80080000 */ ABF1_M1_19 = AIDS_BITFIELD_1_MODE_1(19),
+/* 80040000 */ ABF1_M1_18 = AIDS_BITFIELD_1_MODE_1(18),
+/* 80020000 */ ABF1_M1_17 = AIDS_BITFIELD_1_MODE_1(17),
+/* 80010000 */ ABF1_M1_16 = AIDS_BITFIELD_1_MODE_1(16),
+/* 80008000 */ ABF1_M1_15 = AIDS_BITFIELD_1_MODE_1(15),
+/* 80004000 */ ABF1_M1_14 = AIDS_BITFIELD_1_MODE_1(14),
+/* 80002000 */ ABF1_M1_13 = AIDS_BITFIELD_1_MODE_1(13),
+/* 80001000 */ ABF1_M1_12 = AIDS_BITFIELD_1_MODE_1(12),
+/* 80000800 */ ABF1_M1_11 = AIDS_BITFIELD_1_MODE_1(11),
+/* 80000400 */ ABF1_M1_10 = AIDS_BITFIELD_1_MODE_1(10),
+/* 80000200 */ ABF1_M1_09 = AIDS_BITFIELD_1_MODE_1(9),
+/* 80000100 */ ABF1_M1_08 = AIDS_BITFIELD_1_MODE_1(8),
+/* 80000080 */ ABF1_M1_07 = AIDS_BITFIELD_1_MODE_1(7),
+/* 80000040 */ ABF1_M1_06 = AIDS_BITFIELD_1_MODE_1(6),
+/* 80000020 */ ABF1_M1_05 = AIDS_BITFIELD_1_MODE_1(5),
+/* 80000010 */ ABF1_M1_04 = AIDS_BITFIELD_1_MODE_1(4),
+/* 80000008 */ ABF1_M1_03 = AIDS_BITFIELD_1_MODE_1(3),
+/* 80000004 */ ABF1_M1_02 = AIDS_BITFIELD_1_MODE_1(2),
+/* 80000002 */ ABF1_M1_01 = AIDS_BITFIELD_1_MODE_1(1),
+/* 80000001 */ ABF1_M1_00 = AIDS_BITFIELD_1_MODE_1(0),
+
+// mode0 bits
+/* 40000000 */ ABF1_M0_30 = AIDS_BITFIELD_1_MODE_0(30),
+/* 20000000 */ ABF1_M0_29 = AIDS_BITFIELD_1_MODE_0(29),
+/* 10000000 */ ABF1_M0_28 = AIDS_BITFIELD_1_MODE_0(28),
+/* 08000000 */ ABF1_M0_27 = AIDS_BITFIELD_1_MODE_0(27),
+/* 04000000 */ ABF1_M0_26 = AIDS_BITFIELD_1_MODE_0(26),
+/* 02000000 */ ABF1_M0_25 = AIDS_BITFIELD_1_MODE_0(25),
+/* 01000000 */ ABF1_M0_24 = AIDS_BITFIELD_1_MODE_0(24),
+/* 00800000 */ ABF1_M0_23 = AIDS_BITFIELD_1_MODE_0(23),
+/* 00400000 */ ABF1_M0_22 = AIDS_BITFIELD_1_MODE_0(22),
+/* 00200000 */ ABF1_M0_21 = AIDS_BITFIELD_1_MODE_0(21),
+/* 00100000 */ ABF1_M0_20 = AIDS_BITFIELD_1_MODE_0(20),
+//# force maintain in savestate?
+/* 00080000 */ ABF1_M0_19 = AIDS_BITFIELD_1_MODE_0(19),
+/* 00040000 */ ABF1_M0_18 = AIDS_BITFIELD_1_MODE_0(18),
+/* 00020000 */ ABF1_M0_17 = AIDS_BITFIELD_1_MODE_0(17),
+/* 00010000 */ ABF1_M0_16 = AIDS_BITFIELD_1_MODE_0(16),
+/* 00008000 */ ABF1_M0_15_ALWAYS_DROP_HEALTH_HONEYCOMB = AIDS_BITFIELD_1_MODE_0(15),
+/* 00004000 */ ABF1_M0_14 = AIDS_BITFIELD_1_MODE_0(14),
+/* 00002000 */ ABF1_M0_13 = AIDS_BITFIELD_1_MODE_0(13),
+/* 00001000 */ ABF1_M0_12 = AIDS_BITFIELD_1_MODE_0(12),
+/* 00000800 */ ABF1_M0_11 = AIDS_BITFIELD_1_MODE_0(11),
+/* 00000400 */ ABF1_M0_10_DO_NOT_SAVE_IN_SAVESTATE = AIDS_BITFIELD_1_MODE_0(10),
+/* 00000200 */ ABF1_M0_09 = AIDS_BITFIELD_1_MODE_0(9),
+/* 00000100 */ ABF1_M0_08 = AIDS_BITFIELD_1_MODE_0(8),
+/* 00000080 */ ABF1_M0_07 = AIDS_BITFIELD_1_MODE_0(7),
+/* 00000040 */ ABF1_M0_06 = AIDS_BITFIELD_1_MODE_0(6),
+/* 00000020 */ ABF1_M0_05 = AIDS_BITFIELD_1_MODE_0(5),
+/* 00000010 */ ABF1_M0_04_MATCH_ROTATION_TO_FLOOR_SLOPE = AIDS_BITFIELD_1_MODE_0(4),
+/* 00000008 */ ABF1_M0_03 = AIDS_BITFIELD_1_MODE_0(3),
+/* 00000004 */ ABF1_M0_02 = AIDS_BITFIELD_1_MODE_0(2),
+/* 00000002 */ ABF1_M0_01 = AIDS_BITFIELD_1_MODE_0(1),
+/* 00000001 */ ABF1_M0_00 = AIDS_BITFIELD_1_MODE_0(0),
+};
 
 typedef struct AIDS
 {
            /*enum AIDX */
-/* 0x00 */ u16 aidx     : 16;
+/* 0x00 */ u16    aidx;
            /*enum ACTOR*/
-/* 0x02 */ u16 actorIdx : 16;
+/* 0x02 */ u16    actorIdx;
            /*enum MODEL*/
-/* 0x04 */ u16 modelIdx : 16;
+/* 0x04 */ u16    modelIdx;
 /* 0x06 */ u16    spawnAnimOffset;
 /* 0x08 */ void  *animListPtr;
 /* 0x0C */ void (*fn_update)(void *);
@@ -294,8 +411,10 @@ typedef struct AIDS
 /* 0x1B */ BYTE   field_0x1b;
 /* 0x1C */ f32    shadowScale;
            /*FLAG*/
+           //# (default: 0) the object is not spawned if the bit at this flag idx is TRUE
 /* 0x20 */ u16    despawnFlag;
 /* 0x22 */ HALF   field_0x22;
+           /*enum AIDS_bitfield_2*/
 /* 0x24 */ u32    bitfield2;
 /* 0x28 */ void (*field_0x28)(void *);
 /* 0x2C */ void (*field_0x2C)(void *);
@@ -303,7 +422,8 @@ typedef struct AIDS
 /* 0x32 */ u16    tmpStorageLen2;
 /* 0x34 */ void (*fn_init)(void *);
 /* 0x38 */ struct Object *(*fn_alloc)(void);
-/* 0x3C */ u32    bitfield;
+           /*enum AIDS_bitfield_1*/
+/* 0x3C */ u32    bitfield1;
 /* 0x40 */ void (*fn_interaction)(void *);
 /* 0x44 */ WORD   field_0x44;
 } AIDS;

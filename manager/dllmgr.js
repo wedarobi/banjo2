@@ -2622,6 +2622,7 @@ async function dll_full_build_multi(dllNames)
             //# We don't want too many OK lines, too messy
             let filtered_results = [];
             let overflowed = false;
+            const max_ok_limit = 3;
 
             for (let i = 0; i < results.length; i++)
             {
@@ -2648,7 +2649,7 @@ async function dll_full_build_multi(dllNames)
 
                 if (colour === MATCH_COLOURS.OK)
                 {
-                    if (numDlls.OK > 5)
+                    if (numDlls.OK > max_ok_limit)
                     {
                         filter_passed = false;
                         overflowed    = true;
@@ -2664,10 +2665,10 @@ async function dll_full_build_multi(dllNames)
                 //# Add the "+ XX more" line
                 filtered_results.push(
                     gct(
-                        `+ ${numDlls.OK - 5} more `
+                        `+ ${numDlls.OK - max_ok_limit} more `
                             .padEnd(
                                 calc_max_width_for_box_contents(filtered_results),
-                                "-"
+                                "─"
                             ),
                         "green"
                     )

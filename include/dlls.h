@@ -830,8 +830,8 @@
 /*@oooo*/ s32  DLL_glgamestore_01_load_global_data_from_EEP(s32 a0, void *dst);
 /*@oooo*/ s32  DLL_glgamestore_02_save_file_slot_to_EEP(s32 a0, void *a1);
 /*@oooo*/ s32  DLL_glgamestore_03_save_global_data_to_EEP(s32 a0, void *a1);
-/*@oooo*/ bool DLL_glgamestore_04_corrupt_dummy_slot_header(s32 a0);
-/*@oooo*/ bool DLL_glgamestore_05_corrupt_global_data_header(s32 a0);
+/*@oooo*/ bool DLL_glgamestore_04_corrupt_normal_slot_header(s32 a0);
+/*@oooo*/ bool DLL_glgamestore_05_corrupt_global_slot_header(s32 a0);
 /* $ glglobaldata */
 /*@oooo*/ void DLL_glglobaldata_00_useless(void);
 /*@oooo*/ bool DLL_glglobaldata_01_if_global_data_header_valid(u8 *data);

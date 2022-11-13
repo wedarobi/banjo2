@@ -79,7 +79,7 @@ static void corrupt_global_data_header(s32 a0)
 
     for (i = 0; i < 2; i++)
         if (i != a0)
-            DLL_glgamestore_05_corrupt_global_data_header(i);
+            DLL_glgamestore_05_corrupt_global_slot_header(i);
 }
 
 static s32 load_global_data_from_eep_to_buffer(void **ptr)

@@ -107,12 +107,12 @@ static bool force_corrupt_slot_header(s32 a0)
     return res;
 }
 
-bool DLL_glgamestore_04_corrupt_dummy_slot_header(s32 a0)
+bool DLL_glgamestore_04_corrupt_normal_slot_header(s32 a0)
 {
     return force_corrupt_slot_header(get_eep_offset_for_slotidx(a0));
 }
 
-bool DLL_glgamestore_05_corrupt_global_data_header(s32 a0)
+bool DLL_glgamestore_05_corrupt_global_slot_header(s32 a0)
 {
     return force_corrupt_slot_header(global_slot_size_for_count(a0));
 }

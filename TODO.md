@@ -95,7 +95,10 @@
 
 
 
-
+- speed up dllmgr build script by removing shit it doesnt need
+- using [glglobalsettings] as an example, fix the C parsing functions to deal with preproc if/elses
+    - e.g. when entire functions are put behind if/elses (i.e. duplicated) autodetection only sees the first
+        the line count seems ok though
 
 
 

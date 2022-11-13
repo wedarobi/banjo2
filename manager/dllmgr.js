@@ -1520,6 +1520,14 @@ async function dll_process(dll, objFilePath, romVer,toSkip=false)
                     }
                 }
 
+                //# Sort pub functions by offset
+                pubFns.sort((a, b) =>
+                {
+                    if      (a.loc < b.loc) return -1;
+                    else if (a.loc > b.loc) return  1;
+                    else                    return  0;
+                });
+
                 //!
                 DEBUG_LOG(pubFns)
 

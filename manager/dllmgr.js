@@ -2340,9 +2340,25 @@ function _order_colours(str)
     switch (str.substr(0, 5))
     {
         case `\x1b[${COLOUR_CODES[MATCH_COLOURS.OK ]};`: return 10;
-        case `\x1b[${COLOUR_CODES[MATCH_COLOURS.CMP]};`: return 20;
+        case `\x1b[${COLOUR_CODES[MATCH_COLOURS.CMP]};`:
+        {
+            //# The more % signs, the more builds at least succeeded, so show them higher
+            let countPercentChars = str.match(/%/g)?.length;
+            if (!countPercentChars)
+                countPercentChars = 0;
+
+            let countOKs = str.match(/OK/g)?.length;
+            if (!countOKs)
+                countOKs = 0;
+
+            /**
+             * [countOKs * (allRomVers.length + 1)]:
+             * If any romver gives an OK, make it appear above any that do not have a single OK.
+             */
+            return 4000 - countPercentChars - (countOKs * (allRomVers.length + 1));
+        }
         //# Unknown DLLs should be at the very bottom
-        case `\x1b[${COLOUR_CODES[MATCH_COLOURS.UNK]};`: return 2000;
+        case `\x1b[${COLOUR_CODES[MATCH_COLOURS.UNK]};`: return 8000;
         case `\x1b[${COLOUR_CODES[MATCH_COLOURS.BAD]};`:
         {
             //# The more % signs, the more builds at least succeeded, so show them higher
@@ -2355,10 +2371,10 @@ function _order_colours(str)
                 countOKs = 0;
 
             /**
-             * [countOKs * (allRomVers.length + 1)]: If any romver gives an OK, make it appear
-             * any red DLLs that do not have a single OK.
+             * [countOKs * (allRomVers.length + 1)]:
+             * If any romver gives an OK, make it appear above any that do not have a single OK.
              */
-            return 1000 - countPercentChars - (countOKs * (allRomVers.length + 1));
+            return 7000 - countPercentChars - (countOKs * (allRomVers.length + 1));
         }
         default:
             return 0;

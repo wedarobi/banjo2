@@ -255,13 +255,19 @@ function ensureDir(path)
  * An absolute path to the repo root, given that this
  * file lives 1 folder down from it.
  */
-const gRootDir = __dirname + path.sep + ".." + path.sep;
-const gCurrDir = __dirname + path.sep;
+const gRootDir = path.resolve(__dirname + path.sep + ".." + path.sep) + path.sep;
+const gCurrDir = path.resolve(__dirname + path.sep) + path.sep;
+//# rp: root path
+const rp = p => path.resolve(gRootDir + p);
 
 const CMD =
 {
     cc:        gRootDir + "tools/ido5.3_recomp/cc",
-    include:   "-I . -I include -I include/2.0L -I include/2.0L/PR",
+    // include:   "-I . -I include -I include/2.0L -I include/2.0L/PR",
+    include:   `-I ${rp(".")} -I ${rp("include")} -I ${rp("include/2.0L")} -I ${rp("include/2.0L/PR")}`,
+    objdump:   "mips-linux-gnu-objdump",
+    as:        "mips-linux-gnu-as",
+    ld:        "mips-linux-gnu-ld",
 };
 
 async function dll_get_if_to_skip_build(dll, romVer)
@@ -332,6 +338,7 @@ function ALIGN(value, pad)
  */
 var gSyscallIdxMap;
 var allDllNames = new Set();
+var gCurrentlyLoadedSyscallIdxMap = "";
 
 /**
  * Map between <DLL_name, callTableOffset>
@@ -342,6 +349,10 @@ var gCallTableOffsetMap;
 
 async function init_gSyscallIdx_map(romVer)
 {
+    if (gCurrentlyLoadedSyscallIdxMap === romVer)
+        //# Already loaded
+        return;
+
     const fSyscallIdx = gCurrDir + "enum/syscallidx.txt";
 
     if (!fs.existsSync(fSyscallIdx))
@@ -392,6 +403,8 @@ async function init_gSyscallIdx_map(romVer)
     }
 
     gSyscallIdxMap = o;
+
+    gCurrentlyLoadedSyscallIdxMap = romVer;
 }
 
 async function init_gCallTableOffset_map(romVer)
@@ -490,6 +503,17 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
             ensureDir(gRootDir + `expected/${romVer}/dlls`);
 
             await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.raw`, buf_vani);
+
+            //# Decrypted header
+            let buf_vani_dec = Buffer.alloc(buf_vani.length);
+            buf_vani.copy(buf_vani_dec);
+            {
+                let checksum = dll_get_checksum(buf_vani_dec.slice(0x10));
+                buf_vani_dec.writeUint32BE(buf_vani_dec.readUint32BE(0x00) ^ checksum[0], 0x00);
+                buf_vani_dec.writeUint32BE(buf_vani_dec.readUint32BE(0x08) ^ checksum[1], 0x08);
+
+                await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.bin`, buf_vani_dec);
+            }
         }
     }
     else
@@ -923,6 +947,8 @@ async function dll_source_edit_location_dump(dllName, romVer)
                     return;
                 }
 
+                //# info: NAME OFFSET SIZE
+
                 res += `\nvani: ${vani_info[fidx]}`;
                 res += `\ncust: ${cust_info[fidx]}`;
                 res += `\n${fidx+1} ${info.fns.length}`;
@@ -1295,6 +1321,88 @@ function elf_get_syms(elf, symNameArr)
     }
 
     return out;
+}
+
+/**
+ * Read a (decompressed) DLL file and get information about its structure
+ * @param {string} dll name of the DLL
+ * @param {string} romVer 
+ * @param {boolean} vanilla if true, fetch from the "expected" folder. Else, from the "build" folder.
+ */
+async function dll_get_structure(dll, romVer, vanilla=false)
+{
+    // await update_rom_version(romVer);
+
+    // let syscallIdx = gSyscallIdxMap[dll];
+
+    //- Fetch the encryption key needed to encrypt symbolRefs with bootcode
+    // let encryptionKey = gBaseroms[romVer].readUint16BE(0x40 + (syscallIdx * 4) + 2);
+
+    let filepath = vanilla
+        //# vani
+        ? `expected/${romVer}/dlls/${dll}.raw`
+        //# cust
+        : `build/${romVer}/dlls/${dll}bin.raw`;
+
+    let b = await fsp.readFile(filepath);
+
+    //- Calculate checksum
+    let checksum = dll_get_checksum(b.slice(0x10));
+    b.writeUint32BE(b.readUint32BE(0x00) ^ checksum[0], 0x00);
+    b.writeUint32BE(b.readUint32BE(0x08) ^ checksum[1], 0x08);
+
+    {
+        let sizes =
+        {
+            text:      b.readUint16BE(0x00) * 0x10,
+            data:      b.readUint16BE(0x04) * 0x10,
+            rodata:    b.readUint16BE(0x02) * 0x10,
+            bss:       b.readUint16BE(0x06) * 0x10,
+            name:      b.readUint8(0x0E),
+            //# number of functions
+            functions: b.readUint16BE(0x08),
+            //# number of symrefs
+            symrefs:   b.readUint16BE(0x0A),
+        };
+
+        let offsets;
+        {
+            let size_preheader = 0x10;
+            let size_header    = 0x24;
+            let size_funcptrs  = (b.readUint16BE(0x08) + 1) * 4;
+            let size_symrefs   = b.readUInt16BE(0x0A) * 2;
+            let size_dllname   = b.readUInt8(0x0E);
+
+            let text = size_preheader
+                     + size_header
+                     + size_funcptrs
+                     + ALIGN(size_dllname, 4)
+                     + size_symrefs;
+
+            text = ALIGN(text, 0x10);
+
+            let rodata = text + sizes.text;
+            let data   = rodata + sizes.rodata;
+
+            offsets =
+            {
+                text,
+                data,
+                rodata,
+                name:         size_preheader + size_header + size_funcptrs,
+                symrefs:      size_preheader + size_header + size_funcptrs + ALIGN(size_dllname, 4),
+                callrouter:   0x10,
+                syscallidx:   0x2C,
+                calltableidx: 0x2E,
+                pubfnarr:     0x38,
+            };
+        }
+
+        return {
+            offsets,
+            sizes,
+        };
+    }
 }
 
 /**
@@ -3041,6 +3149,270 @@ async function dll_analysis_text_dump(dllInfo, outputPath)
     await fsp.writeFile(outputPath.replace(/\/+$/g) + `/${dllInfo.dllName}_fndump.txt`, res.join("\r\n"));
 }
 
+const MIPS_regs = new Set(
+[
+    "zero", "at", "v0", "v1",
+    "a0", "a1", "a2", "a3",
+    "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
+    "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",
+    "t8", "t9",
+    "k0", "k1", "gp", "sp", "fp", "ra",
+]);
+
+function asm_operand_sanitise(operand)
+{
+    //# simple register
+    if (MIPS_regs.has(operand))
+        return "$" + operand
+
+    //# dereferencing register
+    if (/\(.+\)+$/.test(operand))
+    {
+        let m = operand.match(/\((.+)\)+$/);
+        if (!m || m.length < 2)
+            FATAL(`[asm] regex match failed for dereferenced operand: ${operand}`);
+
+        let prefix = operand.replace(/\(.+$/g, "");
+
+        return prefix + "($" + m[1] + ")";
+    }
+
+    //# no match
+    return operand;
+}
+
+/**
+ * Filter output to make it ld-friendly
+ * @param {string} line 
+ */
+function asm_line_sanitise(line)
+{
+    let isEmpty = line.trim() === "";
+
+    let parts = line.split(/\t/g).map(e => e.trim());
+
+    while (parts.length < 3)
+        parts.push("")
+
+    let lineno     = parts[0];
+    let instr      = parts[1];
+    let operandgrp = parts[2];
+
+    //- Sanitise operands (prefix $ to regs)
+    let operands = operandgrp.split(",");
+    operands = operands.map(asm_operand_sanitise);
+
+    //- Fix branch labels
+    if (instr.startsWith("b"))
+    {
+        let branch_target = operands.pop();
+        branch_target = branch_target.replace(/^0x(?:0)*/g, "_");
+        operands.push(branch_target);
+    }
+
+    return (!isEmpty ? "_" : "") + lineno + "\t" + instr + "\t" + operands.join(",");
+}
+
+async function dll_permute_session_start()
+{
+    /**
+     * Autodetect the last edited function, and trigger a permute session for it.
+     * 
+     * We use the _curr_dll_fn txt files that we dumped for the diff script
+     * to detect the last used function.
+     */
+
+
+    const romVer = "usa"; //!
+
+    await update_rom_version(romVer);
+
+    const readpath = gCurrDir + `watches/_curr_dll_fn_${romVer}.txt`;
+
+    let infoArr = (await fsp.readFile(readpath)).toString().split(/(?:\r?\n)+/g);
+
+    /**
+     * EXAMPLE:
+     **************************
+     * gzreg
+     * print_enabled_bits
+     * vani: prv_000 0x220 0xCC
+     * cust: prv_000 0x220 0xCC
+     * 1 5
+     */
+    let info;
+    {
+        let dll    = infoArr[0];
+        let fnName = infoArr[1];
+
+        let fnCounters = infoArr[4].split(" ");
+        let fnIdx = parseInt(fnCounters[0]);
+        let fnCnt = parseInt(fnCounters[1]);
+
+        let vani = infoArr[2].substr(6).split(" ");
+        let cust = infoArr[3].substr(6).split(" ");
+
+        info =
+        {
+            dll,
+            fnName,
+
+            vani:
+            {
+                name:   vani[0],
+                offset: parseInt(vani[1], 16),
+                size:   parseInt(vani[2], 16),
+            },
+            cust:
+            {
+                name:   cust[0],
+                offset: parseInt(cust[1], 16),
+                size:   parseInt(cust[2], 16),
+            },
+
+            fnIdx,
+            fnCnt,
+
+            //# start of .text
+            textOffset: 0,
+        };
+    }
+
+    //# pmu: permuter
+    let pmuBaseFolder = gRootDir + `tools/decomp-permuter2/`;
+    // let pmuBaseFolder = gRootDir + `tools/decomp-permuter/`;
+    let pmuDumpFolder = pmuBaseFolder + `nonmatchings/`;
+
+    ensureDir(pmuDumpFolder);
+
+    let identifier = `${info.dll}---${info.fnName}`;
+
+    //- Ensure (clean) folder
+    let pmuFuncFolder = pmuDumpFolder + identifier + path.sep;
+    {
+        if (fs.existsSync(pmuFuncFolder))
+        {
+            //# We need to delete it
+            try
+            {
+                await fsp.rm(pmuFuncFolder, { recursive: true });
+            }
+            catch (err)
+            {
+                //# Could not remove!
+                FATAL(`Could not remove folder contents: ${pmuFuncFolder}`);
+            }
+        }
+
+        await fsp.mkdir(pmuFuncFolder);
+    }
+
+    //- Create required files
+    {
+        //# compile.sh
+        {
+            let file = "";
+            file += `#!/usr/bin/env bash\n`;
+            file += `INPUT="$(realpath "$1")"\n`;
+            file += `OUTPUT="$(realpath "$3")"\n`;
+            file += `cd ${gRootDir}\n`;
+            file += `${CMD.cc} -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm -woff 649,807,838,624 -O2 -mips2 -D_FINALROM -DF3DEX2_GBI ${CMD.include} -DVERSION_${romVer.toUpperCase()} "$INPUT" -o "$OUTPUT"\n`;
+
+            let target = pmuFuncFolder + "compile.sh";
+
+            await fsp.writeFile(target, file);
+
+            await spawn(`chmod +x ${target}`);
+        }
+
+        //# function.txt
+        {
+            // await fsp.writeFile(pmuFuncFolder + "function.txt", info.fnName);
+        }
+
+        //# settings.toml
+        {
+            let contents = "";
+            contents += `func_name = "${info.fnName}"\n`;
+            contents += `compiler_type = "ido"\n`;
+
+            await fsp.writeFile(pmuFuncFolder + "settings.toml", contents);
+        }
+
+        //# target.o
+        {
+            let targetInput = gRootDir + `expected/${romVer}/dlls/${info.dll}.raw`;
+
+            let targetTmp = `${pmuFuncFolder}target.raw`;
+            let targetAsm = `${pmuFuncFolder}target.s`;
+            let targetObj = `${pmuFuncFolder}target.o`;
+
+            //# Copy the desired function
+            let buf = await fsp.readFile(targetInput);
+            {
+                let start = info.vani.offset;
+                let size  = info.vani.size;
+
+                buf = buf.slice(start, start + size);
+            }
+            await fsp.writeFile(targetTmp, buf);
+
+            /** @type {string} */
+            let stdout;
+            let stdout_filtered;
+
+            //# Disassemble
+            let cmd_disasm = `${CMD.objdump} -dDz -bbinary -mmips -EB ${targetTmp}`;
+            stdout = await spawn(cmd_disasm, false);
+            stdout_filtered = stdout
+                .split(/\r?\n/g)
+                .slice(7)
+                .map(line => line.substring(0, line.indexOf(":") + 1) + "\t" + line.replace(/^.+[0-9a-f]{8} \t/g, ""))
+                .map(line => line.trim())
+                .map(asm_line_sanitise)
+
+            //- Transform assembly further
+            {
+                //# Add prelude
+                stdout_filtered.unshift(
+                    `.global ${info.fnName}`,
+                    `.text`,
+                    `${info.fnName}:`,
+                );
+            }
+
+            await fsp.writeFile(targetAsm, stdout_filtered.join("\n"));
+
+            //# Assemble
+            let cmd_asm = `${CMD.as} -march=vr4300 -mabi=32 ${targetAsm} -o ${targetObj}`;
+            stdout = await spawn(cmd_asm, false);
+
+            //# Remove tmp
+            await fsp.unlink(targetTmp);
+        }
+
+        //# base.c
+        {
+            let targetInput  = gRootDir + `src/dlls/${info.dll}.c`;
+            let targetOutput = pmuFuncFolder + `base.c`;
+
+            //- Transform file
+            let b;
+            {
+                b = (await fsp.readFile(targetInput)).toString();
+
+                //# Make the function non-static if it is static
+                // b = b.replace(new RegExp(`static\\s+([^\\n]*)${info.fnName}`), `$1${info.fnName}`);
+
+                //# Make functions non-static if they are
+                b = b.replace(new RegExp(`static\\s+([^\\n]*[^ (]+\\s*\\()`), `$1`);
+            }
+
+            await fsp.writeFile(targetOutput, b);
+        }
+    }
+}
+
 const argv = process.argv.slice(2);
 
 function _ARG(letter)
@@ -3063,7 +3435,7 @@ async function main()
     //- Set version for ROM you want to work with
     gRomVer = "usa"; //= default
 
-    update_rom_version(gRomVer);
+    await update_rom_version(gRomVer);
 
 
     let dllNames =
@@ -3157,6 +3529,7 @@ async function main()
 }
 
 main();
+// dll_permute_session_start();
 
 
 

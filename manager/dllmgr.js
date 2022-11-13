@@ -2619,8 +2619,14 @@ async function dll_full_build_multi(dllNames)
         {
             let results = results_raw;
 
+            //# We don't want too many OK lines, too messy
+            let filtered_results = [];
+            let overflowed = false;
+
             for (let i = 0; i < results.length; i++)
             {
+                let filter_passed = true;
+
                 let str = results[i];
 
                 let colour =
@@ -2639,7 +2645,36 @@ async function dll_full_build_multi(dllNames)
                 }
 
                 results[i] = `${gct(LEGEND_MARK + " ", colour)}` + str;
+
+                if (colour === MATCH_COLOURS.OK)
+                {
+                    if (numDlls.OK > 5)
+                    {
+                        filter_passed = false;
+                        overflowed    = true;
+                    }
+                }
+
+                if (filter_passed)
+                    filtered_results.push(results[i]);
             }
+
+            if (overflowed)
+            {
+                //# Add the "+ XX more" line
+                filtered_results.push(
+                    gct(
+                        `+ ${numDlls.OK - 5} more `
+                            .padEnd(
+                                calc_max_width_for_box_contents(filtered_results),
+                                "-"
+                            ),
+                        "green"
+                    )
+                );
+            }
+
+            results_raw = filtered_results;
         }
     }
 

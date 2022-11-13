@@ -1,0 +1,7 @@
+#!/bin/sh
+
+(
+    cd tools/decomp-permuter && python3 autopermute.py
+)
+
+

@@ -1,8 +1,49 @@
+[manager/dllmgr.js]
+
+
 To compile all DLLs and watch for changes:
     $ node manager/dllmgr.js -w
 
 To start the DLL autodiffer and watch for changes through dllmgr:
     $ cd ~/n64/decomp/bt/tools/asm-differ/diff_dll
     $ ./diff -r usa -a
+
+
+
+
+
+// use either of these?:
+//   mips-linux-gnu-objdump
+//   mips64-linux-gnuabi64-objdump
+
+
+// Steps are below, (generally) in order
+
+
+[check disassembly of ELF]
+        mips64-linux-gnuabi64-objdump -d build/usa/dlls/dbpalette.o
+    or
+        mips-linux-gnu-objdump -d build/usa/dlls/dbpalette.o
+
+[compiler]
+    tools/ido5.3_recomp/cc -c -Wab,-r4300_mul -non_shared -G 0 -Xfullwarn -Xcpluscomm  -signed -O2 -mips2 -D_FINALROM -DF3DEX2_GBI -I . -I include -I include/2.0L -I include/2.0L/PR src/dlls/cosection.c
+
+[linker]
+    mips-linux-gnu-ld -T misc/linkerscript/dll.ld -T ver/usa/syms/undefined.txt build/usa/dlls/chmrtannoy.o -o build/usa/dlls/chmrtannoy.lpo
+
+[objdump]
+    // Copies only the sections we want (.text, .rodata, .data, .bss)
+    mips-linux-gnu-objcopy -I elf32-tradbigmips -O binary build/usa/dlls/chmrtannoy.lpo build/usa/dlls/chmrtannoy.out
+
+[binary compare between two files]
+    hexdiff expected/usa/dlls/chcoderoombits.raw build/usa/dlls/chcoderoombits.bin
+
+[permuter run]
+    python3 permuter.py --best-only --better-only --stack-diffs --no-context-output -j 16 nonmatchings/gzthread---DLL_gzthread_01_pri
+nt_page_THREADS/
+
+
+
+
 
 

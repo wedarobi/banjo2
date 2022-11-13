@@ -1,0 +1,9 @@
+#!/bin/sh
+
+(
+    cd tools/asm-differ/diff_dll/ && python3 diff3.py -w3 $@
+)
+
+# python3 diff3.py -w $@
+# python3 diff3.py -w3 $@
+#python3 diff3.py -w3s $@

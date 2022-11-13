@@ -336,9 +336,10 @@ function ALIGN(value, pad)
 /**
  * Map between <DLL_name, syscallIdx>
  */
-var gSyscallIdxMap;
 var allDllNames = new Set();
 var gCurrentlyLoadedSyscallIdxMap = "";
+
+var gSyscallIdxMap_rv = {};
 
 /**
  * Map between <DLL_name, callTableOffset>
@@ -349,9 +350,9 @@ var gCallTableOffsetMap;
 
 async function init_gSyscallIdx_map(romVer)
 {
-    if (gCurrentlyLoadedSyscallIdxMap === romVer)
-        //# Already loaded
-        return;
+    // if (romVer in gSyscallIdxMap_rv)
+    //     //# Already loaded
+    //     return;
 
     const fSyscallIdx = gCurrDir + "enum/syscallidx.txt";
 
@@ -402,7 +403,7 @@ async function init_gSyscallIdx_map(romVer)
         }
     }
 
-    gSyscallIdxMap = o;
+    gSyscallIdxMap_rv[romVer] = o;
 
     gCurrentlyLoadedSyscallIdxMap = romVer;
 }
@@ -443,7 +444,7 @@ async function init_gCallTableOffset_map(romVer)
  */
 async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, compressed=false, toSkip=false)
 {
-    let syscallIdx = gSyscallIdxMap[dllName];
+    let syscallIdx = gSyscallIdxMap_rv[romVer][dllName];
 
     let dllTableStart =
     {
@@ -1335,7 +1336,7 @@ async function dll_get_structure(dll, romVer, vanilla=false)
 {
     // await update_rom_version(romVer);
 
-    // let syscallIdx = gSyscallIdxMap[dll];
+    // let syscallIdx = gSyscallIdxMap_rv[romVer][dll];
 
     //- Fetch the encryption key needed to encrypt symbolRefs with bootcode
     // let encryptionKey = gBaseroms[romVer].readUint16BE(0x40 + (syscallIdx * 4) + 2);
@@ -1424,17 +1425,17 @@ async function dll_get_structure(dll, romVer, vanilla=false)
  * @param {string} dll         name of dll, as a string. e.g. "cosection"
  * @param {string} objFilePath the path to the .o file to use as input
  */
-async function dll_process(dll, objFilePath, romVer,toSkip=false)
+async function dll_process(dll, objFilePath, romVer, toSkip=false)
 {
     // output path
     const binFilePath = objFilePath.replace(/\.o$/, ".bin");
 
     const pubFnDumpPath = objFilePath.replace(/\.o$/, "_pubfndump.txt");
 
-    if (!(dll in gSyscallIdxMap))
+    if (!(dll in gSyscallIdxMap_rv[romVer]))
         FATAL(`DLL [${dll}] not in curr rom version [${romVer}]`);
 
-    let syscallIdx = gSyscallIdxMap[dll];
+    let syscallIdx = gSyscallIdxMap_rv[romVer][dll];
 
     //- Fetch the encryption key needed to encrypt symbolRefs with bootcode
     let encryptionKey = gBaseroms[romVer].readUint16BE(0x40 + (syscallIdx * 4) + 2);
@@ -2412,6 +2413,10 @@ function _order_dll_result_strings_by_status(rArr)
  */
 var gDllHashMap = {};
 
+/**
+ * 
+ * @param {string[]} dllNames 
+ */
 async function dll_full_build_multi(dllNames)
 {
     await HELPER_parse_out_dll_linker_symbols();
@@ -2420,7 +2425,6 @@ async function dll_full_build_multi(dllNames)
     // const SHOW_FILE_SIZES = false;
 
     let results_raw = [];
-    let results_cmp = [];
 
     /**
      *
@@ -2440,12 +2444,14 @@ async function dll_full_build_multi(dllNames)
      */
     let computedTotalSize = { usa: 0, jpn: 0, eur: 0, aus: 0 };
 
-    // TODO optimise across allRomVers with Promise.all
-
-    for (let [rvIdx, romVer] of allRomVers.entries())
-    {
+    //# Don't optimise this
+    for (let romVer of allRomVers)
         await update_rom_version(romVer);
 
+    //- Optimise across allRomVers with Promise.all
+    // for (let [rvIdx, romVer] of allRomVers.entries())
+    await Promise.all(allRomVers.map((romVer, rvIdx) => new Promise(async (resolve, reject) =>
+    {
         //- Optimise across all DLLs for a specific version with Promise.all
         // for (let [idx, dllName] of dllNames.entries())
         await Promise.all(dllNames.map((dllName, idx) => new Promise(async (resolve, reject) =>
@@ -2474,15 +2480,19 @@ async function dll_full_build_multi(dllNames)
                 ifDllNotSkipped[idx] |= !toSkip;
 
                 //# Init results strings
-                if (!results_raw[idx])
-                    results_raw[idx] = "";
+                {
+                    if (!results_raw[idx])
+                        results_raw[idx] = {};
+
+                    if (!(romVer in results_raw[idx]))
+                        results_raw[idx][romVer] = "";
+                }
 
 
                 if (!fs.existsSync(fn_c) || (await fsp.stat(fn_c)).size === 0 || !allDllNames.has(dllName))
                 {
                     //= Placeholder DLL, don't waste time processing it
-                    results_raw[idx] += "".padStart(CELL_PADDING, " ");
-                    results_cmp[idx] += "".padStart(CELL_PADDING, " ");
+                    results_raw[idx][romVer] += "".padStart(CELL_PADDING, " ");
 
                     return resolve();
                 }
@@ -2548,7 +2558,7 @@ async function dll_full_build_multi(dllNames)
 
                     if (!USE_COMPRESSION || rawIsMatching)
                     {
-                        resultToAppend = gct(`${romVer.substr(0, 2)}-${gSyscallIdxMap[dllName].hex().padStart(3, "0")} `, "black").padStart(CELL_PREPAD, " ") + " ";
+                        resultToAppend = gct(`${romVer.substr(0, 2)}-${gSyscallIdxMap_rv[romVer][dllName].hex().padStart(3, "0")} `, "black").padStart(CELL_PREPAD, " ") + " ";
 
                         resultToAppend += similarity.found && similarity.similarity === 1
                             ? gct(`OK`.padEnd(endPad, " "), MATCH_COLOURS.OK)
@@ -2556,7 +2566,7 @@ async function dll_full_build_multi(dllNames)
                     }
                 }
 
-                results_raw[idx] += resultToAppend;
+                results_raw[idx][romVer] += resultToAppend;
 
                 //= Hash check
                 {
@@ -2581,15 +2591,19 @@ async function dll_full_build_multi(dllNames)
                     console.error(err);
 
                 //# Append empty space
-                results_raw[idx] += "".padStart(CELL_PADDING, " ");
+                results_raw[idx][romVer] += "".padStart(CELL_PADDING, " ");
 
                 //= Pass
             }
 
             return resolve();
         })));
-    }
 
+        return resolve();
+    })));
+
+
+    let results_out = [];
 
     for (let [idx, dllName] of dllNames.entries())
     {
@@ -2599,7 +2613,12 @@ async function dll_full_build_multi(dllNames)
             ? dllName.substr(0, pad - 3) + ".."
             : dllName;
 
-        results_raw[idx] =
+        let combined = "";
+
+        for (let romVer of allRomVers)
+            combined += results_raw[idx][romVer];
+
+        results_out[idx] =
             gct(
                 `${dllNameShort}`.padEnd(pad, " "),
                 !allDllNames.has(dllName)
@@ -2611,7 +2630,7 @@ async function dll_full_build_multi(dllNames)
                         //# This DLL was not built this time, the results from the previous build were reused
                         : "black"
             )
-            + results_raw[idx];
+            + combined;
     }
 
     const LEGEND_MARK = "●";
@@ -2632,7 +2651,7 @@ async function dll_full_build_multi(dllNames)
     {
         //# Check if compression worked for all builds
         {
-            let results = results_raw;
+            let results = results_out;
 
             let filtered_results = [];
             let overflowed = false;
@@ -2691,7 +2710,7 @@ async function dll_full_build_multi(dllNames)
                 );
             }
 
-            results_raw = filtered_results;
+            results_out = filtered_results;
         }
     }
 
@@ -2754,7 +2773,7 @@ async function dll_full_build_multi(dllNames)
                     //# Generate dummy string of "?" with the length of the total number of versions
                     _2 = allRomVers.map(x => "?").join("");
 
-                log(`  ${results_raw[0]} ${_2}`);
+                log(`  ${results_out[0]} ${_2}`);
             }
             else
             {
@@ -2781,7 +2800,7 @@ async function dll_full_build_multi(dllNames)
                     //= The build with the most DLLs is "usa"
                     await init_gSyscallIdx_map("usa");
 
-                    remainingDllCount = Object.keys(gSyscallIdxMap).length - dllNames.length;
+                    remainingDllCount = [...allDllNames].length - dllNames.length;
                 }
 
                 //- Calculate total percentage
@@ -2811,7 +2830,7 @@ async function dll_full_build_multi(dllNames)
                 header += gct(" unlisted   ",       "black");
 
                 strs.push(header);
-                strs.push(..._order_dll_result_strings_by_status(results_raw.filter(x => x)));
+                strs.push(..._order_dll_result_strings_by_status(results_out.filter(x => x)));
 
                 //# Add a spacer line
                 strs.push(gct("─".repeat(calc_max_width_for_box_contents(strs)), "red"));
@@ -3574,7 +3593,7 @@ async function main()
 
     if (!arg_noInitialCompile)
     {
-        log(`Building ${dllNames.length} DLL(s)...`);
+        log(`Building ${dllNames.length} DLL(s) for ${allRomVers.length} ROM version(s)...`);
         await dll_full_build_multi(dllNames);
     }
 

@@ -350,9 +350,9 @@ var gCallTableOffsetMap;
 
 async function init_gSyscallIdx_map(romVer)
 {
-    // if (romVer in gSyscallIdxMap_rv)
-    //     //# Already loaded
-    //     return;
+    if (romVer in gSyscallIdxMap_rv)
+        //# Already loaded
+        return;
 
     const fSyscallIdx = gCurrDir + "enum/syscallidx.txt";
 

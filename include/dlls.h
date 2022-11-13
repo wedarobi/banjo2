@@ -821,6 +821,9 @@
 /* $ gldbstring */
 /* $ gldialog */
 /* $ gleeprom */
+/*@oooo*/ void DLL_gleeprom_00(void);
+/*@oooo*/ s32  DLL_gleeprom_01(s32, void *, s32);
+/*@oooo*/ s32  DLL_gleeprom_02(s32, void *, s32);
 /* $ glgamedata */
 /* $ glgamestore */
 /* $ glglobaldata */

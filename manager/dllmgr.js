@@ -2613,16 +2613,18 @@ async function dll_full_build_multi(dllNames)
         UNK: 0,
     };
 
+    //# We don't want too many OK lines, too messy
+    //= Set to 0 to disable
+    const LIMIT_RESULTS_OK = 3;
+
     //- Postprocess results
     {
         //# Check if compression worked for all builds
         {
             let results = results_raw;
 
-            //# We don't want too many OK lines, too messy
             let filtered_results = [];
             let overflowed = false;
-            const max_ok_limit = 3;
 
             for (let i = 0; i < results.length; i++)
             {
@@ -2647,12 +2649,15 @@ async function dll_full_build_multi(dllNames)
 
                 results[i] = `${gct(LEGEND_MARK + " ", colour)}` + str;
 
-                if (colour === MATCH_COLOURS.OK)
+                if (LIMIT_RESULTS_OK > 0)
                 {
-                    if (numDlls.OK > max_ok_limit)
+                    if (colour === MATCH_COLOURS.OK)
                     {
-                        filter_passed = false;
-                        overflowed    = true;
+                        if (numDlls.OK > LIMIT_RESULTS_OK)
+                        {
+                            filter_passed = false;
+                            overflowed    = true;
+                        }
                     }
                 }
 

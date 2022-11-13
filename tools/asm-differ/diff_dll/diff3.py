@@ -640,7 +640,7 @@ def dump_binary() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
     dll_name = args.NAME_OF_DLL
     romver   = args.NAME_OF_ROMVER
 
-    baseimg = f"../../../expected/{romver}/dlls/{dll_name}.raw"
+    baseimg = f"../../../expected/{romver}/dlls/{dll_name}.bin"
     myimg   = f"../../../build/{   romver}/dlls/{dll_name}.bin"
 
     path_myPubFnDump = f"../../../build/{romver}/dlls/{dll_name}_pubfndump.txt"
@@ -761,7 +761,7 @@ def dump_binary_autodetect() -> Tuple[str, ObjdumpCommand, ObjdumpCommand]:
     cust_start = int(cust_info[2], 0)
     cust_end   = cust_start + int(cust_info[3], 0)
 
-    baseimg = f"../../../expected/{romver}/dlls/{dll_name}.raw"
+    baseimg = f"../../../expected/{romver}/dlls/{dll_name}.bin"
     myimg   = f"../../../build/{   romver}/dlls/{dll_name}.bin"
 
     gVars["names"]["romVer"]       = romver

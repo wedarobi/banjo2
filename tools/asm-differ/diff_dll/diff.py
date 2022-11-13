@@ -262,7 +262,7 @@ def dump_binary():
 
     dll_name = "fxkern"
 
-    baseimg = f"../../../expected/usa/dlls/{dll_name}.raw"
+    baseimg = f"../../../expected/usa/dlls/{dll_name}.bin"
     myimg   = f"../../../build/usa/dlls/{dll_name}.bin"
 
     start_base = dlls[dll_name][0] #0x100

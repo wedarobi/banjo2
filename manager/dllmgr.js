@@ -502,7 +502,7 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
             ensureDir(gRootDir + `expected/${romVer}`);
             ensureDir(gRootDir + `expected/${romVer}/dlls`);
 
-            await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.raw`, buf_vani);
+            // await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.raw`, buf_vani);
 
             //# Decrypted header
             let buf_vani_dec = Buffer.alloc(buf_vani.length);
@@ -1342,16 +1342,16 @@ async function dll_get_structure(dll, romVer, vanilla=false)
 
     let filepath = vanilla
         //# vani
-        ? `expected/${romVer}/dlls/${dll}.raw`
+        ? `expected/${romVer}/dlls/${dll}.bin`
         //# cust
-        : `build/${romVer}/dlls/${dll}bin.raw`;
+        : `build/${romVer}/dlls/${dll}bin`;
 
     let b = await fsp.readFile(filepath);
 
     //- Calculate checksum
-    let checksum = dll_get_checksum(b.slice(0x10));
-    b.writeUint32BE(b.readUint32BE(0x00) ^ checksum[0], 0x00);
-    b.writeUint32BE(b.readUint32BE(0x08) ^ checksum[1], 0x08);
+    // let checksum = dll_get_checksum(b.slice(0x10));
+    // b.writeUint32BE(b.readUint32BE(0x00) ^ checksum[0], 0x00);
+    // b.writeUint32BE(b.readUint32BE(0x08) ^ checksum[1], 0x08);
 
     {
         let sizes =
@@ -1873,10 +1873,10 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
         if (!toSkip)
         {
             //- Remove preheader before compression
-            await fsp.writeFile(bodyWithPreOutPath, rawFile);
+            // await fsp.writeFile(bodyWithPreOutPath, rawFile);
 
             //- Remove preheader before compression
-            await fsp.writeFile(bodyOutPath, rawFile.slice(0x10));
+            // await fsp.writeFile(bodyOutPath, rawFile.slice(0x10));
         }
 
         let gzOut;
@@ -1924,10 +1924,13 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
             if (!toSkip)
             {
                 //# (async) Write just for fun
-                fs.writeFile(gzOutPath, gzOut, () => {});
+                // fs.writeFile(gzOutPath, gzOut, () => {}); //=
             }
         }
 
+        //# Cleanup
+        if (fs.existsSync(gzOutPath))
+            await fsp.unlink(gzOutPath);
 
         //= Postprocess the zlib-compressed file
         {
@@ -2388,6 +2391,8 @@ function _order_colours(str)
  */
 function _order_dll_result_strings_by_status(rArr)
 {
+    // TODO also sort by last modified time
+
     return rArr.sort((a, b) =>
     {
         a = _order_colours(a);
@@ -2670,7 +2675,7 @@ async function dll_full_build_multi(dllNames)
                 //# Add the "+ XX more" line
                 filtered_results.push(
                     gct(
-                        `+ ${numDlls.OK - max_ok_limit} more `
+                        `+ ${numDlls.OK - LIMIT_RESULTS_OK} more `
                             .padEnd(
                                 calc_max_width_for_box_contents(filtered_results),
                                 "─"
@@ -2803,7 +2808,7 @@ async function dll_full_build_multi(dllNames)
                 strs.push(..._order_dll_result_strings_by_status(results_raw.filter(x => x)));
 
                 //# Add a spacer line
-                strs.push(gct("─".repeat(calc_max_width_for_box_contents(strs)), "yellow"));
+                strs.push(gct("─".repeat(calc_max_width_for_box_contents(strs)), "red"));
 
                 //- Percentages
                 {
@@ -2817,7 +2822,7 @@ async function dll_full_build_multi(dllNames)
                         let str2 = str.substr(str1.length, pivot);
 
                         // return gct(str1, "white") + gct(str2, "black") + gct("%", "black");
-                        // return gct(str1 + str2 + "%", "white");
+                        // return gct(str1 + str2 + "%", "red");
                         return str1 + str2 + "%";
                     }
 
@@ -2844,7 +2849,7 @@ async function dll_full_build_multi(dllNames)
                             p.push(ps);
                         }
     
-                        let title = gct(ptitle, "yellow") + gct("DLLs only", "black") + gct(" -> ", "black");
+                        let title = gct(ptitle, "red") + gct("DLLs only", "black") + gct(" -> ", "black");
                         strs.push(title + p.join(gct(" ", "black")));
                     }
 
@@ -3444,9 +3449,9 @@ async function dll_permute_session_start()
 
         //# target.o
         {
-            let targetInput = gRootDir + `expected/${romVer}/dlls/${info.dll}.raw`;
+            let targetInput = gRootDir + `expected/${romVer}/dlls/${info.dll}.bin`;
 
-            let targetTmp = `${pmuFuncFolder}target.raw`;
+            let targetTmp = `${pmuFuncFolder}target.bin`;
             let targetAsm = `${pmuFuncFolder}target.s`;
             let targetObj = `${pmuFuncFolder}target.o`;
 

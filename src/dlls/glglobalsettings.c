@@ -275,7 +275,7 @@ void DLL_glglobalsettings_08_set_sound_mode_to_gflags(s32 idx)
         s16 _1;
         s16 _2;
     }
-    soundinfo[] =
+    arr[] =
     {
         { 1, 4 },
         { 2, 4 },
@@ -283,9 +283,9 @@ void DLL_glglobalsettings_08_set_sound_mode_to_gflags(s32 idx)
         { 4, 4 },
     };
 
-    SOUND_MODE_unk1_set(   soundinfo[idx]._1);
-    SOUND_MODE_unk2_set(0, soundinfo[idx]._2);
-    SOUND_MODE_unk2_set(1, soundinfo[idx]._2);
+    SOUND_MODE_unk1_set(   arr[idx]._1);
+    SOUND_MODE_unk2_set(0, arr[idx]._2);
+    SOUND_MODE_unk2_set(1, arr[idx]._2);
 
     fn_flag_set_multi(GFLAG_BC6_SPEAKER_MODE_1, idx, 2);
 }

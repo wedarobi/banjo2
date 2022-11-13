@@ -3,6 +3,9 @@
 
 #include "include/2.0L/PR/ultratypes.h"
 
+#define TVTYPE_NTSC ((VERSION_USA) || (VERSION_JPN))
+#define TVTYPE_PAL  ((VERSION_EUR) || (VERSION_AUS))
+
 typedef u8  BYTE;
 typedef u16 HALF;
 typedef u32 WORD;
@@ -38,7 +41,11 @@ typedef struct
 
 
 #define FRAMEBUFFER_WIDTH  (304)
-#define FRAMEBUFFER_HEIGHT (228)
+#if TVTYPE_NTSC
+    #define FRAMEBUFFER_HEIGHT (228)
+#elif TVTYPE_PAL
+    #define FRAMEBUFFER_HEIGHT (268)
+#endif
 
 typedef struct
 {
@@ -47,9 +54,6 @@ typedef struct
 
 // typedef u16 Framebuffer[FRAMEBUFFER_HEIGHT][FRAMEBUFFER_WIDTH];
 
-
-#define TVTYPE_NTSC ((VERSION_USA) || (VERSION_JPN))
-#define TVTYPE_PAL  ((VERSION_EUR) || (VERSION_AUS))
 
 
 #endif // __TYPES_H__

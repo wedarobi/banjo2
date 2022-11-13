@@ -846,15 +846,15 @@
 /*@oooo*/ void DLL_glglobalsettings_04_set_widescreen_to_gflags(s32 enabled);
 /*@oooo*/
 #if TVTYPE_NTSC
-void DLL_glglobalsettings_05_get_screen_from_gflags(s32 *a0, s32 *a1);
+    void DLL_glglobalsettings_05_get_screen_from_gflags(s32 *a0, s32 *a1);
 #elif TVTYPE_PAL
-void DLL_glglobalsettings_05_get_screen_from_gflags(s32 *a0, s32 *a1, s32 *a2, s32 *a3);
+    void DLL_glglobalsettings_05_get_screen_from_gflags(s32 *a0, s32 *a1, s32 *a2, s32 *a3);
 #endif
 /*@oooo*/
 #if TVTYPE_NTSC
-void DLL_glglobalsettings_06_set_screen_to_gflags(s32 a0, s32 a1);
+    void DLL_glglobalsettings_06_set_screen_to_gflags(s32 a0, s32 a1);
 #elif TVTYPE_PAL
-void DLL_glglobalsettings_06_set_screen_to_gflags(s32 a0, s32 a1, s32 a2, s32 a3);
+    void DLL_glglobalsettings_06_set_screen_to_gflags(s32 a0, s32 a1, s32 a2, s32 a3);
 #endif
 /*@oooo*/ s32  DLL_glglobalsettings_07_get_sound_mode_from_gflags(void);
 /*@oooo*/ void DLL_glglobalsettings_08_set_sound_mode_to_gflags(s32 value);

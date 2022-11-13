@@ -17,7 +17,7 @@ void DLL_glglobalsettings_00_set_default_settings_to_gflags(void)
 #if TVTYPE_NTSC
     DLL_glglobalsettings_06_set_screen_to_gflags(0, 0);
 #elif TVTYPE_PAL
-    DLL_glglobalsettings_06_set_screen_to_gflags(0, 0, 304, 268);
+    DLL_glglobalsettings_06_set_screen_to_gflags(0, 0, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
 #endif
 
     DLL_glglobalsettings_08_set_sound_mode_to_gflags(1);

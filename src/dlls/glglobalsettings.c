@@ -17,7 +17,7 @@ void DLL_glglobalsettings_00_set_default_settings_to_gflags(void)
     DLL_glglobalsettings_08_set_sound_mode_to_gflags(1);
 }
 
-/*static*/ void apply_settings_from_gflags(void)
+static void apply_settings_from_gflags(void)
 {
     s32 val1, val2;
 
@@ -27,7 +27,7 @@ void DLL_glglobalsettings_00_set_default_settings_to_gflags(void)
     DLL_glglobalsettings_06_set_screen_to_gflags(val1, val2);
 }
 
-/*static*/ void *allocate_global_data_space(void)
+static void *allocate_global_data_space(void)
 {
     return fn_malloc_temp(0x80);
 }
@@ -48,7 +48,7 @@ void DLL_glglobalsettings_00_set_default_settings_to_gflags(void)
 
 }
 
-/*static*/ s32 load_global_data_from_eep_to_buffer(void **ptr)
+static s32 load_global_data_from_eep_to_buffer(void **ptr)
 {
     // TODO
 

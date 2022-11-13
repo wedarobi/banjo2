@@ -130,6 +130,8 @@ void  fn_free       (void *ptr);
 /*<0x800F3320, 0x800EE670, 0x800F94A0, 0x800F92E0>*/ void fn_800F3320(char *, void *, void *, f32);
 /*<0x800F2EA0, 0x800EE260, 0x800F9090, 0x800F8ED0>*/ void fn_800F2EA0(s32, char *);
 
+/*<0x800157E0, 0x800157F0, 0x80015810, 0x80015810>*/ void WIDESCREEN_set(bool enabled);
+
 /*<0x80106790, 0x80100FB8, 0x8010BDE8, 0x8010BC28>*/ Object *fn_ois_get_object(OIS *ois);
 /*<0x80100094, 0x800FAB54, 0x80105984, 0x801057C4>*/ void   *fn_Object_privStorPtr_get(Object *, u32 idx);
 

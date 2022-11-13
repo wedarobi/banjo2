@@ -830,6 +830,16 @@
 /*@oooo*/ void DLL_glglobaldata_03_prepare_global_data_for_save(u8 *data);
 /*@oooo*/ void DLL_glglobaldata_04_clear_global_data(char *dst);
 /* $ glglobalsettings */
+/*@oooo*/ void DLL_glglobalsettings_00_set_default_settings_to_gflags(void);
+/*@oooo*/ void DLL_glglobalsettings_01(void);
+/*@oooo*/ s32  DLL_glglobalsettings_02_trigger_globaldata_save_to_EEP(void);
+/*@oooo*/ bool DLL_glglobalsettings_03_get_widescreen_from_gflags(void);
+/*@oooo*/ void DLL_glglobalsettings_04_set_widescreen_to_gflags(s32 enabled);
+/*@oooo*/ void DLL_glglobalsettings_05_get_screen_from_gflags(s32 *a0, s32 *a1);
+/*@oooo*/ void DLL_glglobalsettings_06_set_screen_to_gflags(s32 a0, s32 a1);
+/*@oooo*/ s32  DLL_glglobalsettings_07_get_sound_mode_from_gflags(void);
+/*@oooo*/ void DLL_glglobalsettings_08_set_sound_mode_to_gflags(s32 value);
+// TODO eur?
 /* $ glhittableDll */
 /*@oooo*/ void DLL_glhittableDll_00(void);
 /*@oooo*/ void DLL_glhittableDll_01(void);

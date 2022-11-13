@@ -2440,11 +2440,15 @@ async function dll_full_build_multi(dllNames)
      */
     let computedTotalSize = { usa: 0, jpn: 0, eur: 0, aus: 0 };
 
+    // TODO optimise across allRomVers with Promise.all
+
     for (let [rvIdx, romVer] of allRomVers.entries())
     {
         await update_rom_version(romVer);
 
-        for (let [idx, dllName] of dllNames.entries())
+        //- Optimise across all DLLs for a specific version with Promise.all
+        // for (let [idx, dllName] of dllNames.entries())
+        await Promise.all(dllNames.map((dllName, idx) => new Promise(async (resolve, reject) =>
         {
             if (!(dllName in gDllHashMap))
                 gDllHashMap[dllName] = {};
@@ -2480,7 +2484,7 @@ async function dll_full_build_multi(dllNames)
                     results_raw[idx] += "".padStart(CELL_PADDING, " ");
                     results_cmp[idx] += "".padStart(CELL_PADDING, " ");
 
-                    continue;
+                    return resolve();
                 }
 
 
@@ -2581,7 +2585,9 @@ async function dll_full_build_multi(dllNames)
 
                 //= Pass
             }
-        }
+
+            return resolve();
+        })));
     }
 
 

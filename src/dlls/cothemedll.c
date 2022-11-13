@@ -4,6 +4,7 @@
 #include "include/variables.h"
 
 #include "include/enum/music.h"
+#include "include/struct/music.h"
 
 
 
@@ -24,9 +25,10 @@ static struct
     /* enum MAP */
     s16 map;
 
+    //# s16 followed by u16
     /* enum MUSIC */
     s16 musicTrackIdx : 14;
-    s16 UNK_02_b_0_2  : 2;
+    u16 UNK_02_b_0_2  : 2;
 
     s16 instrumentSet;
 }
@@ -271,8 +273,8 @@ themes[] =
 
 static struct
 {
-    u16 map;
-    u16 unk;
+    s16 map;
+    s16 unk;
 }
 arr01[] =
 {
@@ -344,7 +346,7 @@ themeOverrides[] =
 };
 
 
-s32 DLL_cothemedll_00(MAP mapIdx)
+static s32 fn_priv_00(MAP mapIdx)
 {
     s32 i;
     s32 map = mapIdx; //? Yep
@@ -362,28 +364,107 @@ s32 DLL_cothemedll_00(MAP mapIdx)
     return 0;
 }
 
-void DLL_cothemedll_01(MAP map)
+void DLL_cothemedll_00(MAP map)
 {
+    s32 idx;
 
+    if (gMusicObj_playThroughLz_get())
+        return;
+
+    idx = themes[fn_priv_00(map)].musicTrackIdx;
+    if (idx != -1)
+        ASSET_load_music_track(idx, 1);
 }
 
-s32 DLL_cothemedll_02(MAP map)
+s32 DLL_cothemedll_01(MAP map)
 {
-    return themes[DLL_cothemedll_00(map)].instrumentSet;
+    return themes[fn_priv_00(map)].instrumentSet;
 }
 
-void DLL_cothemedll_03(s32 a0, MAP map)
+void DLL_cothemedll_02(struct MusicObj *mo, MAP map)
 {
+    if (!gMusicObj_playThroughLz_get())
+    {
+        s32 musicIdx = themes[fn_priv_00(map)].musicTrackIdx;
 
+        if (musicIdx != -1)
+        {
+            if (MUSIC_track_is_currently_playing(musicIdx))
+                MUSIC_800FC74C(musicIdx);
+
+            MUSIC_80016DF8(musicIdx);
+        }
+    }
+
+    if (!fn_flag_get_and_set(FLAG2_674_UNK, FALSE))
+        MUSIC_800FDC28(0);
+
+    if (!fn_flag_get_and_set(FLAG2_675_UNK, FALSE))
+    {
+        s32 i;
+
+        for (i = 0; i < 2; i++)
+            fn_800FEDC4(i, 0, 1, 0);
+    }
+
+    mo->unk41 = 1;
 }
 
-// musicObj * (?)
-void DLL_cothemedll_04(void *m)
+void DLL_cothemedll_03(struct MusicObj *mo)
 {
+    MAP cmap = gsWorldGetSection();
 
+    s32 idx = fn_priv_00(cmap);
+
+    mo->unk41 = 0;
+    mo->unk28 = -1;
+    mo->unk2C = -1;
+    mo->isUnderwater = 0xFF;
+    mo->unk11 = 0xFF;
+
+    if (gMusicObj_playThroughLz_get() != 2)
+    {
+        mo->pad1C = 0;
+        mo->instrumentSet = 0;
+        mo->unk20 = 0;
+        mo->unk12 = 0;
+        mo->unk13 = 0;
+        mo->unk14 = 1;
+        mo->unk15 = 1;
+        mo->unk04 = 1;
+
+        if (mo->unk16)
+        {
+            s32 tmp;
+
+            mo->UNK_musicIdxLower = themes[idx].UNK_02_b_0_2;
+            mo->musicIdx          = themes[idx].musicTrackIdx;
+
+            tmp = mo->musicIdx;
+
+            //# fakematch
+            mo->unk0A = (tmp | 0) != -1
+                ? fn_80017778(tmp)
+                : 20000;
+
+            mo->pad24 = 0;
+
+            {
+                tmp = 0;
+
+                while (arr01[tmp].map != -1)
+                {
+                    if (arr01[tmp].map == cmap)
+                        mo->unk20 = arr01[tmp].unk;
+
+                    tmp++;
+                }
+            }
+        }
+    }
 }
 
-/*static*/ void fn_priv_00(MAP map)
+static void fn_priv_01(MAP map)
 {
     switch (gsWorldGetSection())
     {
@@ -426,41 +507,84 @@ void DLL_cothemedll_04(void *m)
     }
 }
 
-void DLL_cothemedll_05(void *m, MAP max)
+void DLL_cothemedll_04(struct MusicObj *mo, MAP map)
 {
+    mo->unk12 = 1;
 
+    if (!fn_flag_get(FLAG2_674_UNK))
+        MUSIC_800FDC28(0);
+
+    fn_priv_01(map);
+
+    if (!gMusicObj_playThroughLz_get())
+    {
+        s32 musicIdx = themes[fn_priv_00(map)].musicTrackIdx;
+
+        if (musicIdx != mo->musicIdx || mo->unk41)
+        {
+            MUSIC_800FC2C4(0, 2000);
+
+            MUSIC_800FE3EC();
+        }
+        else
+        {
+            mo->playThroughLz = 1;
+        }
+    }
+
+    mo->unk41 = 1;
 }
 
-/*static*/ void fn_priv_01(s32 a0, s32 a1)
+static void fn_priv_02(struct MusicObj *mo, s32 a1)
 {
+    if (a1)
+        MUSIC_800FB774();
 
+    if (mo->musicIdx != -1 && !MUSIC_track_is_currently_playing(mo->musicIdx))
+        gMusicObj_0x0F_set_to_1();
 }
 
-void DLL_cothemedll_06(s32 a0, s32 a1, s32 a2)
+void DLL_cothemedll_05(struct MusicObj *mo, s32 a1, s32 a2)
 {
+    if (a1 == 1)
+    {
+        MUSIC_800FC348(-1, 4000, 4);
+        MUSIC_800FECB8(2);
+    }
 
+    if (1) //# yep... yep.
+    {
+        switch (a2)
+        {
+            case 1:
+            {
+                MUSIC_800FC348(0, 4000, 4);
+                MUSIC_800FEC60(2);
+                break;
+            }
+            case 0:
+            case 2:
+            {
+                if (!mo->playThroughLz)
+                {
+                    if ((mo->UNK_musicIdxLower & 1) != 0)
+                    {
+                        fn_priv_02(mo, 0);
+                    }
+                    else
+                    {
+                        fn_priv_02(mo, 1);
+                    }
+                }
+                else
+                {
+                    mo->playThroughLz = 0;
+                }
+
+                break;
+            }
+        }
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

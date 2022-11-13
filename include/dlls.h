@@ -707,6 +707,12 @@
 /*@oooo*/ MAP DLL_cosection_01_get_retail_bootmap (void);
 /* $ cosectionstor */
 /* $ cothemedll */
+/*@oooo*/ void DLL_cothemedll_00(MAP map);
+/*@oooo*/ s32  DLL_cothemedll_01(MAP map);
+/*@oooo*/ void DLL_cothemedll_02(struct MusicObj *mo, MAP map);
+/*@oooo*/ void DLL_cothemedll_03(struct MusicObj *mo);
+/*@oooo*/ void DLL_cothemedll_04(struct MusicObj *mo, MAP map);
+/*@oooo*/ void DLL_cothemedll_05(struct MusicObj *mo, s32 a1, s32 a2);
 /* $ dbanim */
 /* $ dbid */
 /* $ dblight */

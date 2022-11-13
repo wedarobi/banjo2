@@ -1822,10 +1822,10 @@ function dll_get_checksum(buffer)
     return checksum;
 }
 
-async function dll_preheader_encrypt(rawFilePath, rawFile=null)
+async function dll_preheader_encrypt(rawFile=null)
 {
     if (!rawFile)
-        rawFile = await fsp.readFile(rawFilePath);
+        FATAL(`Invalid handle, cannot encrypt preheader!`);
 
     if (rawFile.readUint8(0xF) !== 0x82)
         FATAL(`Cannot package DLL: missing preheader!`);
@@ -2182,6 +2182,9 @@ async function HELPER_parse_out_static_linker_symbols()
 
     for (let i = 0; i < files.length; i++)
     {
+        let MODE_FUNC = i === 0;
+        let MODE_VARS = i === 1;
+
         let file    = files[i];
         let outname = outputs[i];
 
@@ -2244,22 +2247,50 @@ async function HELPER_parse_out_static_linker_symbols()
 
                 let next = header.substr(i, lookahead * 2);
                 {
-                    //# Don't bother to test first, just go for the match
-                    let m = next.match(/^([a-z0-9_]+?)\s*\(/im);
-                    if (m && m.length >= 2)
+                    if (MODE_FUNC)
                     {
-                        //# Found start of name token, process it
+                        //# Don't bother to test first, just go for the match
+                        let m = next.match(/^([a-z0-9_]+?)\s*\(/im);
+                        if (m && m.length >= 2)
+                        {
+                            //# Found start of name token, process it
 
-                        let symbol = m[1];
+                            let symbol = m[1];
 
-                        symbols.push({
-                            symbol,
-                            addr: currAddress.replace(/^0x/g, ""),
-                        });
+                            symbols.push({
+                                symbol,
+                                addr: currAddress.replace(/^0x/g, ""),
+                            });
 
-                        currAddress = "";
+                            currAddress = "";
 
-                        //# Prime for the next comment
+                            //# Prime for the next comment
+                            waiting = false;
+                        }
+                    }
+                    else if (MODE_VARS)
+                    {
+                        //# Don't bother to test first, just go for the match
+                        let m = next.match(/([a-z0-9_]+?)\s*?(?:\[.*?\])?;\s*?/im);
+                        if (m && m.length >= 2)
+                        {
+                            //# Found start of name token, process it
+
+                            let symbol = m[1];
+
+                            symbols.push({
+                                symbol,
+                                addr: currAddress.replace(/^0x/g, ""),
+                            });
+
+                            currAddress = "";
+
+                            //# Prime for the next comment
+                            waiting = false;
+                        }
+                    }
+                    else
+                    {
                         waiting = false;
                     }
                 }
@@ -2428,7 +2459,7 @@ async function dll_full_build_multi(dllNames)
 
                 let [fn_raw, file_raw] = await dll_process(dllName, fn_o, romVer, toSkip);
 
-                await dll_preheader_encrypt(fn_raw, file_raw);
+                await dll_preheader_encrypt(file_raw);
 
                 //# Outputs compressed files
                 let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw, toSkip);

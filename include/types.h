@@ -14,19 +14,22 @@ typedef u32 FORM; //!
 typedef u32 MS; //!
 // typedef u32 ASSET; //!
 
-typedef struct {
+typedef struct
+{
     f32 x;
     f32 y;
     f32 z;
 } tuple_f;
 
-typedef struct {
+typedef struct
+{
     f32 x;
     f32 y;
     f32 z;
 } Vec3f;
 
-typedef struct {
+typedef struct
+{
     u32 x;
     u32 y;
     u32 z;

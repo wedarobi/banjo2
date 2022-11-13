@@ -41,12 +41,12 @@ typedef struct B_AnimationObj
     /* 0x0C */ u8      UNK_0x0C;
     /* 0x0D */ u8      UNK_0x0D;
     /* 0x0E */ u16     UNK_0x0E;
-    /* 0x10 */ tuple_f UNK_0x10;
+    /* 0x10 */ Vec3f UNK_0x10;
     /* 0x1C */ f32     UNK_0x1C;
     /* 0x20 */ f32     UNK_0x20;
     /* 0x24 */ f32     UNK_0x24;
     /* 0x28 */ f32     UNK_0x28;
-    /* 0x2C */ tuple_f UNK_0x2C;
+    /* 0x2C */ Vec3f UNK_0x2C;
     /* 0x38 */ u8      UNK_0x38;
     /* 0x39 >>> */ u8 PAD_0x39;
     /* 0x3A >>> */ u8 PAD_0x3A;
@@ -251,17 +251,17 @@ typedef struct B_PositionObj
     /* 0x00 */ union
     {
         Vec3f     position1;
-        tuple_u32 position1_u32;
+        Vec3u32 position1_u32;
     };
     /* 0x0C */ union
     {
         Vec3f     position2;
-        tuple_u32 position2_u32;
+        Vec3u32 position2_u32;
     };
     /* 0x18 */ union
     {
         Vec3f     position3;
-        tuple_u32 position3_u32;
+        Vec3u32 position3_u32;
     };
 } B_PositionObj;
 

@@ -933,7 +933,7 @@ async function dll_source_edit_location_dump(dllName, romVer)
                 if (!fs.existsSync(vani_info_fn) || !fs.existsSync(cust_info_fn))
                 {
                     log(`[ERR]: The necessary fndump files are missing for: ${dllName}!`);
-                    return;
+                    return false;
                 }
 
                 let vani_info = (await fsp.readFile(vani_info_fn)).toString().trim().split(/\r?\n/g);
@@ -944,7 +944,7 @@ async function dll_source_edit_location_dump(dllName, romVer)
                     //- We have a length mismatch! We cannot continue!
                     log(`[ERR]: #fns mismatch between dumps for: ${romVer}/${dllName}! (${vani_info.length} v ${cust_info.length} v ${info.fns.length}) Aborting info dump!`);
 
-                    return;
+                    return false;
                 }
 
                 //# info: NAME OFFSET SIZE
@@ -978,6 +978,8 @@ async function dll_source_edit_location_dump(dllName, romVer)
             // log(`info.fns: ${JSON.stringify(info.fns, null, 2)}`);
         }
     }
+
+    return true;
 }
 
 function buf_cstr_to_str(inBuf)
@@ -2441,6 +2443,8 @@ async function dll_full_build_multi(dllNames)
 
                 let resultToAppend = "";
 
+                let errors = false;
+
                 for (let USE_COMPRESSION of [false, true])
                 {
                     let file = USE_COMPRESSION ? file_cmp : file_raw;
@@ -2464,7 +2468,7 @@ async function dll_full_build_multi(dllNames)
 
                         if (gDllSourceCache?.[dllName]?.[romVer])
                             //# Old source exists, can compare and dump
-                            await dll_source_edit_location_dump(dllName, romVer);
+                            errors |= await dll_source_edit_location_dump(dllName, romVer) === false;
 
                         await dll_cache_source_update_locations(dllName, romVer);
                     }
@@ -2497,9 +2501,12 @@ async function dll_full_build_multi(dllNames)
                     if (!(dllName in hashdiffs) || !hashdiffs[dllName])
                         hashdiffs[dllName] = "";
 
-                    hashdiffs[dllName] += hash !== lastHash
-                        ? gct("o", "cyan")
-                        : gct("-", "black");
+                    hashdiffs[dllName] +=
+                        errors
+                        ? gct("x", "red")
+                        : hash !== lastHash
+                            ? gct("o", "cyan")
+                            : gct("-", "black");
 
                     gDllHashMap[dllName][romVer] = hash;
                 }

@@ -1847,6 +1847,20 @@ async function dll_preheader_encrypt(rawFile=null)
 }
 
 /**
+ * 
+ * @param {zlib.InputType} buf 
+ * @param {zlib.ZlibOptions} options 
+ * @returns {Promise<Buffer>}
+ */
+function zlib_deflateRaw_async(buf, options)
+{
+    return new Promise((resolve, reject) =>
+    {
+        zlib.deflateRaw(buf, options, (err, res) => err ? reject(err) : resolve(res));
+    });
+}
+
+/**
  * Pack a raw dll file with the compression and encryption bullshit that Tooie expects.
  *
  * @param {string} rawFilePath
@@ -1911,7 +1925,17 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
         }
         else
         {
-            gzOut = zlib.deflateRawSync(rawFile.slice(0x10));
+            /**
+             * [dll/gzreg] requires a level of >=8 to match for all versions
+             */
+            gzOut = await zlib_deflateRaw_async(rawFile.slice(0x10),
+            {
+                level:    zlib.constants.Z_BEST_COMPRESSION,
+                strategy: zlib.constants.Z_DEFAULT_STRATEGY,
+                // flush, doesn't matter
+                // windowBits, memLevel, don't seem to matter
+                // chunkSize, doesn't seem to matter
+            });
 
             // let ab = new ArrayBuffer(4);
 

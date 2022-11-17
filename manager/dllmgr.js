@@ -1,11 +1,25 @@
+const path = require("path");
+
+/**
+ * An absolute path to the repo root, given that this
+ * file lives 1 folder down from it.
+ */
+const gRootDir = path.resolve(__dirname + path.sep + ".." + path.sep) + path.sep;
+const gCurrDir = path.resolve(__dirname + path.sep) + path.sep;
+//# rp: root path
+const rp = p => path.resolve(gRootDir + p);
+
+
+
 const fs     = require("fs");
 const fsp    = require("fs/promises");
 const cmd    = require("child_process");
 const crypto = require("crypto");
-const path   = require("path");
 const zlib   = require("node:zlib");
 
-const pako = require("pako");
+
+//- Local pako, with modified zlib implementation
+const pako = require(rp("tools/pako/index"));
 
 const stringSimilarity = require("string-similarity");
 // const cparser          = require("node-c-parser");
@@ -259,15 +273,6 @@ function ensureDir(path)
         fs.mkdirSync(path);
 }
 
-
-/**
- * An absolute path to the repo root, given that this
- * file lives 1 folder down from it.
- */
-const gRootDir = path.resolve(__dirname + path.sep + ".." + path.sep) + path.sep;
-const gCurrDir = path.resolve(__dirname + path.sep) + path.sep;
-//# rp: root path
-const rp = p => path.resolve(gRootDir + p);
 
 const CMD =
 {

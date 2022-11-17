@@ -5,6 +5,8 @@ const crypto = require("crypto");
 const path   = require("path");
 const zlib   = require("node:zlib");
 
+const pako = require("pako");
+
 const stringSimilarity = require("string-similarity");
 // const cparser          = require("node-c-parser");
 // const c_ast            = require("c-ast");
@@ -60,7 +62,7 @@ function DEBUG_LOG(msg)
         console.log(msg);
 }
 
-function spawn(command, directPrint=true)
+function spawn(command, directPrint=true, ignoreStderr=false)
 {
     return new Promise((res, rej) =>
     {
@@ -97,7 +99,7 @@ function spawn(command, directPrint=true)
         {
             if (!directPrint)
             {
-                if (code)
+                if (code && !ignoreStderr)
                     return rej(stderr);
 
                 return res(stdout);
@@ -127,6 +129,13 @@ function get_hash(buf)
 
 Number.prototype.hex  = function() { return        this.toString(16).toUpperCase(); }
 Number.prototype.hexp = function() { return "0x" + this.toString(16).toUpperCase(); }
+
+Buffer.prototype.clone = function()
+{
+    let buf = Buffer.alloc(this.byteLength);
+    this.copy(buf);
+    return buf;
+}
 
 function sleep(ms)
 {
@@ -434,109 +443,135 @@ async function init_gCallTableOffset_map(romVer)
 }
 
 /**
+ * Both returned buffers include the preheader.
+ * 
+ * cmp: encrypted preheader + compressed stream
+ * 
+ * dec: decrypted preheader + decompressed stream
+ * 
+ * @param {string} dllName 
+ * @param {string} romVer 
+ * @param {boolean} toSkip 
+ * @returns 
+ */
+async function dll_dump_and_get_vani_from_baserom(dllName, romVer)
+{
+    let cmp, dec;
+
+    let cmp_fn = gRootDir + `expected/${romVer}/dlls/${dllName}.dll`;
+    let dec_fn = gRootDir + `expected/${romVer}/dlls/${dllName}.bin`;
+
+    let exists_cmp = fs.existsSync(cmp_fn);
+    let exists_dec = fs.existsSync(dec_fn);
+
+    if (exists_cmp && exists_dec)
+    {
+        //- Fetch from disk
+        cmp = await fsp.readFile(cmp_fn);
+        dec = await fsp.readFile(dec_fn);
+    }
+    else
+    {
+        //- Generate
+
+        let syscallIdx = gSyscallIdxMap_rv[romVer][dllName];
+
+        let dllTableStart =
+        {
+            usa: 0x1E899B0,
+            jpn: 0x1E308D0,
+            eur: 0x1E8DA70,
+            aus: 0x1E18A80,
+        };
+    
+        let dllOffsetStart = gBaseroms[romVer].readUint32BE(dllTableStart[romVer] + ((syscallIdx - 1) * 4));
+        let dllOffsetEnd   = gBaseroms[romVer].readUint32BE(dllTableStart[romVer] + ((syscallIdx    ) * 4));
+    
+        // console.log(dllOffsetStart.hex())
+        // console.log(dllOffsetEnd.hex())
+    
+        let size = dllOffsetEnd - dllOffsetStart;
+    
+        if (!size)
+            //# dll missing
+            return null;
+    
+        //- Grab file from baserom
+    
+        let preheader = gBaseroms[romVer].slice(
+            dllTableStart[romVer] + dllOffsetStart,
+            dllTableStart[romVer] + dllOffsetStart + 0x10,
+        );
+    
+        //= Both preheader and compressed body combined
+        cmp = gBaseroms[romVer].slice(
+            dllTableStart[romVer] + dllOffsetStart,
+            dllTableStart[romVer] + dllOffsetEnd,
+        );
+    
+        //- Decompress the raw vanilla stream
+        {
+            let dllUncompressed = await zlib_inflateRaw_async(cmp.slice(0x12));
+    
+            //# Splice vanilla preheader onto vanilla decompressed file
+            dec = Buffer.alloc(preheader.byteLength + dllUncompressed.byteLength);
+            preheader      .copy(dec);
+            dllUncompressed.copy(dec, 0x10);
+    
+            //# Decrypt preheader
+            await dll_preheader_encryption_toggle(dllUncompressed);
+        }
+    
+        //= Dump to [expected] folder
+        {
+            ensureDir(gRootDir + `expected`);
+            ensureDir(gRootDir + `expected/${romVer}`);
+            ensureDir(gRootDir + `expected/${romVer}/dlls`);
+    
+            await fsp.writeFile(cmp_fn, cmp);
+            await fsp.writeFile(dec_fn, dec);
+        }
+    }
+
+    return { cmp, dec };
+}
+
+/**
  * Get a similarity score for a new DLL file, by comparing it to the one
  * inside the current baserom.
  *
  * @param {string} dllName
+ * @param {boolean} dumpBinsOnly if true, dump standard binaries and exit, else do fndumps
  * @param {Buffer} newDllFile the encrypted header, along with the decompressed file contents
  * @param {string}
  * @param {boolean} compressed if true, compare compressed version instead
  */
 async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, compressed=false, toSkip=false)
 {
-    let syscallIdx = gSyscallIdxMap_rv[romVer][dllName];
+    let bufs = await dll_dump_and_get_vani_from_baserom(dllName, romVer);
 
-    let dllTableStart =
-    {
-        usa: 0x1E899B0,
-        jpn: 0x1E308D0,
-        eur: 0x1E8DA70,
-        aus: 0x1E18A80,
-    };
-
-    let dllOffsetStart = gBaseroms[romVer].readUint32BE(dllTableStart[romVer] + ((syscallIdx - 1) * 4));
-    let dllOffsetEnd   = gBaseroms[romVer].readUint32BE(dllTableStart[romVer] + ((syscallIdx    ) * 4));
-
-    // console.log(dllOffsetStart.hex())
-    // console.log(dllOffsetEnd.hex())
-
-    let size = dllOffsetEnd - dllOffsetStart;
-
-    if (!size)
-        //# dll missing
+    if (!bufs)
+        //# dll missing, or we just wanted to dump them
         return { found: false, similarity: 0 };
 
-    //- Grab file from baserom
+    let { cmp: buf_vani_cmp, dec: buf_vani_dec } = bufs;
 
-    let preheader = gBaseroms[romVer].slice(
-        dllTableStart[romVer] + dllOffsetStart,
-        dllTableStart[romVer] + dllOffsetStart + 0x10,
-    );
-
-    let dllCompressed = gBaseroms[romVer].slice(
-        dllTableStart[romVer] + dllOffsetStart + 0x10,
-        dllTableStart[romVer] + dllOffsetEnd,
-    );
-
-    let buf_vani;
-    let buf_cust = newDllFile;
-
-    if (!compressed)
+    let buf_vani, buf_cust;
     {
-        //= The input file was raw (apparently). Decompress and compare raw bytes instead.
-
-        //- Decompress the raw vanilla stream
-        let dllUncompressed = zlib.inflateRawSync(dllCompressed.slice(0x02));
-
-        //- Splice vanilla preheader onto vanilla decompressed file
-        buf_vani = Buffer.alloc(preheader.byteLength + dllUncompressed.byteLength);
-        preheader.copy(buf_vani);
-        dllUncompressed.copy(buf_vani, 0x10);
-
-        //= Copy to [expected] folder
-        if (!toSkip)
+        if (compressed)
         {
-            // fs.writeFileSync("./tmp.vani.bin", buf_vani);
-            // FATAL("./tmp.vani.bin");
-
-            ensureDir(gRootDir + `expected`);
-            ensureDir(gRootDir + `expected/${romVer}`);
-            ensureDir(gRootDir + `expected/${romVer}/dlls`);
-
-            // await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.raw`, buf_vani);
-
-            //# Decrypted header
-            let buf_vani_dec = Buffer.alloc(buf_vani.length);
-            buf_vani.copy(buf_vani_dec);
-            {
-                let checksum = dll_get_checksum(buf_vani_dec.slice(0x10));
-                buf_vani_dec.writeUint32BE(buf_vani_dec.readUint32BE(0x00) ^ checksum[0], 0x00);
-                buf_vani_dec.writeUint32BE(buf_vani_dec.readUint32BE(0x08) ^ checksum[1], 0x08);
-
-                await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.bin`, buf_vani_dec);
-            }
+            buf_vani = buf_vani_cmp;
+            buf_cust = newDllFile;
         }
-    }
-    else
-    {
-        //= Both preheader and compressed body combined
-
-        buf_vani = gBaseroms[romVer].slice(
-            dllTableStart[romVer] + dllOffsetStart,
-            dllTableStart[romVer] + dllOffsetEnd,
-        );
-
-        //= Copy to [expected] folder
-        if (!toSkip)
+        else
         {
-            // fs.writeFileSync("./tmp.vani.bin", buf_vani);
-            // FATAL("./tmp.vani.bin");
+            buf_vani = buf_vani_dec;
 
-            ensureDir(gRootDir + `expected`);
-            ensureDir(gRootDir + `expected/${romVer}`);
-            ensureDir(gRootDir + `expected/${romVer}/dlls`);
+            //# Decrypt preheader to temp buffer
+            let dec = newDllFile.clone();
+            await dll_preheader_encryption_toggle(dec);
 
-            await fsp.writeFile(gRootDir + `expected/${romVer}/dlls/${dllName}.dll`, buf_vani);
+            buf_cust = dec;
         }
     }
 
@@ -545,9 +580,10 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
     {
         //# Vanilla functions
         await dll_analysis_text_dump(
-            await dll_analyse_text(buf_vani),
+            await dll_analyse_text(buf_vani_dec),
             gRootDir + `expected/${romVer}/dlls`
         );
+
         //# Custom functions
         await dll_analysis_text_dump(
             await dll_analyse_text(buf_cust),
@@ -558,21 +594,14 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
     //- Execute compare
     let similarity;
     {
-        let s_v = buf_vani.toString();
-        let s_c = buf_cust.toString();
+        let s_v = buf_vani.toString("hex");
+        let s_c = buf_cust.toString("hex");
 
-        if (s_v == s_c)
-        {
-            similarity = 1;
-        }
-        else
-        {
-            similarity = stringSimilarity.compareTwoStrings(s_v, s_c);
-
-            if (similarity > 0.999)
-                //# Not matching but similarity score says matching, force mismatch
-                similarity = 0.999;
-        }
+        similarity = s_v === s_c
+            //# Matches perfectly
+            ? 1
+            //# Similarity score for mismatching buffers must not exceed 0.999
+            : Math.min(0.999, stringSimilarity.compareTwoStrings(s_v, s_c));
     }
 
     return { found: true, similarity, };
@@ -1812,6 +1841,11 @@ async function dll_process(dll, objFilePath, romVer, toSkip=false)
     return [binFilePath, finalBinary];
 }
 
+/**
+ * 
+ * @param {Buffer} buffer decompressed DLL, with no preheader
+ * @returns 
+ */
 function dll_get_checksum(buffer)
 {
     let checksum = [0, 0];
@@ -1831,7 +1865,11 @@ function dll_get_checksum(buffer)
     return checksum;
 }
 
-async function dll_preheader_encrypt(rawFile=null)
+/**
+ * Encrypt if decrypted, or decrypt if encrypted
+ * @param {Buffer|null} rawFile 
+ */
+async function dll_preheader_encryption_toggle(rawFile=null)
 {
     if (!rawFile)
         FATAL(`Invalid handle, cannot encrypt preheader!`);
@@ -1861,12 +1899,175 @@ function zlib_deflateRaw_async(buf, options)
 }
 
 /**
- * Pack a raw dll file with the compression and encryption bullshit that Tooie expects.
+ * 
+ * @param {zlib.InputType} buf 
+ * @param {zlib.ZlibOptions} options 
+ * @returns {Promise<Buffer>}
+ */
+ function zlib_inflateRaw_async(buf, options)
+ {
+     return new Promise((resolve, reject) =>
+     {
+         zlib.inflateRaw(buf, options, (err, res) => err ? reject(err) : resolve(res));
+     });
+ }
+
+/**
+ * Give a path to a file a new extension
+ * @param {string} fullpath 
+ * @param {string} newext 
+ * @returns 
+ */
+function path_replace_ext(fullpath, newext)
+{
+    let dot = ".";
+
+    if (!newext)
+        dot = "";
+
+    return fullpath.replace(/\.[^\.]+$/g, dot + newext.replace(/^\.+/g, ""));
+}
+
+/**
+ * Dump the zlib window magic for the given DLL.
+ * Required to achieve matching compression with pre-1996 zlib!
+ * 
+ * Pre-1996 zlib had a bug that left garbage bytes over in the
+ * window. The bytes that were present in the previously file
+ * (in decompressed form) at the offset corresponding to the
+ * end of the current file (in decompressed form) must be
+ * placed at the end of the window to achieve byte-matching
+ * compression.
+ * 
+ * While it would be fantastic to fetch these bytes directly
+ * from the relevant preceding file, and while it CAN be done
+ * for a majority of the DLLs in the game, this doesn't seem to
+ * be possible for ALL of them, e.g. one of them is "gzreg".
+ * We know that some DLLs were removed from retail, since
+ * some indices between gzreg and the preceding DLL are skipped
+ * over. My theory is that one of these missing DLLs was
+ * large enough to leave its garbage data behind past the
+ * end of gzreg. Since the file was not included in retail,
+ * it is impossible for us to extract its garbage bytes.
+ * 
+ * So, the second-best way is to use the original DEFLATE
+ * streams produced by Rare to determine the magic instead.
+ * Kinda hacky and not "pure" in the decomp sense, but we don't
+ * want to directly hardcode the needed magic for each DLL
+ * (Revo will fo sho beat my ass). Therefore this is what we
+ * need to do.
+ * 
+ * @param {string} romVer 
+ * @param {string} dllName 
+ * @param {string} dst_magic_fn filename to dump the magic to
+ */
+async function zlib_window_magic_dump(romVer, dllName, dst_magic_fn)
+{
+    let vani_cmp_fn = gRootDir + `expected/${romVer}/dlls/${dllName}.dll`;
+    let vani_dec_fn = gRootDir + `expected/${romVer}/dlls/${dllName}.bin`;
+
+    let vani_cmp_fn_tmp = gRootDir + `expected/${romVer}/dlls/${dllName}.cmp`;
+
+    /**
+     * @param {boolean} result 
+     * @returns 
+     */
+    async function cleanup(result)
+    {
+        if (fs.existsSync(vani_cmp_fn_tmp))
+            await fsp.unlink(vani_cmp_fn_tmp);
+
+        return result;
+    }
+
+    if (!fs.existsSync(vani_cmp_fn) || !fs.existsSync(vani_dec_fn))
+    {
+        ERROR(`Vanilla DLL file [${romVer}/${dllName}] needed for zlib magic but missing, proceeding anyway!`);
+        return await cleanup(false);
+    }
+
+    //- Copy DEFLATE stream out for infgen
+    {
+        let tmp = await fsp.readFile(vani_cmp_fn);
+        await fsp.writeFile(vani_cmp_fn_tmp, tmp.slice(0x12));
+    }
+
+    //- Use infgen to disassemble the stream
+    let cmd = gRootDir + `tools/infgen -r ${vani_cmp_fn_tmp}`;
+
+    let output = await spawn(cmd, false, true);
+
+    //- Find the final match line; this is the one relevant for the zlib window bug
+    let ig_len  = 0;
+    let ig_dist = 0;
+    {
+        let m = output.match(/\r?\nmatch (\d+) (\d+)(?![\s\S]*\r?\nmatch)/);
+        if (m && m.length === 3)
+        {
+            ig_len  = parseInt(m[1]);
+            ig_dist = parseInt(m[2]);
+        }
+        else
+        {
+            ERROR(`infgen failed for DLL file [${romVer}/${dllName}], proceeding anyway!`);
+            return await cleanup(false);
+        }
+    }
+
+    let garbage_bytes;
+    {
+        let dec = await fsp.readFile(vani_dec_fn);
+
+        if (dec.byteLength === 0)
+        {
+            ERROR(`Vanilla DLL file (dec) [${romVer}/${dllName}] needed for zlib magic but missing, proceeding anyway!`);
+            return await cleanup(false);
+        }
+
+        let curr  = dec.byteLength - ig_len;
+        let start = curr - ig_dist + ig_len;
+
+        //# Amount of available bytes after desired match location
+        let remaining = dec.byteLength - start;
+
+        //# Fetch "enough" bytes to reproduce the bug
+        let max_limit = 0x30; //# should be enough
+        let end = start + Math.min(max_limit, remaining);
+
+        //# Copy
+        garbage_bytes = Buffer.alloc(end - start);
+        dec.copy(garbage_bytes, 0, start, end);
+    }
+
+    //# Dump it
+    await fsp.writeFile(dst_magic_fn, garbage_bytes);
+
+    return await cleanup(true);
+}
+
+async function zlib_window_magic_get(romVer, dllName)
+{
+    let dst_magic_fn = gRootDir + `expected/${romVer}/dlls/${dllName}.zlibmagic`;
+
+    //- Dump if we don't have it yet
+    if (!fs.existsSync(dst_magic_fn))
+        if (!await zlib_window_magic_dump(romVer, dllName, dst_magic_fn))
+            //# Could not dump, ignore
+            return null;
+
+    let garbage_bytes = await fsp.readFile(dst_magic_fn);
+
+    return new Uint8Array(garbage_bytes.buffer);
+}
+
+/**
+ * Pack a raw dll file with the compression and encryption bs that Tooie expects.
  *
+ * @param {string} dllName
  * @param {string} rawFilePath
  * @param {Buffer} rawFile the raw dll file (already compiled and linked and everything)
  */
-async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
+async function dll_compress(rawFilePath, dllName, romVer, rawFile=null, toSkip=false)
 {
     if (!rawFile)
         rawFile = await fsp.readFile(rawFilePath);
@@ -1877,9 +2078,10 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
     //# Dump just for fun
     let bodyWithPreOutPath  = rawFilePath + ".raw";
 
-    let bodyOutPath  = rawFilePath + ".body";
-    let gzOutPath    = rawFilePath + ".gz";
-    let finalOutPath = rawFilePath + ".dll";
+    let bodyOutPath  = path_replace_ext(rawFilePath, ".body");
+    let gzInPath     = path_replace_ext(rawFilePath, ".nopre");
+    let gzOutPath    = path_replace_ext(rawFilePath, ".gz");
+    let finalOutPath = path_replace_ext(rawFilePath, ".dll");
 
     let finalOut;
 
@@ -1894,6 +2096,7 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
             // await fsp.writeFile(bodyOutPath, rawFile.slice(0x10));
         }
 
+        /** @type {Buffer} */
         let gzOut;
 
         /**
@@ -1906,19 +2109,29 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
 
         if (USE_ZLIB_BINARY)
         {
-            const bin = `${gRootDir}tools/mcompress/bin/minigzip`;
+            // const bin = `${gRootDir}tools/mcompress/bin/minigzip`;
+            const bin = `${gRootDir}tools/mcompress/bin/mcompress`;
 
             if (!toSkip)
             {
-                if (!fs.existsSync(bin))
-                    FATAL(`Couldn't find [minigzip] (zlib:1.0.6) binary! Either provide it, or switch to using internal zlib.`);
+                // if (!fs.existsSync(bin))
+                //     FATAL(`Couldn't find [minigzip] (zlib:1.0.6) binary! Either provide it, or switch to using internal zlib.`);
 
                 //# zlib binary overwrites file completely, so make a copy
-                await fsp.writeFile(gzOutPath, rawFile.slice(0x10));
+                await fsp.writeFile(gzInPath, rawFile.slice(0x10));
 
-                await spawn(`${bin} ${path.resolve(gzOutPath)}`);
+                // await spawn(`${bin} ${path.resolve(gzInPath)}`);
+                await spawn(`${bin} -l 9 -g bt -i ${path.resolve(gzInPath)} -o ${path.resolve(gzOutPath)}`);
+
+                // console.log(out)
+
+                // if (!fs.existsSync(gzOutPath + ".gz"))
+                //     FATAL(`Could not find: ${gzOutPath}.gz`);
+
                 //# zlib binary appends .gz to the end of everything, cut it
-                await fsp.rename(gzOutPath + ".gz", gzOutPath);
+                // await fsp.rename(gzOutPath + ".gz", gzOutPath);
+
+                await fsp.unlink(gzInPath);
             }
 
             gzOut = await fsp.readFile(gzOutPath);
@@ -1928,14 +2141,33 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
             /**
              * [dll/gzreg] requires a level of >=8 to match for all versions
              */
-            gzOut = await zlib_deflateRaw_async(rawFile.slice(0x10),
-            {
-                level:    zlib.constants.Z_BEST_COMPRESSION,
-                strategy: zlib.constants.Z_DEFAULT_STRATEGY,
-                // flush, doesn't matter
-                // windowBits, memLevel, don't seem to matter
-                // chunkSize, doesn't seem to matter
-            });
+            // gzOut = await zlib_deflateRaw_async(rawFile.slice(0x10),
+            // {
+            //     level:    zlib.constants.Z_BEST_COMPRESSION,
+            //     strategy: zlib.constants.Z_DEFAULT_STRATEGY,
+            //     // flush, doesn't matter
+            //     // windowBits, memLevel, don't seem to matter
+            //     // chunkSize, doesn't seem to matter
+            // });
+
+
+
+            // let zlibWindowMagic = dllName in gZlibWindowMagic.ALL
+            //     ? gZlibWindowMagic.ALL[dllName]
+            //     : dllName in gZlibWindowMagic[romVer]
+            //         ? gZlibWindowMagic[romVer][dllName]
+            //         : 0xDEADBABE;
+
+
+
+            //# Use raw JS zlib deflate routine (we can easily tweak it)
+            gzOut = Buffer.from(
+                pako.deflateRaw(
+                    new Uint8Array(rawFile.slice(0x10)),
+                    { level: 9 },
+                    await zlib_window_magic_get(romVer, dllName),
+                ).buffer
+            );
 
             // let ab = new ArrayBuffer(4);
 
@@ -1963,33 +2195,33 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
 
             if (USE_ZLIB_BINARY)
             {
-                /**
-                 * The zlib binary [minigzip] prepends a header and appends
-                 * a checksum. We need to trim both off, and also prepend
-                 * the 2-byte decompressed size value.
-                 */
+                // /**
+                //  * The zlib binary [minigzip] prepends a header and appends
+                //  * a checksum. We need to trim both off, and also prepend
+                //  * the 2-byte decompressed size value.
+                //  */
 
-                let start = 0x08;
-                //# Where the checksum starts. We need to zero this area.
-                let tail  = gzOut.byteLength - 8;
-                let end   = tail;
+                // let start = 0x08;
+                // //# Where the checksum starts. We need to zero this area.
+                // let tail  = gzOut.byteLength - 8;
+                // let end   = tail;
 
-                //# Calculate padding requirements
-                while (end % 4)
-                    end++;
+                // //# Calculate padding requirements
+                // while (end % 4)
+                //     end++;
 
-                //# Write decompressed size (2 bytes)
-                {
-                    let decompressedSize = (ALIGN(rawFile.byteLength, 0x10) - 0x10) / 0x10;
-                    gzOut.writeUint16BE(decompressedSize, start);
-                }
+                // //# Write decompressed size (2 bytes)
+                // {
+                //     let decompressedSize = (ALIGN(rawFile.byteLength, 0x10) - 0x10) / 0x10;
+                //     gzOut.writeUint16BE(decompressedSize, start);
+                // }
 
-                for (let i = tail; i < end; i++)
-                    //# Zero-fill
-                    gzOut.writeUint8(0, i);
+                // for (let i = tail; i < end; i++)
+                //     //# Zero-fill
+                //     gzOut.writeUint8(0, i);
 
-                //# Perform final slice
-                gzOut = gzOut.slice(start, end);
+                // //# Perform final slice
+                // gzOut = gzOut.slice(start, end);
             }
             else
             {
@@ -2032,7 +2264,7 @@ async function dll_compress(rawFilePath, rawFile=null, toSkip=false)
 
         {
             rawFile.copy(finalOut, 0, 0, 0x10);
-            gzOut.copy(finalOut, 0x10, 0);
+            gzOut  .copy(finalOut, 0x10, 0);
         }
 
         if (!toSkip)
@@ -2526,10 +2758,13 @@ async function dll_full_build_multi(dllNames)
 
                 let [fn_raw, file_raw] = await dll_process(dllName, fn_o, romVer, toSkip);
 
-                await dll_preheader_encrypt(file_raw);
+                await dll_preheader_encryption_toggle(file_raw);
+
+                //- Make [expected] dumps before proceeding, needed for zlib magic
+                await dll_dump_and_get_vani_from_baserom(dllName, romVer);
 
                 //# Outputs compressed files
-                let [fn_cmp, file_cmp] = await dll_compress(fn_raw, file_raw, toSkip);
+                let [fn_cmp, file_cmp] = await dll_compress(fn_raw, dllName, romVer, file_raw, toSkip);
 
                 /**
                  * Used to know whether to override the raw status with
@@ -3051,7 +3286,7 @@ function MIPS_instruction_parse(instr)
  * Use analysis of MIPS instructions in a DLL file and detect the offsets
  * and sizes of all functions.
  *
- * @param {string|Buffer} dllFile Either a path to a DLL file, or a buffer for its contents. MUST contain a preheader. Preheader must be encrypted.
+ * @param {Buffer} dllFile Decompressed DLL with decrypted preheader.
  * @returns {Promise<Array<Record<string, boolean|string|number>>} information about all functions found in .text
  */
 function dll_analyse_text(dllFile)
@@ -3060,47 +3295,14 @@ function dll_analyse_text(dllFile)
     {
         //= Checks
         {
-            if (typeof dllFile === "string")
-                //# A path was passed, load the file
-                dllFile = await fsp.readFile(dllFile); //# throwable
-
             if (!Buffer.isBuffer(dllFile) || dllFile.byteLength < 0x20)
                 return reject(`Invalid DLL file: not a Buffer.`);
 
             if (dllFile.readUint8(0x0F) !== 0x82)
                 return reject(`Invalid DLL file: missing preheader!`);
-        }
 
-        //- Make a working copy of the incoming buffer
-        {
-            let buf = Buffer.alloc(dllFile.byteLength);
-            dllFile.copy(buf);
-            dllFile = buf;
-        }
-
-        //- Decompress if compressed
-        {
-            let isCompressed = dllFile.readUInt32BE(0x10) !== 0;
-            if (isCompressed)
-            {
-                let gz = zlib.inflateRawSync(dllFile.slice(0x12));
-
-                //# Splice new buffer together
-                let buf = Buffer.alloc(0x10 + gz.byteLength);
-                dllFile.copy(buf, 0, 0, 0x10);
-                gz.copy(buf, 0x10);
-
-                //# Reassign
-                dllFile = buf;
-            }
-        }
-
-        //- Decrypt the preheader
-        {
-            let checksum = dll_get_checksum(dllFile.slice(0x10));
-
-            dllFile.writeUInt32BE(dllFile.readUint32BE(0x0) ^ checksum[0], 0x0);
-            dllFile.writeUInt32BE(dllFile.readUint32BE(0x8) ^ checksum[1], 0x8);
+            if (dllFile.readUInt32BE(0x10) !== 0)
+                return reject(`DLL was compressed, we don't take these.`);
         }
 
         //- Calculate the offset of the start of .text

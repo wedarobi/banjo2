@@ -1556,12 +1556,7 @@ async function dll_process(dll, objFilePath, romVer, toSkip=false)
                 }
 
                 //# Sort pub functions by offset
-                pubFns.sort((a, b) =>
-                {
-                    if      (a.loc < b.loc) return -1;
-                    else if (a.loc > b.loc) return  1;
-                    else                    return  0;
-                });
+                pubFns.sort((a, b) => a.loc - b.loc);
 
                 //!
                 DEBUG_LOG(pubFns)
@@ -2092,15 +2087,6 @@ async function dll_compress(rawFilePath, dllName, romVer, rawFile=null, toSkip=f
 
     //- Compress
     {
-        if (!toSkip)
-        {
-            //- Remove preheader before compression
-            // await fsp.writeFile(bodyWithPreOutPath, rawFile);
-
-            //- Remove preheader before compression
-            // await fsp.writeFile(bodyOutPath, rawFile.slice(0x10));
-        }
-
         /** @type {Buffer} */
         let gzOut;
 
@@ -2143,28 +2129,6 @@ async function dll_compress(rawFilePath, dllName, romVer, rawFile=null, toSkip=f
         }
         else
         {
-            /**
-             * [dll/gzreg] requires a level of >=8 to match for all versions
-             */
-            // gzOut = await zlib_deflateRaw_async(rawFile.slice(0x10),
-            // {
-            //     level:    zlib.constants.Z_BEST_COMPRESSION,
-            //     strategy: zlib.constants.Z_DEFAULT_STRATEGY,
-            //     // flush, doesn't matter
-            //     // windowBits, memLevel, don't seem to matter
-            //     // chunkSize, doesn't seem to matter
-            // });
-
-
-
-            // let zlibWindowMagic = dllName in gZlibWindowMagic.ALL
-            //     ? gZlibWindowMagic.ALL[dllName]
-            //     : dllName in gZlibWindowMagic[romVer]
-            //         ? gZlibWindowMagic[romVer][dllName]
-            //         : 0xDEADBABE;
-
-
-
             //# Use raw JS zlib deflate routine (we can easily tweak it)
             gzOut = Buffer.from(
                 pako.deflateRaw(
@@ -2173,21 +2137,6 @@ async function dll_compress(rawFilePath, dllName, romVer, rawFile=null, toSkip=f
                     await zlib_window_magic_get(romVer, dllName),
                 ).buffer
             );
-
-            // let ab = new ArrayBuffer(4);
-
-            // ab[0] = 1;
-            // ab[1] = 2;
-            // ab[2] = 3;
-            // ab[3] = 4;
-
-            // gzOut = zlib.gzipSync(rawFile.slice(0x10), { level: 2 });
-
-            if (!toSkip)
-            {
-                //# (async) Write just for fun
-                // fs.writeFile(gzOutPath, gzOut, () => {}); //=
-            }
         }
 
         //# Cleanup
@@ -2653,17 +2602,13 @@ function _order_colours(str)
  */
 function _order_dll_result_strings_by_status(rArr)
 {
-    // TODO also sort by last modified time
+    //# We've already sorted by last modified time
+    //# We assume we're using a stable sort that maintains this order
 
-    return rArr.sort((a, b) =>
-    {
-        a = _order_colours(a);
-        b = _order_colours(b);
+    //# Now sort by version results (percentage and colours / match status)
+    rArr.sort((a, b) => _order_colours(a) - _order_colours(b));
 
-        if      (a < b) return -1;
-        else if (a > b) return 1;
-        else            return 0;
-    });
+    return rArr;
 }
 
 /**
@@ -2673,6 +2618,23 @@ function _order_dll_result_strings_by_status(rArr)
  * Record<dllName, Record<romVer, hash>>
  */
 var gDllHashMap = {};
+var gDllLastModified = {};
+
+
+/**
+ * 
+ * @param {string[]} dllNames 
+ */
+async function dlls_update_last_modified_times(dllNames)
+{
+    (await Promise.all(dllNames.map(dllName =>
+    {
+        let fn = gRootDir + `src/dlls/${dllName}.c`;
+        return fsp.stat(fn);
+    })))
+    .map(s => s.mtimeMs)
+    .forEach((mtimeMs, i) => gDllLastModified[dllNames[i]] = mtimeMs);
+}
 
 /**
  * 
@@ -2682,6 +2644,8 @@ async function dll_full_build_multi(dllNames)
 {
     await HELPER_parse_out_dll_linker_symbols();
     await HELPER_parse_out_static_linker_symbols();
+
+    await dlls_update_last_modified_times(dllNames);
 
     // const SHOW_FILE_SIZES = false;
 
@@ -2708,6 +2672,9 @@ async function dll_full_build_multi(dllNames)
     //# Don't optimise this
     for (let romVer of allRomVers)
         await update_rom_version(romVer);
+
+    //- Sort DLLs by last modified (newest first)
+    dllNames.sort((a, b) => gDllLastModified[b] - gDllLastModified[a]);
 
     //- Optimise across allRomVers with Promise.all
     // for (let [rvIdx, romVer] of allRomVers.entries())
@@ -2865,7 +2832,6 @@ async function dll_full_build_multi(dllNames)
 
         return resolve();
     })));
-
 
     let results_out = [];
 
@@ -3044,15 +3010,6 @@ async function dll_full_build_multi(dllNames)
                 //- Show a large stylised box for multiple DLLs
 
                 let str_counts = "";
-                // str_counts    += gct("  < ", "black");
-                // str_counts    += gct(numDlls.OK, MATCH_COLOURS.OK);
-                // str_counts    += gct(" / ", "black");
-                // str_counts    += gct(numDlls.CMP, MATCH_COLOURS.CMP);
-                // str_counts    += gct(" / ", "black");
-                // str_counts    += gct(numDlls.BAD, MATCH_COLOURS.BAD);
-                // str_counts    += gct(" >", "black");
-
-                // let str_counts = ` ${gct("<", "black")} ${gct(numDlls.OK, MATCH_COLOURS.OK)} / ${gct(numDlls.CMP, MATCH_COLOURS.CMP)} / ${gct(numDlls.BAD, MATCH_COLOURS.BAD)} >`;
 
                 //# If string does not contain any colour codes
                 let headerPad = 27;
@@ -3079,25 +3036,25 @@ async function dll_full_build_multi(dllNames)
                 }
 
                 let header = `Status${str_counts}`.padEnd(headerPad, " ");
-                header += gct(numDlls.OK,           MATCH_COLOURS.OK);
-                header += gct(" matching   ",       "black");
+                header += gct(numDlls.OK, MATCH_COLOURS.OK);
+                header += gct(" matching   ", "black");
                 if (numDlls.CMP)
                 {
-                    header += gct(numDlls.CMP,          MATCH_COLOURS.CMP);
-                    header += gct(" compression   ",    "black");
+                    header += gct(numDlls.CMP, MATCH_COLOURS.CMP);
+                    header += gct(" compression   ", "black");
                 }
                 if (numDlls.BAD)
                 {
-                    header += gct(numDlls.BAD,          MATCH_COLOURS.BAD);
-                    header += gct(" non-matching   ",   "black");
+                    header += gct(numDlls.BAD, MATCH_COLOURS.BAD);
+                    header += gct(" non-matching   ", "black");
                 }
                 if (numDlls.UNK)
                 {
-                    header += gct(numDlls.UNK,     MATCH_COLOURS.UNK);
-                    header += gct(" unknown   ",   "black");
+                    header += gct(numDlls.UNK, MATCH_COLOURS.UNK);
+                    header += gct(" unknown   ", "black");
                 }
-                header += gct(remainingDllCount,    "black");
-                header += gct(" unlisted   ",       "black");
+                header += gct(remainingDllCount, "black");
+                header += gct(" unlisted   ", "black");
 
                 strs.push(header);
                 strs.push(..._order_dll_result_strings_by_status(results_out.filter(x => x)));

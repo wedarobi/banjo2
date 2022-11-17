@@ -3081,10 +3081,16 @@ async function dll_full_build_multi(dllNames)
                 let header = `Status${str_counts}`.padEnd(headerPad, " ");
                 header += gct(numDlls.OK,           MATCH_COLOURS.OK);
                 header += gct(" matching   ",       "black");
-                header += gct(numDlls.CMP,          MATCH_COLOURS.CMP);
-                header += gct(" compression   ",    "black");
-                header += gct(numDlls.BAD,          MATCH_COLOURS.BAD);
-                header += gct(" non-matching   ",   "black");
+                if (numDlls.CMP)
+                {
+                    header += gct(numDlls.CMP,          MATCH_COLOURS.CMP);
+                    header += gct(" compression   ",    "black");
+                }
+                if (numDlls.BAD)
+                {
+                    header += gct(numDlls.BAD,          MATCH_COLOURS.BAD);
+                    header += gct(" non-matching   ",   "black");
+                }
                 if (numDlls.UNK)
                 {
                     header += gct(numDlls.UNK,     MATCH_COLOURS.UNK);

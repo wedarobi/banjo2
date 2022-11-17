@@ -108,7 +108,7 @@ const {
  * console.log(deflate.result);
  * ```
  **/
-function Deflate(options) {
+function Deflate(options, input, window_magic=null) {
   this.options = utils.assign({
     level: Z_DEFAULT_COMPRESSION,
     method: Z_DEFLATED,
@@ -142,7 +142,9 @@ function Deflate(options) {
     opt.method,
     opt.windowBits,
     opt.memLevel,
-    opt.strategy
+    opt.strategy,
+    input,
+    window_magic,
   );
 
   if (status !== Z_OK) {
@@ -331,8 +333,8 @@ Deflate.prototype.onEnd = function (status) {
  * console.log(pako.deflate(data));
  * ```
  **/
-function deflate(input, options) {
-  const deflator = new Deflate(options);
+function deflate(input, options, window_magic=null) {
+  const deflator = new Deflate(options, input, window_magic);
 
   deflator.push(input, true);
 
@@ -351,10 +353,10 @@ function deflate(input, options) {
  * The same as [[deflate]], but creates raw data, without wrapper
  * (header and adler32 crc).
  **/
-function deflateRaw(input, options) {
+function deflateRaw(input, options, window_magic=null) {
   options = options || {};
   options.raw = true;
-  return deflate(input, options);
+  return deflate(input, options, window_magic);
 }
 
 

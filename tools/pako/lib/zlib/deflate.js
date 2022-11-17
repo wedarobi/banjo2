@@ -85,6 +85,8 @@ const BS_FINISH_DONE    = 4; /* finish done, accept no more input or output */
 
 const OS_CODE = 0x03; // Unix :) . Don't detect, use this default.
 
+var gZlibWindowMagicSet = false;
+
 const err = (strm, errorCode) => {
   strm.msg = msg[errorCode];
   return errorCode;
@@ -264,10 +266,14 @@ const longest_match = (s, cur_match) => {
   if (s.prev_length >= s.good_match) {
     chain_length >>= 2;
   }
-  /* Do not look for matches beyond the end of the input. This is necessary
-   * to make deflate deterministic.
-   */
-  if (nice_match > s.lookahead) { nice_match = s.lookahead; }
+
+  if (!gZlibWindowMagicSet)
+  {
+    /* Do not look for matches beyond the end of the input. This is necessary
+    * to make deflate deterministic.
+    */
+    if (nice_match > s.lookahead) { nice_match = s.lookahead; }
+  }
 
   // Assert((ulg)s->strstart <= s->window_size-MIN_LOOKAHEAD, "need lookahead");
 
@@ -1451,8 +1457,7 @@ const deflateSetHeader = (strm, head) => {
 };
 
 
-const deflateInit2 = (strm, level, method, windowBits, memLevel, strategy) => {
-
+const deflateInit2 = (strm, level, method, windowBits, memLevel, strategy, input, window_magic=null) => {
   if (!strm) { // === Z_NULL
     return Z_STREAM_ERROR;
   }
@@ -1505,6 +1510,16 @@ const deflateInit2 = (strm, level, method, windowBits, memLevel, strategy) => {
   s.window = new Uint8Array(s.w_size * 2);
   s.head = new Uint16Array(s.hash_size);
   s.prev = new Uint16Array(s.w_size);
+
+  gZlibWindowMagicSet = false;
+
+  if (window_magic)
+  {
+    gZlibWindowMagicSet = true;
+
+    for (let i = 0; i < window_magic.byteLength; i++)
+        s.window[input.byteLength + i] = window_magic[i];
+  }
 
   // Don't need mem init magic for JS.
   //s.high_water = 0;  /* nothing written to s->window yet */

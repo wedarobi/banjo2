@@ -1,0 +1,9 @@
+#!/bin/sh
+
+#- Run a hex diff session for a COMPRESSED version of a DLL in the terminal with target on top, and ours below
+## $1: region
+## $2: dll name
+
+(
+    hexdiff expected/$1/dlls/$2.dll build/$1/dlls/$2.dll 2>/dev/null
+)

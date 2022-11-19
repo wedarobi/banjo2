@@ -355,6 +355,28 @@ var gCurrentlyLoadedSyscallIdxMap = "";
 
 var gSyscallIdxMap_rv = {};
 
+var gDisasmStartAddrs = {};
+
+async function init_gDisasmStartAddrs()
+{
+    let fn = gCurrDir + "enum/disasm_start_addrs.txt";
+
+    if (!fs.existsSync(fn))
+        FATAL(`Disasm start addresses don't exist: ${fn}`);
+
+    let dlls = (await fsp.readFile(fn))
+        .toString()
+        .split(/(?:\r?\n)+/g)
+        .map(line =>
+        {
+            let es = line.split(/\s+/g);
+            return { name: es[0], addr: parseInt(es[1], 16) >>> 0 };
+        });
+
+    for (let dll of dlls)
+        gDisasmStartAddrs[dll.name] = dll.addr;
+}
+
 /**
  * Map between <DLL_name, callTableOffset>
  *
@@ -667,6 +689,9 @@ async function dll_source_initialise(dllName, romVer)
      .replace(/\n +/g, "\n")
      .trim() + "\n".repeat(5);
 
+    //# Forward decls
+    let forwards = "";
+
     let fn_dump = (await fsp.readFile(fndump_fn))
         .toString()
         .trim()
@@ -674,7 +699,7 @@ async function dll_source_initialise(dllName, romVer)
         .map(line =>
         {
             let es = line.split(/\s+/g);
-            return { name: es[0], offset: es[1], size: es[2] };
+            return { name: es[0], offset: parseInt(es[1], 16), size: parseInt(es[2], 16) };
         });
 
     let body = "";
@@ -688,16 +713,34 @@ async function dll_source_initialise(dllName, romVer)
             let isPub = fn.name.startsWith("pub");
     
             let name = isPub
-                ? `void DLL_${dllName}_${(cntPubs++).toString().padStart(2, "0")}`
-                : `/*static*/ void fn_priv_${(cntPrvs++).toString().padStart(2, "0")}`;
-    
-            body += `${name}(void)\n{\n    // TODO\n\n\n}\n\n`;
+                ? `void DLL_${dllName}_${(cntPubs++).toString().padStart(2, "0")}(void)`
+                : `/*static*/ void fn_priv_${(cntPrvs++).toString().padStart(2, "0")}(void)`;
+
+            if (!isPub)
+            {
+                //# Add to forward declarations
+                //! disabled for now
+                // forwards += `${name};\n`;
+            }
+
+            let ghidraLabel = "";
+
+            if (dllName in gDisasmStartAddrs)
+            {
+                let addr = gDisasmStartAddrs[dllName];
+                ghidraLabel = `//= ${dllName}::${(addr + fn.offset).toString(16).toUpperCase()}\n`;
+            }
+
+            body += `${ghidraLabel}${name}\n{\n    // TODO\n\n\n}\n\n`;
         }
     }
 
+    if (forwards !== "")
+        forwards += "\n\n";
+
     //- Write
     {
-        let out = header + body;
+        let out = header + forwards + body;
 
         await fsp.writeFile(dst_fn, out);
     }
@@ -3878,6 +3921,7 @@ async function main()
     //- Set version for ROM you want to work with
     gRomVer = "usa"; //= default
 
+    await init_gDisasmStartAddrs();
     await update_rom_version(gRomVer);
 
 

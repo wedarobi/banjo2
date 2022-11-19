@@ -638,8 +638,12 @@ async function dll_get_similarity(dllName, newDllFile, romVer, compressed=false)
  * @param {string} dllName 
  * @param {string} romVer 
  */
-async function dll_source_initialise(dllName, romVer="usa")
+async function dll_source_initialise(dllName, romVer)
 {
+    if (romVer !== "usa")
+        //# Pseudo mutex for romver parallel ops
+        return false;
+
     let dst_fn    = gRootDir + `src/dlls/${dllName}.c`;
     let fndump_fn = gRootDir + `expected/${romVer}/dlls/${dllName}_fndump.txt`;
 
@@ -684,10 +688,10 @@ async function dll_source_initialise(dllName, romVer="usa")
             let isPub = fn.name.startsWith("pub");
     
             let name = isPub
-                ? `DLL_${dllName}_${(cntPubs++).toString().padStart(2, "0")}`
-                : `fn_priv_${(cntPrvs++).toString().padStart(2, "0")}`;
+                ? `void DLL_${dllName}_${(cntPubs++).toString().padStart(2, "0")}`
+                : `/*static*/ void fn_priv_${(cntPrvs++).toString().padStart(2, "0")}`;
     
-            body += `void ${name}(void)\n{\n    // TODO\n\n\n}\n\n`;
+            body += `${name}(void)\n{\n    // TODO\n\n\n}\n\n`;
         }
     }
 
@@ -697,6 +701,8 @@ async function dll_source_initialise(dllName, romVer="usa")
 
         await fsp.writeFile(dst_fn, out);
     }
+
+    log(gct(`    Initialised ${dllName}.c with function skeleton for [${romVer}]!`, "yellow"));
 
     return true;
 }
@@ -1054,10 +1060,20 @@ async function dll_source_edit_location_dump(dllName, romVer)
 
                 //= Neither of these should happen, we can just quit cause it makes no sense
                 //= for these to be missing after the user triggers a build of this dll
-                if (!fs.existsSync(vani_info_fn) || !fs.existsSync(cust_info_fn))
                 {
-                    log(`[ERR]: The necessary fndump files are missing for: ${dllName}!`);
-                    return false;
+                    let exists_vani = fs.existsSync(vani_info_fn);
+                    let exists_cust = fs.existsSync(cust_info_fn);
+
+                    if (!exists_vani || !exists_cust)
+                    {
+                        let types = [];
+    
+                        if (!exists_vani) types.push("vani");
+                        if (!exists_cust) types.push("cust");
+    
+                        log(`[ERR]: The necessary fndump files are missing for: ${dllName} (${types.join(", ")})!`);
+                        return false;
+                    }
                 }
 
                 let vani_info = (await fsp.readFile(vani_info_fn)).toString().trim().split(/\r?\n/g);
@@ -2826,7 +2842,7 @@ async function dll_full_build_multi(dllNames)
                 let [fn_raw, file_raw] = await dll_process(dllName, fn_o, romVer, toSkip);
 
                 //# Make fndumps for cust
-                await dll_make_fndumps(dllName, romVer, null);
+                await dll_make_fndumps(dllName, romVer, file_raw);
 
                 //# Encrypt header
                 await dll_preheader_encryption_toggle(file_raw);

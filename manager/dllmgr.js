@@ -4003,9 +4003,7 @@ async function main()
         }
 
         for (let dll of dllNames)
-        {
             fs.watch(gRootDir + `src/dlls/${dll}.c`, {}, cb);
-        }
 
         log(gct(`  Autobuild enabled, watching for file changes...`, "black"));
     }

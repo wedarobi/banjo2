@@ -329,6 +329,9 @@
 /* $ chclinker */
 /* $ chclockworkmouse */
 /* $ chcoderoombits */
+/*@oooo*/ AIDS *DLL_chcoderoombits_00(void);
+/*@oooo*/ void  DLL_chcoderoombits_01(s32 a0, s32 a1);
+/*@oooo*/ void  DLL_chcoderoombits_02(s32 a0, s32 a1, s32 a2, u32 a3, OIS *ois);
 /* $ chcoderoomdoor */
 /* $ chcollballcontrol */
 /* $ chcolldoors */
@@ -759,6 +762,14 @@
 /* $ gcdialogcamera */
 /* $ gcdialogexec */
 /* $ gcegg */
+/*@oooo*/ u8   DLL_gcegg_00(s32 a0);
+/*@oooo*/ u8   DLL_gcegg_01(s32 a0);
+/*@oooo*/ s32  DLL_gcegg_02(s32 a0);
+/*@oooo*/ s32  DLL_gcegg_03(s32 a0);
+/*@oooo*/ s32  DLL_gcegg_04(s32 a0);
+/*@oooo*/ s32  DLL_gcegg_05(s32 a0);
+/*@oooo*/ bool DLL_gcegg_06(s32 a0);
+/*@oooo*/ s32  DLL_gcegg_07(s32 a0);
 /* $ gcextra */
 /*@oooo*/ s32 DLL_gcextra_00_get_spent_honey_flags(void);
 /*@oooo*/ s32 DLL_gcextra_01_get_max_health_upgrade_count(void);
@@ -770,6 +781,9 @@
 /*@oooo*/ void DLL_gcgamefix_01_fix_jinjo_jiggy_flags(s32 unused);
 /* $ gcgoto */
 /* $ gcintrotext */
+/*@oooo*/ void DLL_gcintrotext_00(void);
+/*@oooo*/ bool DLL_gcintrotext_01(void);
+/*@oooo*/ s32  DLL_gcintrotext_02(MAP map, u32 *dst_asset, u32 *dst_idxInAsset);
 /* $ gclevel */
 /* $ gclightsDll */
 /* $ gcmapDll */
@@ -785,6 +799,7 @@
 /* $ gcstatusDll */
 /* $ gctransitionDll */
 /* $ gcwater */
+/*@oooo*/ void DLL_gcwater_00(void);
 /* $ gczoombox */
 /* $ gczoomboxdata */
 /* $ gemarkersDll */
@@ -863,7 +878,7 @@
 /* $ glhittableDll */
 /*@oooo*/ void DLL_glhittableDll_00(void);
 /*@oooo*/ void DLL_glhittableDll_01(void);
-// /*@oooo*/ u32  DLL_glhittableDll_02(u32 a0);
+/*@oooo*/ u32  DLL_glhittableDll_02(u32 a0);
 /*@oooo*/ void DLL_glhittableDll_03(void);
 /*@oooo*/ void DLL_glhittableDll_04(void);
 /*@oooo*/ void DLL_glhittableDll_05(void);

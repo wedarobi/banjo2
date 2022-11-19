@@ -524,7 +524,8 @@ async function dll_dump_and_get_vani_from_baserom(dllName, romVer)
             dllUncompressed.copy(dec, 0x10);
     
             //# Decrypt preheader
-            await dll_preheader_encryption_toggle(dllUncompressed);
+            // await dll_preheader_encryption_toggle(dllUncompressed);
+            await dll_preheader_encryption_toggle(dec);
         }
     
         //= Dump to [expected] folder
@@ -542,16 +543,48 @@ async function dll_dump_and_get_vani_from_baserom(dllName, romVer)
 }
 
 /**
+ * Pass null for the buffer to dump vanilla instead.
+ * 
+ * @param {string} dllName
+ * @param {string} romVer
+ * @param {Buffer} dllBufDec custom (decrypted preheader + decompressed body) dll to dump. OPTIONAL. If not provided, will do dumps for vanilla.
+ * @returns {Promise<boolean>} TRUE if successful, else FALSE
+ */
+async function dll_make_fndumps(dllName, romVer, dllBufDec)
+{
+    let dec;
+    let path;
+
+    if (!dllBufDec)
+    {
+        let bufs = await dll_dump_and_get_vani_from_baserom(dllName, romVer);
+        if (!bufs)
+            //# Could not make fndumps
+            return false;
+    
+        dec = bufs.dec;
+        path = `expected/${romVer}/dlls`;
+    }
+    else
+    {
+        dec = dllBufDec;
+        path = `build/${romVer}/dlls`;
+    }
+
+    //- Perform fndump
+    await dll_analysis_text_dump(await dll_analyse_text(dec), gRootDir + path);
+}
+
+/**
  * Get a similarity score for a new DLL file, by comparing it to the one
  * inside the current baserom.
  *
  * @param {string} dllName
- * @param {boolean} dumpBinsOnly if true, dump standard binaries and exit, else do fndumps
- * @param {Buffer} newDllFile the encrypted header, along with the decompressed file contents
- * @param {string}
+ * @param {Buffer} newDllFile the built DLL. format: encrypted preheader + decompressed body
+ * @param {string} romVer
  * @param {boolean} compressed if true, compare compressed version instead
  */
-async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, compressed=false, toSkip=false)
+async function dll_get_similarity(dllName, newDllFile, romVer, compressed=false)
 {
     let bufs = await dll_dump_and_get_vani_from_baserom(dllName, romVer);
 
@@ -580,22 +613,6 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
         }
     }
 
-    //= Make fndump
-    if (!toSkip && !compressed)
-    {
-        //# Vanilla functions
-        await dll_analysis_text_dump(
-            await dll_analyse_text(buf_vani_dec),
-            gRootDir + `expected/${romVer}/dlls`
-        );
-
-        //# Custom functions
-        await dll_analysis_text_dump(
-            await dll_analyse_text(buf_cust),
-            gRootDir + `build/${romVer}/dlls`
-        );
-    }
-
     //- Execute compare
     let similarity;
     {
@@ -610,6 +627,78 @@ async function dll_get_similarity_and_make_fndumps(dllName, newDllFile, romVer, 
     }
 
     return { found: true, similarity, };
+}
+
+/**
+ * If a source (.c) file for a DLL exists, but is EMPTY, we
+ * initialise it with placeholder function names.
+ * 
+ * Uses vanilla fndump files.
+ * 
+ * @param {string} dllName 
+ * @param {string} romVer 
+ */
+async function dll_source_initialise(dllName, romVer="usa")
+{
+    let dst_fn    = gRootDir + `src/dlls/${dllName}.c`;
+    let fndump_fn = gRootDir + `expected/${romVer}/dlls/${dllName}_fndump.txt`;
+
+    if (!fs.existsSync(dst_fn) || (await fsp.stat(dst_fn)).size > 0)
+        //# Doesn't exist, or if it does exist, has stuff inside it
+        return false;
+
+    if (!fs.existsSync(fndump_fn))
+        //# Vanilla fndump does not exist
+        return false;
+
+    //- Required files exist, do the thing
+
+    let header = `
+        #include "include/2.0L/ultra64.h"
+
+        #include "include/functions.h"
+        #include "include/variables.h"
+        #include "include/dlls.h"
+    `.replace(/^ +/g, "")
+     .replace(/\n +/g, "\n")
+     .trim() + "\n".repeat(5);
+
+    let fn_dump = (await fsp.readFile(fndump_fn))
+        .toString()
+        .trim()
+        .split(/(?:\r?\n)+/g)
+        .map(line =>
+        {
+            let es = line.split(/\s+/g);
+            return { name: es[0], offset: es[1], size: es[2] };
+        });
+
+    let body = "";
+
+    {
+        let cntPubs = 0;
+        let cntPrvs = 0;
+
+        for (let fn of fn_dump)
+        {
+            let isPub = fn.name.startsWith("pub");
+    
+            let name = isPub
+                ? `DLL_${dllName}_${(cntPubs++).toString().padStart(2, "0")}`
+                : `fn_priv_${(cntPrvs++).toString().padStart(2, "0")}`;
+    
+            body += `void ${name}(void)\n{\n    // TODO\n\n\n}\n\n`;
+        }
+    }
+
+    //- Write
+    {
+        let out = header + body;
+
+        await fsp.writeFile(dst_fn, out);
+    }
+
+    return true;
 }
 
 function remove_c_comments_from_src(src)
@@ -1872,10 +1961,10 @@ function dll_get_checksum(buffer)
 async function dll_preheader_encryption_toggle(rawFile=null)
 {
     if (!rawFile)
-        FATAL(`Invalid handle, cannot encrypt preheader!`);
+        return ERROR(`Invalid handle, cannot encrypt preheader!`);
 
     if (rawFile.readUint8(0xF) !== 0x82)
-        FATAL(`Cannot package DLL: missing preheader!`);
+        return ERROR(`Cannot toggle preheader encryption: missing preheader!`);
 
     //- Calculate checksum
     let checksum = dll_get_checksum(rawFile.slice(0x10));
@@ -2121,8 +2210,6 @@ async function dll_compress(rawFilePath, dllName, romVer, rawFile=null, toSkip=f
 
                 //# zlib binary appends .gz to the end of everything, cut it
                 // await fsp.rename(gzOutPath + ".gz", gzOutPath);
-
-                await fsp.unlink(gzInPath);
             }
 
             gzOut = await fsp.readFile(gzOutPath);
@@ -2140,8 +2227,13 @@ async function dll_compress(rawFilePath, dllName, romVer, rawFile=null, toSkip=f
         }
 
         //# Cleanup
-        if (fs.existsSync(gzOutPath))
-            await fsp.unlink(gzOutPath);
+        {
+            if (fs.existsSync(gzInPath))
+                await fsp.unlink(gzInPath);
+
+            if (fs.existsSync(gzOutPath))
+                await fsp.unlink(gzOutPath);
+        }
 
         //= Postprocess the zlib-compressed file
         {
@@ -2716,6 +2808,10 @@ async function dll_full_build_multi(dllNames)
                         results_raw[idx][romVer] = "";
                 }
 
+                //# Make fndumps for vani
+                await dll_make_fndumps(dllName, romVer, null);
+                //# Populate source file with initial structure, if empty
+                await dll_source_initialise(dllName, romVer);
 
                 if (!fs.existsSync(fn_c) || (await fsp.stat(fn_c)).size === 0 || !allDllNames.has(dllName))
                 {
@@ -2725,15 +2821,18 @@ async function dll_full_build_multi(dllNames)
                     return resolve();
                 }
 
-
                 let fn_o = await dll_build(dllName, romVer, toSkip);
 
                 let [fn_raw, file_raw] = await dll_process(dllName, fn_o, romVer, toSkip);
 
+                //# Make fndumps for cust
+                await dll_make_fndumps(dllName, romVer, null);
+
+                //# Encrypt header
                 await dll_preheader_encryption_toggle(file_raw);
 
                 //- Make [expected] dumps before proceeding, needed for zlib magic
-                await dll_dump_and_get_vani_from_baserom(dllName, romVer);
+                // await dll_dump_and_get_vani_from_baserom(dllName, romVer);
 
                 //# Outputs compressed files
                 let [fn_cmp, file_cmp] = await dll_compress(fn_raw, dllName, romVer, file_raw, toSkip);
@@ -2754,7 +2853,8 @@ async function dll_full_build_multi(dllNames)
                 {
                     let file = USE_COMPRESSION ? file_cmp : file_raw;
 
-                    let similarity = await dll_get_similarity_and_make_fndumps(dllName, file, romVer, USE_COMPRESSION, toSkip);
+                    // let similarity = await dll_get_similarity_and_make_fndumps(dllName, file, romVer, USE_COMPRESSION, toSkip);
+                    let similarity = await dll_get_similarity(dllName, file, romVer, USE_COMPRESSION);
                     let endPad = 10;
 
                     //- Increment total byte percentage
@@ -3267,7 +3367,7 @@ function dll_analyse_text(dllFile)
                 return reject(`Invalid DLL file: not a Buffer.`);
 
             if (dllFile.readUint8(0x0F) !== 0x82)
-                return reject(`Invalid DLL file: missing preheader!`);
+                return reject(`Cannot analyse DLL: missing preheader!`);
 
             if (dllFile.readUInt32BE(0x10) !== 0)
                 return reject(`DLL was compressed, we don't take these.`);

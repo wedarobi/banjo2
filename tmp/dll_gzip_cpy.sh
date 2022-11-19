@@ -6,6 +6,8 @@ DST="/mnt/r/t4"
 
 DLL="cothemedll"
 
+mkdir -p ${DST}
+
 #- Copy expected DLLs for all versions
 tail ~/n64/decomp/bt/expected/usa/dlls/${DLL}.dll -c +19 > ${DST}/${DLL}_usa_vani.cmp
 tail ~/n64/decomp/bt/expected/jpn/dlls/${DLL}.dll -c +19 > ${DST}/${DLL}_jpn_vani.cmp

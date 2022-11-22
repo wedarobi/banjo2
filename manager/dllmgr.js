@@ -76,6 +76,13 @@ function DEBUG_LOG(msg)
         console.log(msg);
 }
 
+/**
+ * 
+ * @param {string} command 
+ * @param {boolean} directPrint 
+ * @param {boolean} ignoreStderr 
+ * @returns {Promise<string>} stdout
+ */
 function spawn(command, directPrint=true, ignoreStderr=false)
 {
     return new Promise((res, rej) =>
@@ -1897,7 +1904,7 @@ async function dll_process(dll, objFilePath, romVer, toSkip=false)
              * We can just do this with the symbol refs we have already calculated
              */
 
-            for (let [i, sr] of symbolRefs.entries())
+            for (let sr of symbolRefs)
             {
                 sr ^= encryptionKey;
 
@@ -1990,7 +1997,7 @@ async function dll_process(dll, objFilePath, romVer, toSkip=false)
 }
 
 /**
- * 
+ * Ty Authentic for the algo
  * @param {Buffer} buffer decompressed DLL, with no preheader
  * @returns 
  */
@@ -2052,13 +2059,13 @@ function zlib_deflateRaw_async(buf, options)
  * @param {zlib.ZlibOptions} options 
  * @returns {Promise<Buffer>}
  */
- function zlib_inflateRaw_async(buf, options)
- {
-     return new Promise((resolve, reject) =>
-     {
-         zlib.inflateRaw(buf, options, (err, res) => err ? reject(err) : resolve(res));
-     });
- }
+function zlib_inflateRaw_async(buf, options)
+{
+    return new Promise((resolve, reject) =>
+    {
+        zlib.inflateRaw(buf, options, (err, res) => err ? reject(err) : resolve(res));
+    });
+}
 
 /**
  * Give a path to a file a new extension

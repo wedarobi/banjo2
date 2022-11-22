@@ -878,7 +878,7 @@
 /* $ glhittableDll */
 /*@oooo*/ void DLL_glhittableDll_00(void);
 /*@oooo*/ void DLL_glhittableDll_01(void);
-/*@oooo*/ u32  DLL_glhittableDll_02(u32 a0);
+/*@oooo*/ u32  DLL_glhittableDll_02(s32 a0);
 /*@oooo*/ void DLL_glhittableDll_03(void);
 /*@oooo*/ void DLL_glhittableDll_04(void);
 /*@oooo*/ void DLL_glhittableDll_05(void);

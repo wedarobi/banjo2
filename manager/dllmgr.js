@@ -730,15 +730,15 @@ async function dll_source_initialise(dllName, romVer)
                 // forwards += `${name};\n`;
             }
 
-            let ghidraLabel = "";
+            let disasmLabel = "";
 
             if (dllName in gDisasmStartAddrs)
             {
                 let addr = gDisasmStartAddrs[dllName];
-                ghidraLabel = `//= ${dllName}::${(addr + fn.offset).toString(16).toUpperCase()}\n`;
+                disasmLabel = `//= ${dllName}::${(addr + fn.offset).toString(16).toUpperCase()}\n`;
             }
 
-            body += `${ghidraLabel}${name}\n{\n    // TODO\n\n\n}\n\n`;
+            body += `${disasmLabel}${name}\n{\n    // TODO\n\n\n}\n\n`;
         }
     }
 
